@@ -24,29 +24,30 @@
 23. Expand doctrine library with dynamic JSON patterns.
 24. Automate OSINT image scraping and dataset organization for Russian units.
 25. Train dedicated YOLO models for vehicles and troops with sequential training support.
-26. Verify images and labels automatically before each training cycle.
-27. Log uncertain detections and allow human review without altering data.
-28. Provide a simple GUI to record whether predictions are correct.
-29. Monitor directories for new images and process them with anomaly scoring.
-30. Combine YOLO detections with Transformer refinement and confidence blending.
-31. Plot live detections on interactive maps and record confidence over time.
-32. Research graph-based transformers, diffusion models and secure cloud deployment for scalable prediction services.
-33. Integrate real-time satellite imagery using Sentinel Hub API.
-34. Implement a QUIC-enabled Rust backend for secure data ingestion.
-35. Provide start scripts to automate MongoDB startup, YOLO training and detection.
-36. Build a pipeline that fetches, processes and predicts troop movements automatically.
-37. Explore partnerships with cybersecurity groups like Disbalancer and Hacken.
-38. Offer a user-friendly mobile or PC app delivering early warning alerts.
-39. Use eBPF and Scapy for inline packet inspection and sandboxed database policies.
-40. Deploy Rust services with QUIC and WebAssembly modules for resilient maritime comms.
-41. Add LIDAR-based drone detection for ground and satellite sensors.
-42. Run unsupervised detection for new movement patterns and deviations.
-43. Coordinate with Brave1 and CIDT for potential field testing and government integration.
-44. Deploy a YOLO inference wrapper that tags doctrine before logging.
-45. Update Mongo schema and backend structs with a doctrine field.
-46. Train the BTGTransformer on normalized movement sequences.
-47. Detect deviations between predicted and actual movements with DBSCAN tagging.
-48. Ingest live OSINT movement files through this pipeline.
+26. Implement a script to train YOLO sequentially across multiple data.yaml files for memory efficiency.
+27. Verify images and labels automatically before each training cycle.
+28. Log uncertain detections and allow human review without altering data.
+29. Provide a simple GUI to record whether predictions are correct.
+30. Monitor directories for new images and process them with anomaly scoring.
+31. Combine YOLO detections with Transformer refinement and confidence blending.
+32. Plot live detections on interactive maps and record confidence over time.
+33. Research graph-based transformers, diffusion models and secure cloud deployment for scalable prediction services.
+34. Integrate real-time satellite imagery using Sentinel Hub API.
+35. Implement a QUIC-enabled Rust backend for secure data ingestion.
+36. Provide start scripts to automate MongoDB startup, YOLO training and detection.
+37. Build a pipeline that fetches, processes and predicts troop movements automatically.
+38. Explore partnerships with cybersecurity groups like Disbalancer and Hacken.
+39. Offer a user-friendly mobile or PC app delivering early warning alerts.
+40. Use eBPF and Scapy for inline packet inspection and sandboxed database policies.
+41. Deploy Rust services with QUIC and WebAssembly modules for resilient maritime comms.
+42. Add LIDAR-based drone detection for ground and satellite sensors.
+43. Run unsupervised detection for new movement patterns and deviations.
+44. Coordinate with Brave1 and CIDT for potential field testing and government integration.
+45. Deploy a YOLO inference wrapper that tags doctrine before logging.
+46. Update Mongo schema and backend structs with a doctrine field.
+47. Train the BTGTransformer on normalized movement sequences.
+48. Detect deviations between predicted and actual movements with DBSCAN tagging.
+49. Ingest live OSINT movement files through this pipeline.
 49. Build a GUI map overlay after base functionality is stable.
 50. Track unit identities over time for per-unit trajectory prediction and anomaly detection.
 51. Provide a CLI to run the satellite inference pipeline for a chosen area.

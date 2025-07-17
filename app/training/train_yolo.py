@@ -7,8 +7,21 @@ from ultralytics import YOLO
 
 from .dataset_loader import create_data_yaml
 
+DEFAULT_BATCH = 16
+DEFAULT_IMG_SIZE = 640
+DEFAULT_LR = 1e-3
 
-def train_yolo(train_dir: Path, val_dir: Path, classes: List[str], epochs: int, out_model: Path) -> None:
+
+def train_yolo(
+    train_dir: Path,
+    val_dir: Path,
+    classes: List[str],
+    epochs: int,
+    out_model: Path,
+    batch: int = DEFAULT_BATCH,
+    img_size: int = DEFAULT_IMG_SIZE,
+    lr: float = DEFAULT_LR,
+) -> None:
     """Train a YOLO model.
 
     Parameters
@@ -26,7 +39,13 @@ def train_yolo(train_dir: Path, val_dir: Path, classes: List[str], epochs: int, 
     """
     yaml_path = create_data_yaml(train_dir, val_dir, classes, Path("data.yaml"))
     model = YOLO("yolov8n.pt")
-    model.train(data=str(yaml_path), epochs=epochs)
+    model.train(
+        data=str(yaml_path),
+        epochs=epochs,
+        batch=batch,
+        imgsz=img_size,
+        lr0=lr,
+    )
     model.save(str(out_model))
     print(f"YOLO model saved to {out_model}")
 
@@ -40,6 +59,18 @@ if __name__ == "__main__":
     parser.add_argument("out_model", type=Path)
     parser.add_argument("--classes", nargs="+", required=True, help="Class names")
     parser.add_argument("--epochs", type=int, default=50)
+    parser.add_argument("--batch", type=int, default=DEFAULT_BATCH, help="Batch size")
+    parser.add_argument("--img-size", type=int, default=DEFAULT_IMG_SIZE, help="Training image size")
+    parser.add_argument("--lr", type=float, default=DEFAULT_LR, help="Initial learning rate")
     args = parser.parse_args()
 
-    train_yolo(args.train_dir, args.val_dir, args.classes, args.epochs, args.out_model)
+    train_yolo(
+        args.train_dir,
+        args.val_dir,
+        args.classes,
+        args.epochs,
+        args.out_model,
+        batch=args.batch,
+        img_size=args.img_size,
+        lr=args.lr,
+    )

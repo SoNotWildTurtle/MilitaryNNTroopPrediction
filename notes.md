@@ -76,7 +76,8 @@ the same pipeline for real-time situational awareness.
 `troop_training_cli.py` helps organize labeled troop images and train a simple classifier from command line inputs or a CSV file.
 `cli/dashboard.py` provides a Rich-powered command line menu to run the pipeline, generate heatmaps and launch the feedback GUI.
 `training/dataset_loader.py` creates a `data.yaml` file to configure YOLO training datasets.
-`training/train_yolo.py` runs the Ultralytics training loop and exports a `.pt` model.
+`training/train_yolo.py` runs the Ultralytics training loop with configurable batch size, image size and learning rate.
+`training/train_sequential_yolo.py` trains across multiple data.yaml files sequentially for memory efficiency.
 - movement_logger.py saves detection records for later clustering.
 - cluster_strategy_tracker.py clusters movements and draws heatmaps.
 - threat_assessment.py assigns a basic score based on proximity to strategic sites.

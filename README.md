@@ -77,6 +77,7 @@ Several helper scripts aid with data preparation and automation:
 - `detection/vehicle_identifier.py` – classify vehicles from images.
 - `training/dataset_loader.py` – generate YOLO data.yaml files.
 - `training/train_yolo.py` – train a YOLO model from prepared datasets.
+- `training/train_sequential_yolo.py` – train on multiple datasets sequentially.
 - `analysis/dbscan_cluster.py` – cluster movement logs with DBSCAN to find
   common locations. Run as `python -m app.analysis.dbscan_cluster UNIT_ID`.
 - `analysis/heatmap.py` – generate detection heatmaps as PNG images.
@@ -110,6 +111,9 @@ python -m app.training.dataset_loader /data/train/images /data/val/images \
     --classes troop vehicle -o data.yaml
 python -m app.training.train_yolo /data/train/images /data/val/images yolo_model.pt \
     --classes troop vehicle --epochs 50
+# Train sequentially on multiple YAML datasets
+python -m app.training.train_sequential_yolo dataset1.yaml dataset2.yaml yolo_model.pt \
+    --epochs 25
 ```
 
 ## Training Methodology
@@ -120,7 +124,11 @@ python -m app.training.train_yolo /data/train/images /data/val/images yolo_model
 2. **Create data configuration**: Use `training/dataset_loader.py` to generate
    the `data.yaml` file required by the Ultralytics trainer.
 3. **Train the detector**: Execute `training/train_yolo.py` pointing to the
-   training and validation directories. The script loads the lightweight
-   `yolov8n.pt` weights and fine-tunes them for the specified number of epochs.
-4. **Deploy**: Copy the resulting `.pt` model into the pipeline and update the
+   training and validation directories. Optional flags allow adjusting batch
+   size, image resolution and learning rate for finer control.
+4. **Sequential training**: For very large datasets you can train in batches
+   using `training/train_sequential_yolo.py` and a list of `data.yaml` files.
+   Each YAML is trained for the specified epochs before moving to the next to
+   conserve GPU memory.
+5. **Deploy**: Copy the resulting `.pt` model into the pipeline and update the
    detection wrapper to load it instead of the stub.

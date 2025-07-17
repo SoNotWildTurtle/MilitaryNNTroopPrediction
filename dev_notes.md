@@ -84,7 +84,8 @@
 - drone_identifier.py assigns a basic category to observed UAVs.
 - vehicle_identifier.py classifies basic vehicle types from images.
 - training/dataset_loader.py creates data.yaml files for YOLO datasets.
-- training/train_yolo.py trains detection models via the Ultralytics API.
+- training/train_yolo.py trains detection models via the Ultralytics API with custom batch size, image size and learning rate options.
+- train_sequential_yolo.py iterates through multiple data.yaml files to train large datasets in manageable chunks.
 - troop_training_cli.py labels troop images and trains a small classifier from a directory or CSV.
 - movement_logger.py logs detection coordinates to the movements collection.
 - analysis/cluster_strategy_tracker.py runs DBSCAN then heatmap generation.
