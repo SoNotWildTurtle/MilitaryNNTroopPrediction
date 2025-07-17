@@ -74,6 +74,7 @@ Several helper scripts aid with data preparation and automation:
 - `detection/ground_troop.py` – detect troops from low-quality or angled images.
 - `detection/troop_identifier.py` – classify detected troops by type and uniform.
 - `detection/drone_identifier.py` – classify drone models from images.
+- `detection/vehicle_identifier.py` – classify vehicles from images.
 - `training/dataset_loader.py` – generate YOLO data.yaml files.
 - `training/train_yolo.py` – train a YOLO model from prepared datasets.
 - `analysis/dbscan_cluster.py` – cluster movement logs with DBSCAN to find
@@ -94,7 +95,7 @@ python -m app.utils.dataset_augmentation images/raw images/augmented -n 5
 python -m app.watch_directory data/sentinel path/to/model kyiv
 python -m app.pipeline.monitor kyiv models/trajectory.h5 --interval 600
 python -m app.drones.live_feed 0 --model models/trajectory.h5 \
-    --troop-model troop_model.h5 --classify-drones
+    --troop-model troop_model.h5 --classify-drones --classify-vehicles
 python -m app.utils.troop_training_cli images/train troop_model.h5 --csv troop_labels.csv
 python -m app.utils.human_feedback_viewer images/train predictions.csv feedback.csv
 python -m app.analysis.dbscan_cluster UNIT123 --hours 48

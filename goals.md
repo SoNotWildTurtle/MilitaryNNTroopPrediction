@@ -64,3 +64,4 @@
 63. Log detections with movement_logger.py for later analysis.
 64. Score cluster threats using analysis/threat_assessment.py.
 65. Encode detection density into grid tensors with analysis/state_encoder.py.
+66. Classify vehicles from drone and satellite images.

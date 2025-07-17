@@ -82,6 +82,7 @@
 - drones/live_feed.py connects to drone video streams and logs detections.
 - troop_identifier.py classifies detected troops by type and uniform.
 - drone_identifier.py assigns a basic category to observed UAVs.
+- vehicle_identifier.py classifies basic vehicle types from images.
 - training/dataset_loader.py creates data.yaml files for YOLO datasets.
 - training/train_yolo.py trains detection models via the Ultralytics API.
 - troop_training_cli.py labels troop images and trains a small classifier from a directory or CSV.

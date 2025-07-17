@@ -72,6 +72,7 @@ Ground troop imagery can be difficult due to oblique angles and low quality, so
 the same pipeline for real-time situational awareness.
 `troop_identifier.py` classifies detected troops by type and uniform, while
 `drone_identifier.py` labels UAV models during live feeds.
+`vehicle_identifier.py` categorizes vehicles detected in imagery.
 `troop_training_cli.py` helps organize labeled troop images and train a simple classifier from command line inputs or a CSV file.
 `cli/dashboard.py` provides a Rich-powered command line menu to run the pipeline, generate heatmaps and launch the feedback GUI.
 `training/dataset_loader.py` creates a `data.yaml` file to configure YOLO training datasets.

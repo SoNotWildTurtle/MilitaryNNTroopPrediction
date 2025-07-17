@@ -10,6 +10,7 @@ from ..detection import (
     load_troop_classifier,
     classify_troop,
     classify_drone,
+    classify_vehicle,
 )
 from ..models import trajectory_model
 from ..pipeline import realtime
@@ -22,6 +23,7 @@ def stream(
     area: str = "unknown",
     troop_model_path: Optional[str] = None,
     classify_drones: bool = False,
+    classify_vehicles: bool = False,
 ) -> None:
     cap = cv2.VideoCapture(source)
     if not cap.isOpened():
@@ -46,6 +48,10 @@ def stream(
         if classify_drones:
             for det in detections:
                 det.update(classify_drone(tmp_path))
+
+        if classify_vehicles:
+            for det in detections:
+                det.update(classify_vehicle(tmp_path))
 
         realtime.store_detections(area, detections)
 
@@ -75,6 +81,7 @@ def _parse_args():
     parser.add_argument("--troop-model", dest="troop_model", help="Troop classifier path", default=None)
     parser.add_argument("--area", default="unknown", help="Area identifier")
     parser.add_argument("--classify-drones", action="store_true", help="Identify drone type")
+    parser.add_argument("--classify-vehicles", action="store_true", help="Identify vehicle type")
     return parser.parse_args()
 
 
@@ -86,6 +93,7 @@ def main() -> None:
         area=args.area,
         troop_model_path=args.troop_model,
         classify_drones=args.classify_drones,
+        classify_vehicles=args.classify_vehicles,
     )
 
 
