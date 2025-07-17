@@ -4,6 +4,17 @@ from pathlib import Path
 from typing import Any, Dict
 import os
 
+def _load_dotenv(path: Path) -> None:
+    """Populate environment variables from a simple .env file if present."""
+    if not path.exists():
+        return
+    for line in path.read_text().splitlines():
+        if '=' in line:
+            key, val = line.split('=', 1)
+            os.environ.setdefault(key.strip(), val.strip())
+
+_load_dotenv(Path('.env'))
+
 
 class Settings:
     """Application settings with defaults that may be overridden by environment variables."""

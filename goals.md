@@ -66,3 +66,4 @@
 64. Score cluster threats using analysis/threat_assessment.py.
 65. Encode detection density into grid tensors with analysis/state_encoder.py.
 66. Classify vehicles from drone and satellite images.
+67. Provide an interactive setup CLI to write environment variables into a .env file.

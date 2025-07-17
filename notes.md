@@ -63,6 +63,7 @@ The goal is to compare modern activity with Soviet-era patterns by training on h
 Detections and trajectory predictions are stored in MongoDB for later analysis.
 The Sentinel Hub integration uses OAuth credentials supplied via environment
 variables. Without them, the pipeline falls back to placeholder images.
+Use `python -m app.cli.configure` to create a `.env` file with these variables.
 Dataset augmentation utilities rely on Albumentations for generating additional
 training data, and `watch_directory.py` monitors incoming image folders to run
 the pipeline automatically.

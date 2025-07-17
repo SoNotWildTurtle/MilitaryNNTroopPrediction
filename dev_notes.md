@@ -90,3 +90,4 @@
 - movement_logger.py logs detection coordinates to the movements collection.
 - analysis/cluster_strategy_tracker.py runs DBSCAN then heatmap generation.
 - analysis/threat_assessment.py computes simple threat scores for clusters.
+- cli/configure.py writes a `.env` file with interactive prompts for environment settings.
