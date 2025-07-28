@@ -4,6 +4,7 @@ from .image_utils import enhance_image
 from .dataset_augmentation import augment_images
 from .troop_training_cli import train_classifier
 from .human_feedback_viewer import launch_feedback_gui
+from .pseudo_labeler import pseudo_label_images
 from ..training.dataset_loader import create_data_yaml
 from ..training.train_yolo import train_yolo
 from ..training.train_sequential_yolo import train_sequential
@@ -16,4 +17,5 @@ __all__ = [
     "train_yolo",
     "train_sequential",
     "launch_feedback_gui",
+    "pseudo_label_images",
 ]

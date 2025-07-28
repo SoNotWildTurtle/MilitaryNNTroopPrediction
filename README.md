@@ -87,6 +87,12 @@ Several helper scripts aid with data preparation and automation:
 - `analysis/cluster_strategy_tracker.py` – cluster unit movements and generate heatmaps.
 - `analysis/threat_assessment.py` – compute simple threat scores from clusters.
 - `analysis/state_encoder.py` – encode detections into a grid tensor for ML models.
+- `analysis/image_stats.py` – compute brightness and blur metrics for training datasets.
+- `analysis/movement_stats.py` – summarize average speed and heading from logged movements.
+- `analysis/hog_features.py` – extract HOG descriptors from images for feature analysis.
+- `cli/dashboard.py` – interactive Rich-based CLI to run common tasks.
+- `utils/pseudo_labeler.py` – create YOLO label files from new images.
+- `cli/self_reinforce.py` – label fresh images, merge them into the dataset and retrain the detector.
 - `cli/dashboard.py` – interactive Rich-based CLI to run common tasks.
 
 Example usage:
@@ -107,6 +113,10 @@ python -m app.analysis.geo_mapper kyiv --hours 24 -o kyiv_map.html
 python -m app.movement_logger UNIT123 movements.csv
 python -m app.analysis.cluster_strategy_tracker UNIT123 --hours 24
 python -m app.analysis.state_encoder kyiv --hours 24 --res 32 -o state.npy
+python -m app.analysis.image_stats images/train -o image_stats.csv
+python -m app.analysis.movement_stats UNIT123 --hours 24
+python -m app.analysis.hog_features images/train -o hog_feats.npz
+
 python -m app.analysis.threat_assessment "[{"center": [30.5, 50.4], "count": 5}]"
 # Train a YOLO model after preparing a data.yaml file:
 python -m app.training.dataset_loader /data/train/images /data/val/images \ 
@@ -116,6 +126,9 @@ python -m app.training.train_yolo /data/train/images /data/val/images yolo_model
 # Train sequentially on multiple YAML datasets
 python -m app.training.train_sequential_yolo dataset1.yaml dataset2.yaml yolo_model.pt \
     --epochs 25
+  python -m app.utils.pseudo_labeler images/new -o pseudo_labels --conf 0.7
+  python -m app.cli.self_reinforce images/new /data/train/images /data/val/images \
+      --classes troop vehicle --out-model updated_model.pt --epochs 5
 ```
 
 ## Training Methodology

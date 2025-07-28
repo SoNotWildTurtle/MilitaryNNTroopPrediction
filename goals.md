@@ -67,3 +67,7 @@
 65. Encode detection density into grid tensors with analysis/state_encoder.py.
 66. Classify vehicles from drone and satellite images.
 67. Provide an interactive setup CLI to write environment variables into a .env file.
+68. Auto-label new images, merge them into the dataset and retrain models via the self_reinforce CLI.
+69. Analyze image brightness and blur levels with analysis/image_stats.py to prioritize augmentation.
+70. Calculate unit speed and heading statistics with analysis/movement_stats.py.
+71. Extract HOG descriptors from training images using analysis/hog_features.py.

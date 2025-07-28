@@ -79,6 +79,14 @@ the same pipeline for real-time situational awareness.
 `training/dataset_loader.py` creates a `data.yaml` file to configure YOLO training datasets.
 `training/train_yolo.py` runs the Ultralytics training loop with configurable batch size, image size and learning rate.
 `training/train_sequential_yolo.py` trains across multiple data.yaml files sequentially for memory efficiency.
+`utils/pseudo_labeler.py` writes YOLO label files from new images and logs a CSV summary.
+`cli/self_reinforce.py` generates labels, merges the images into the dataset and retrains the detector.
+- movement_logger.py saves detection records for later clustering.
+- cluster_strategy_tracker.py clusters movements and draws heatmaps.
+- threat_assessment.py assigns a basic score based on proximity to strategic sites.
+- analysis/image_stats.py computes brightness and blur metrics to gauge image quality before training.
+- analysis/movement_stats.py calculates average speed and heading of each unit.
+- analysis/hog_features.py extracts histogram of oriented gradients from images to compare shapes and textures.
 - movement_logger.py saves detection records for later clustering.
 - cluster_strategy_tracker.py clusters movements and draws heatmaps.
 - threat_assessment.py assigns a basic score based on proximity to strategic sites.

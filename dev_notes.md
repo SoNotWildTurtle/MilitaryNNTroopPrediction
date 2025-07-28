@@ -29,6 +29,7 @@
 - cluster_strategy_tracker.py performs DBSCAN on logs and creates heatmaps.
 - state_encoder.py converts recent detections into grid tensors for model input.
 - heatmap.py generates matplotlib heatmaps from stored detections.
+- movement_stats.py computes speed and heading statistics from movement logs.
 - threat_assessment.py assigns alert levels based on cluster behavior and proximity to strategic sites.
 - trajectory_predictor.py forecasts next positions from movement sequences.
 - doctrine_matcher and emerging_tactic_detector identify era-specific tactics and discover new patterns.
@@ -85,6 +86,16 @@
 - vehicle_identifier.py classifies basic vehicle types from images.
 - training/dataset_loader.py creates data.yaml files for YOLO datasets.
 - training/train_yolo.py trains detection models via the Ultralytics API with custom batch size, image size and learning rate options.
+ - train_sequential_yolo.py iterates through multiple data.yaml files to train large datasets in manageable chunks.
+ - troop_training_cli.py labels troop images and trains a small classifier from a directory or CSV.
+  - utils/pseudo_labeler.py generates YOLO-format label files from new images for self-training.
+  - cli/self_reinforce.py labels images, copies them into the dataset and retrains the detector.
+- movement_logger.py logs detection coordinates to the movements collection.
+- analysis/cluster_strategy_tracker.py runs DBSCAN then heatmap generation.
+- analysis/threat_assessment.py computes simple threat scores for clusters.
+- analysis/image_stats.py calculates brightness and blur for training images.
+- analysis/movement_stats.py computes average speed and heading from logged movements.
+- analysis/hog_features.py extracts HOG descriptors for more detailed image analysis.
 - train_sequential_yolo.py iterates through multiple data.yaml files to train large datasets in manageable chunks.
 - troop_training_cli.py labels troop images and trains a small classifier from a directory or CSV.
 - movement_logger.py logs detection coordinates to the movements collection.
