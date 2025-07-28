@@ -96,4 +96,9 @@
 - analysis/image_stats.py calculates brightness and blur for training images.
 - analysis/movement_stats.py computes average speed and heading from logged movements.
 - analysis/hog_features.py extracts HOG descriptors for more detailed image analysis.
+- train_sequential_yolo.py iterates through multiple data.yaml files to train large datasets in manageable chunks.
+- troop_training_cli.py labels troop images and trains a small classifier from a directory or CSV.
+- movement_logger.py logs detection coordinates to the movements collection.
+- analysis/cluster_strategy_tracker.py runs DBSCAN then heatmap generation.
+- analysis/threat_assessment.py computes simple threat scores for clusters.
 - cli/configure.py writes a `.env` file with interactive prompts for environment settings.

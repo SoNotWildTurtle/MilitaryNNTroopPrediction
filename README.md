@@ -90,9 +90,10 @@ Several helper scripts aid with data preparation and automation:
 - `analysis/image_stats.py` – compute brightness and blur metrics for training datasets.
 - `analysis/movement_stats.py` – summarize average speed and heading from logged movements.
 - `analysis/hog_features.py` – extract HOG descriptors from images for feature analysis.
-  - `cli/dashboard.py` – interactive Rich-based CLI to run common tasks.
-  - `utils/pseudo_labeler.py` – create YOLO label files from new images.
-  - `cli/self_reinforce.py` – label fresh images, merge them into the dataset and retrain the detector.
+- `cli/dashboard.py` – interactive Rich-based CLI to run common tasks.
+- `utils/pseudo_labeler.py` – create YOLO label files from new images.
+- `cli/self_reinforce.py` – label fresh images, merge them into the dataset and retrain the detector.
+- `cli/dashboard.py` – interactive Rich-based CLI to run common tasks.
 
 Example usage:
 
@@ -115,6 +116,7 @@ python -m app.analysis.state_encoder kyiv --hours 24 --res 32 -o state.npy
 python -m app.analysis.image_stats images/train -o image_stats.csv
 python -m app.analysis.movement_stats UNIT123 --hours 24
 python -m app.analysis.hog_features images/train -o hog_feats.npz
+
 python -m app.analysis.threat_assessment "[{"center": [30.5, 50.4], "count": 5}]"
 # Train a YOLO model after preparing a data.yaml file:
 python -m app.training.dataset_loader /data/train/images /data/val/images \ 

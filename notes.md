@@ -87,3 +87,6 @@ the same pipeline for real-time situational awareness.
 - analysis/image_stats.py computes brightness and blur metrics to gauge image quality before training.
 - analysis/movement_stats.py calculates average speed and heading of each unit.
 - analysis/hog_features.py extracts histogram of oriented gradients from images to compare shapes and textures.
+- movement_logger.py saves detection records for later clustering.
+- cluster_strategy_tracker.py clusters movements and draws heatmaps.
+- threat_assessment.py assigns a basic score based on proximity to strategic sites.
