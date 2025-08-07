@@ -1,0 +1,118 @@
+- Use Python with TensorFlow/Keras for model development.
+- Data sources include declassified archives, modern conflict reports and satellite imagery.
+- Preprocessing steps: standardize numeric values, encode categories, create time-series format.
+- Key features: speed, terrain, logistics, formation patterns, communications.
+- RNN/LSTM architecture targeted for sequence prediction; may expand to Bi-LSTM or attention mechanisms later.
+
+- Integrate logistics, supply chain and morale metrics from OSINT feeds.
+- Consider Bidirectional LSTM with attention or Transformer models for better sequence context.
+- Build a pipeline for continuous data updates and periodic retraining.
+- Store movement data and predictions in MongoDB for geospatial queries.
+- Organize code as modules: config, database, data_ingestion, model, visualization, alerts, main.
+- Provide a FastAPI (api.py) service exposing prediction and query endpoints.
+- Train YOLOv8 using dataset_loader.py and train_yolo.py for vehicle detection.
+- Use detect_troops.py to add detections to MongoDB and trigger alerts.
+- Include satellite_pipeline.py for classified imagery hooks and osint_scraper.py for public feeds.
+- Automate the full workflow with run_real_time_pipeline.py.
+
+- Augment training images using Albumentations in dataset_augmentation.py.
+- Setup scripts (setup.sh/start.sh) automate dependency install and pipeline startup.
+- watch_directory.py monitors new images and triggers detection automatically.
+- info_gathering/camera_collector.py captures frames from webcams or videos for dataset collection.
+- pipeline/monitor.py periodically downloads Sentinel Hub imagery and runs the realtime pipeline.
+- transformer_feature_refiner.py refines YOLO detections with attention layers.
+- confidence_scorer.py blends YOLO and Transformer results and logs anomalies.
+- cluster_movements.py applies DBSCAN to logged positions for pattern discovery.
+- doctrine_library/ stores BTG patterns with doctrine_loader.py for matching.
+- ASP.NET web app consumes FastAPI endpoints to display maps and doctrine status.
+- Secure comms use Scapy-based packet sanitization and a multi-tier intranet.
+- movement_logger.py records detections with time and location for clustering.
+- cluster_strategy_tracker.py performs DBSCAN on logs and creates heatmaps.
+- state_encoder.py converts recent detections into grid tensors for model input.
+- heatmap.py generates matplotlib heatmaps from stored detections.
+- movement_stats.py computes speed and heading statistics from movement logs.
+- feature_fusion.py merges color histograms, HOG features and edge density for richer object descriptors.
+- threat_assessment.py assigns alert levels based on cluster behavior and proximity to strategic sites.
+- trajectory_predictor.py forecasts next positions from movement sequences.
+- doctrine_matcher and emerging_tactic_detector identify era-specific tactics and discover new patterns.
+- ASP.NET controller AiProxyController proxies FastAPI endpoints for the web dashboard.
+- russian_vehicle_dataset.py and russian_troop_dataset.py scrape OSINT images for training.
+- organize_dataset.py and organize_troop_dataset.py place images by category before YOLO training.
+- confidence_stats.py computes detection confidence statistics to surface low-performing classes.
+- translation/translator.py leverages HuggingFace models to localize dashboard text via the `UI_LANG` setting.
+- train_russian_yolo.py and train_russian_troop_yolo.py generate detectors for vehicles and troops.
+- merge_images.py and train_sequential_yolo.py support memory-efficient sequential training.
+- verify_dataset.py, verify_labels.py and fix_labels.py clean bad images or labels.
+- image_similarity.py and human_verification.py add a review layer for uncertain detections.
+- human_feedback_viewer.py provides a Tkinter GUI to mark predictions as correct or incorrect.
+- feedback_logger.py writes these decisions to the `feedback` collection for later training.
+- flag_anomalies.py and detect_russian_troops_with_anomalies.py log low-confidence cases without moving files.
+- detect_russian_troops_with_auto_updates.py integrates watch_directory.py for hands-free processing.
+- transformer_feature_refiner.py, extract_yolo_features.py and detect_and_refine_pipeline.py combine YOLO with a Transformer and score results.
+- tta_transformer_predict.py and confidence_logger.py monitor prediction quality over time.
+- analysis/confidence_calibrator.py fits an isotonic regression model from feedback to adjust detector probabilities.
+- geo_mapper.py visualizes detections on a Folium map. Run `python -m app.analysis.geo_mapper AREA` to generate an HTML file.
+
+- enhanced_image_processing.py improves satellite image contrast and sharpness before detection.
+- troop_transformer.py defines a Transformer network for forecasting troop locations.
+- run_real_time_pipeline.py ties image retrieval, preprocessing, detection and prediction into one script.
+- satellite_fetcher.py integrates Sentinel Hub imagery.
+- satellite_inference.py detects vehicles in Sentinel images and posts results to the backend.
+- backend_api (Rust + actix-web) ingests metadata over QUIC with MongoDB storage.
+- trajectory_model.py implements a Transformer-based movement predictor and includes a dataset preparer BTGTrajectoryDataset.
+- doctrine_classifier.py tags movement sequences and checks deviations from predicted behavior.
+- packet_sanitizer.py and quic_server.rs enforce zero-trust networking with Scapy/eBPF filtering.
+- mobile_alert_app/ provides cross-platform warnings for civilians.
+
+- tactical_wrapper.py wraps YOLO outputs and assigns doctrine labels before
+  storing results.
+- btg_trajectory_dataset.py loads movement logs for the BTGTransformer.
+- deviation_checker.py logs prediction errors and flags anomalies.
+- dbscan_cluster.py clusters recent positions with DBSCAN and stores cluster
+  centers in the `movement_clusters` collection.
+- image_metadata.rs extends the backend struct with a doctrine field.
+- Detection documents in Mongo now also include this `doctrine` label.
+
+- sentinel_hub_fetcher.py obtains OAuth tokens and downloads WMS tiles.
+- satellite_inference_pipeline.py runs detection, tags doctrine and posts results.
+- movement_history.py queries Mongo for recent positions per unit.
+- trajectory_inference.py feeds those points into BTGTransformer for prediction.
+- lidar_drone_detector.py will use point clouds to spot small UAVs.
+- pipeline/run_real_time_pipeline.py provides a CLI wrapper around the satellite inference pipeline.
+- cli/dashboard.py offers an interactive menu to run pipeline jobs, launch the
+  training wizard, trigger self-reinforcement and configure environment values.
+- realtime.py saves detections and predictions in MongoDB.
+- sentinel_hub_fetcher.py uses environment variables `SENTINEL_CLIENT_ID`,
+  `SENTINEL_CLIENT_SECRET` and `SENTINEL_INSTANCE_ID` to download imagery.
+- yolo.detect_vehicles currently returns mock coordinates until models are added.
+- dataset_augmentation.py provides Albumentations-based augmentation utilities.
+- watch_directory.py polls a folder for new images and triggers the realtime
+  pipeline automatically.
+- ground_troop.py performs orientation-based detection for noisy images.
+- drones/live_feed.py connects to drone video streams and logs detections.
+- info_gathering/camera_collector.py saves periodic snapshots from webcams for training data.
+- troop_identifier.py classifies detected troops by type and uniform.
+- drone_identifier.py assigns a basic category to observed UAVs.
+- vehicle_identifier.py classifies basic vehicle types from images.
+- training/dataset_loader.py creates data.yaml files for YOLO datasets.
+- training/train_yolo.py trains detection models via the Ultralytics API with custom batch size, image size and learning rate options.
+- train_sequential_yolo.py iterates through multiple data.yaml files to train large datasets in manageable chunks.
+- train_with_augmentation.py optionally augments images and trains YOLO in one pass.
+- auto_dataset_trainer.py splits raw datasets, augments images and trains YOLO end-to-end.
+- troop_training_cli.py labels troop images and trains a small classifier from a directory or CSV.
+  - utils/pseudo_labeler.py generates YOLO-format label files from new images for self-training.
+  - cli/self_reinforce.py labels images, copies them into the dataset and retrains the detector.
+  - cli/train_wizard.py guides users through choosing folders and training a YOLO model with prompts.
+  - training/self_training_loop.py repeats pseudo labeling and training for several iterations.
+  - training/self_training_aug.py adds augmentation during each self-training cycle.
+  - training/active_learning.py integrates human feedback by reviewing low-confidence detections before merging them back into the dataset.
+- movement_logger.py logs detection coordinates to the movements collection.
+- analysis/cluster_strategy_tracker.py runs DBSCAN then heatmap generation.
+- analysis/threat_assessment.py computes simple threat scores for clusters.
+- analysis/image_stats.py calculates brightness and blur for training images.
+- analysis/movement_stats.py computes average speed and heading from logged movements.
+- analysis/hog_features.py extracts HOG descriptors for more detailed image analysis.
+- cli/configure.py writes a `.env` file with interactive prompts for environment settings.
+- cli/train_wizard.py, cli/configure.py and utils/human_feedback_viewer.py translate prompts and labels based on `UI_LANG`.
+- analysis/confidence_fusion.py merges detector and classifier scores into a fused confidence.
+- cli/dashboard.py features an improved Rich layout and options to stream drone feeds and capture camera frames.
