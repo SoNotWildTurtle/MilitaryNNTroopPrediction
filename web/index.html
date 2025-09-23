@@ -1,0 +1,2319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Troop Prediction Dashboard</title>
+  <style>
+    :root {
+      --bg-gradient: radial-gradient(circle at top, #11203f, #060b18 65%);
+      --card-bg: rgba(17, 28, 52, 0.8);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text-primary: #f2f5ff;
+      --text-secondary: #b9c3dd;
+      --accent: #4aa8ff;
+      --accent-soft: rgba(74, 168, 255, 0.1);
+      --danger: #ff6b6b;
+      --success: #4cd4a9;
+      --warning: #ffd166;
+      --shadow: 0 12px 30px rgba(5, 10, 25, 0.45);
+      --radius-lg: 20px;
+      --radius-md: 14px;
+      --radius-sm: 10px;
+      --transition: 180ms ease;
+      font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      padding: 2.5rem clamp(1.5rem, 3vw, 3.5rem);
+      background: var(--bg-gradient);
+      color: var(--text-primary);
+      display: flex;
+      justify-content: center;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    body::before,
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    body::before {
+      background: radial-gradient(120% 120% at 15% 5%, rgba(74, 168, 255, 0.18), transparent 55%),
+        radial-gradient(120% 120% at 85% 15%, rgba(127, 123, 255, 0.15), transparent 60%),
+        linear-gradient(180deg, rgba(3, 9, 20, 0.9), rgba(3, 9, 20, 0.35));
+    }
+
+    body::after {
+      background-image: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.04) 1px, transparent 1px, transparent 36px),
+        repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.04) 1px, transparent 1px, transparent 36px);
+      opacity: 0.25;
+      mix-blend-mode: screen;
+    }
+
+    .ambient {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 0;
+    }
+
+    .ambient span {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(0.5px);
+      opacity: 0.65;
+      background: radial-gradient(circle at 30% 30%, rgba(74, 168, 255, 0.35), transparent 65%);
+      animation: floatOrbit 18s ease-in-out infinite;
+    }
+
+    .ambient span:nth-child(1) {
+      width: 420px;
+      height: 420px;
+      top: -120px;
+      left: -90px;
+      animation-duration: 26s;
+    }
+
+    .ambient span:nth-child(2) {
+      width: 320px;
+      height: 320px;
+      bottom: -140px;
+      right: -120px;
+      background: radial-gradient(circle at 70% 30%, rgba(127, 123, 255, 0.35), transparent 65%);
+      animation-duration: 32s;
+    }
+
+    .ambient span:nth-child(3) {
+      width: 260px;
+      height: 260px;
+      top: 40%;
+      right: -80px;
+      background: radial-gradient(circle at 40% 40%, rgba(255, 209, 102, 0.25), transparent 65%);
+      animation-duration: 22s;
+    }
+
+    @keyframes floatOrbit {
+      0%,
+      100% {
+        transform: translate3d(0, 0, 0) scale(1);
+        opacity: 0.55;
+      }
+      50% {
+        transform: translate3d(20px, 25px, 0) scale(1.05);
+        opacity: 0.85;
+      }
+    }
+
+    .app {
+      width: min(1100px, 100%);
+      display: flex;
+      flex-direction: column;
+      gap: 1.75rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    header.topbar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1.25rem;
+    }
+
+    .telemetry {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+
+    .telemetry-card {
+      position: relative;
+      background: rgba(8, 16, 32, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius-md);
+      padding: 1.1rem 1.2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 16px 40px rgba(4, 8, 20, 0.4);
+    }
+
+    .telemetry-card::before {
+      content: "";
+      position: absolute;
+      inset: -1px;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(135deg, rgba(74, 168, 255, 0.45), rgba(127, 123, 255, 0.45));
+      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      mask-composite: exclude;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity var(--transition);
+    }
+
+    .telemetry-card:hover::before {
+      opacity: 0.55;
+    }
+
+    .telemetry-label {
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.12em;
+      color: var(--text-secondary);
+    }
+
+    .telemetry-value {
+      font-size: 1.55rem;
+      font-weight: 600;
+      display: flex;
+      align-items: baseline;
+      gap: 0.35rem;
+    }
+
+    .telemetry-sub {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      opacity: 0.85;
+    }
+
+    .telemetry-card--gauge {
+      align-items: center;
+      text-align: center;
+      gap: 0.75rem;
+    }
+
+    .telemetry-gauge {
+      --fill: 0deg;
+      --gauge-color: var(--accent);
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      background: conic-gradient(var(--gauge-color) var(--fill), rgba(255, 255, 255, 0.12) var(--fill));
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 1.05rem;
+      color: var(--text-primary);
+    }
+
+    .telemetry-gauge::after {
+      content: "";
+      position: absolute;
+      inset: 12px;
+      border-radius: 50%;
+      background: rgba(6, 14, 28, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: inset 0 0 18px rgba(74, 168, 255, 0.25);
+    }
+
+    .telemetry-gauge span {
+      position: relative;
+      z-index: 1;
+    }
+
+    .branding h1 {
+      margin: 0;
+      font-size: clamp(1.75rem, 3vw, 2.3rem);
+      letter-spacing: 0.01em;
+    }
+
+    .branding p {
+      margin: 0.35rem 0 0;
+      color: var(--text-secondary);
+      max-width: 48ch;
+      line-height: 1.5;
+    }
+
+    .language-switcher {
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      align-items: flex-end;
+    }
+
+    .language-switcher label {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    select {
+      background: var(--card-bg);
+      color: var(--text-primary);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-sm);
+      padding: 0.4rem 0.85rem;
+      font-size: 0.95rem;
+      transition: border var(--transition), box-shadow var(--transition);
+    }
+
+    select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      padding: clamp(1.2rem, 2.2vw, 1.75rem);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    .card h2 {
+      margin-top: 0;
+      margin-bottom: 1rem;
+      font-size: 1.2rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .section-header {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      margin-bottom: 1.2rem;
+    }
+
+    .section-header p {
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      max-width: 52ch;
+    }
+
+    .section-header.with-action {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .section-header.with-action > div {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .controls .controls-header {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .controls .mode-description {
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    .controls {
+      display: grid;
+      gap: 1.25rem;
+    }
+
+    .action-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .action-controls {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.9rem;
+      flex-wrap: wrap;
+    }
+
+    .chip-row {
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .toggle {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      cursor: pointer;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      user-select: none;
+    }
+
+    .toggle input {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .toggle-track {
+      width: 48px;
+      height: 24px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      display: flex;
+      align-items: center;
+      padding: 0 3px;
+      transition: background var(--transition), border var(--transition), box-shadow var(--transition);
+    }
+
+    .toggle-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--text-secondary);
+      transform: translateX(0);
+      transition: transform var(--transition), background var(--transition);
+    }
+
+    .toggle input:focus-visible + .toggle-track {
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    .toggle input:checked + .toggle-track {
+      background: linear-gradient(135deg, rgba(74, 168, 255, 0.85), rgba(127, 123, 255, 0.85));
+      border-color: transparent;
+    }
+
+    .toggle input:checked + .toggle-track .toggle-thumb {
+      transform: translateX(22px);
+      background: #051020;
+    }
+
+    .toggle-text {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.1;
+      gap: 0.1rem;
+    }
+
+    .toggle-text span {
+      color: var(--text-primary);
+    }
+
+    .toggle-text small {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      opacity: 0.85;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.35rem 0.85rem;
+      border-radius: 999px;
+      background: rgba(74, 168, 255, 0.12);
+      border: 1px solid rgba(74, 168, 255, 0.28);
+      color: #e6efff;
+      font-size: 0.85rem;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    .chip[data-variant="predictions"] {
+      background: rgba(127, 123, 255, 0.14);
+      border-color: rgba(127, 123, 255, 0.32);
+    }
+
+    .mode-switch {
+      display: inline-flex;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: var(--radius-md);
+      padding: 0.35rem;
+      position: relative;
+      gap: 0.35rem;
+      align-self: flex-start;
+    }
+
+    .mode-switch button {
+      background: transparent;
+      color: var(--text-secondary);
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 0.95rem;
+      padding: 0.55rem 1.25rem;
+      cursor: pointer;
+      transition: color var(--transition), background var(--transition);
+    }
+
+    .mode-switch button.active {
+      color: var(--text-primary);
+      background: var(--accent-soft);
+    }
+
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      align-items: end;
+    }
+
+    label.field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    .field input {
+      width: 100%;
+      padding: 0.65rem 0.9rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(6, 14, 28, 0.75);
+      color: var(--text-primary);
+      font-size: 1rem;
+      transition: border var(--transition), box-shadow var(--transition);
+    }
+
+    .field input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    button.primary {
+      align-self: flex-start;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: linear-gradient(135deg, #4aa8ff, #7f7bff);
+      color: #0c1224;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      padding: 0.7rem 1.6rem;
+      cursor: pointer;
+      transition: transform var(--transition), box-shadow var(--transition);
+    }
+
+    button.primary .icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.4rem;
+      height: 1.4rem;
+      border-radius: 999px;
+      background: rgba(12, 18, 36, 0.12);
+      color: inherit;
+      font-size: 0.9rem;
+    }
+
+    button.primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    button.primary:not(:disabled):hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 20px rgba(74, 168, 255, 0.35);
+    }
+
+    #status {
+      margin: 0;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    #status[data-status="loading"] {
+      color: var(--warning);
+    }
+
+    #status[data-status="error"] {
+      color: var(--danger);
+    }
+
+    #status[data-status="success"] {
+      color: var(--success);
+    }
+
+    .summary-grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+
+    .summary-card {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: var(--radius-md);
+      padding: 1rem;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      min-height: 120px;
+    }
+
+    .summary-card .label {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .summary-card .value small {
+      font-size: 0.65em;
+      opacity: 0.7;
+    }
+
+    .summary-card .value {
+      font-size: 1.5rem;
+      font-weight: 600;
+      display: flex;
+      align-items: baseline;
+      gap: 0.35rem;
+    }
+
+    .summary-card ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      line-height: 1.5;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .summary-card ul li {
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      padding: 0.35rem 0.75rem;
+    }
+
+    .summary-card.highlight {
+      background: linear-gradient(135deg, rgba(74, 168, 255, 0.24), rgba(127, 123, 255, 0.18));
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 20px 40px rgba(5, 10, 30, 0.35);
+    }
+
+    .summary-card.highlight .label {
+      color: rgba(12, 18, 36, 0.86);
+    }
+
+    .summary-card.highlight .highlight-row {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 0.6rem;
+      align-items: center;
+      font-size: 0.95rem;
+    }
+
+    .summary-card.highlight .highlight-label {
+      text-transform: uppercase;
+      font-size: 0.7rem;
+      letter-spacing: 0.12em;
+      color: rgba(12, 18, 36, 0.72);
+    }
+
+    .summary-card.highlight .highlight-value {
+      font-weight: 600;
+      color: #0c1224;
+    }
+
+    .summary-card.highlight .highlight-detail {
+      color: rgba(12, 18, 36, 0.82);
+      text-align: right;
+    }
+
+    .confidence-track {
+      position: relative;
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 0.2rem;
+    }
+
+    .confidence-fill {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, #4aa8ff, #7f7bff);
+      width: 0;
+      transition: width 220ms ease;
+    }
+
+    .summary-card.empty {
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: var(--text-secondary);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .insights-grid {
+      display: grid;
+      gap: 1.25rem;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    }
+
+    .insight-panel {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 1.1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      min-height: 220px;
+    }
+
+    .insight-panel .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+    .insight-panel h3 {
+      margin: 0;
+      font-size: 1.05rem;
+      letter-spacing: 0.02em;
+    }
+
+    .panel-subtitle {
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      line-height: 1.45;
+    }
+
+    .panel-empty {
+      margin: 0;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      text-align: center;
+      padding: 0.6rem;
+      border-radius: var(--radius-sm);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px dashed rgba(255, 255, 255, 0.12);
+    }
+
+    .status-pill {
+      padding: 0.3rem 0.7rem;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 0.75rem;
+      background: rgba(74, 168, 255, 0.2);
+      border: 1px solid rgba(74, 168, 255, 0.35);
+      color: var(--text-primary);
+    }
+
+    .status-pill[data-variant="full"] {
+      background: rgba(76, 212, 169, 0.24);
+      border-color: rgba(76, 212, 169, 0.4);
+    }
+
+    .status-pill[data-variant="partial"] {
+      background: rgba(255, 209, 102, 0.22);
+      border-color: rgba(255, 209, 102, 0.38);
+    }
+
+    .status-pill[data-variant="sparse"] {
+      background: rgba(255, 107, 107, 0.22);
+      border-color: rgba(255, 107, 107, 0.38);
+    }
+
+    .coverage-grid {
+      display: grid;
+      gap: 0.6rem;
+    }
+
+    .coverage-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.6rem;
+      padding: 0.55rem 0.75rem;
+      border-radius: var(--radius-sm);
+      background: rgba(6, 14, 28, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .coverage-item strong {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-size: 0.95rem;
+      color: var(--text-primary);
+    }
+
+    .coverage-item strong::before {
+      content: "";
+      width: 0.55rem;
+      height: 0.55rem;
+      border-radius: 50%;
+      background: var(--accent);
+      opacity: 0.85;
+    }
+
+    .coverage-item[data-sensor="lidar"] strong::before {
+      background: #7f7bff;
+    }
+
+    .coverage-item[data-sensor="radar"] strong::before {
+      background: #ffd166;
+    }
+
+    .coverage-item[data-sensor="bluetooth"] strong::before {
+      background: #ff6b6b;
+    }
+
+    .coverage-item[data-sensor="acoustic"] strong::before {
+      background: #4cd4a9;
+    }
+
+    .coverage-item[data-sensor="satellite"] strong::before {
+      background: #55cfff;
+    }
+
+    .coverage-item[data-sensor="manual"] strong::before {
+      background: #b9c3dd;
+    }
+
+    .coverage-item span {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+
+    .timeline {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .timeline li {
+      position: relative;
+      padding-left: 1.1rem;
+      border-left: 2px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .timeline li::before {
+      content: "";
+      position: absolute;
+      left: -0.37rem;
+      top: 0.35rem;
+      width: 0.6rem;
+      height: 0.6rem;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 4px rgba(74, 168, 255, 0.2);
+    }
+
+    .timeline time {
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+    }
+
+    .timeline-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      align-items: center;
+    }
+
+    .timeline-label {
+      font-size: 0.95rem;
+      color: var(--text-primary);
+      line-height: 1.3;
+    }
+
+    .timeline-confidence {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .confidence-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+
+    .confidence-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .confidence-row .row-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.9rem;
+    }
+
+    .confidence-row .row-head span:first-child {
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+    }
+
+    .confidence-row .row-head span:last-child {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    .confidence-bar {
+      position: relative;
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .confidence-bar span {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      width: 0;
+      transition: width 220ms ease;
+    }
+
+    .confidence-row[data-tier="high"] .confidence-bar span {
+      background: linear-gradient(135deg, rgba(76, 212, 169, 0.9), rgba(74, 168, 255, 0.9));
+    }
+
+    .confidence-row[data-tier="medium"] .confidence-bar span {
+      background: linear-gradient(135deg, rgba(255, 209, 102, 0.9), rgba(74, 168, 255, 0.85));
+    }
+
+    .confidence-row[data-tier="low"] .confidence-bar span {
+      background: linear-gradient(135deg, rgba(255, 107, 107, 0.9), rgba(127, 123, 255, 0.85));
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+      overflow-y: auto;
+      max-height: 420px;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(6, 14, 28, 0.7);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 10px 30px rgba(5, 8, 20, 0.35);
+      position: relative;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 560px;
+      color: var(--text-primary);
+    }
+
+    thead {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(6, 14, 28, 0.85));
+      backdrop-filter: blur(6px);
+    }
+
+    th, td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      text-align: left;
+      font-size: 0.95rem;
+    }
+
+    th {
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      font-size: 0.75rem;
+    }
+
+    tbody tr {
+      transition: transform var(--transition), background var(--transition);
+    }
+
+    tbody tr:hover {
+      background: rgba(74, 168, 255, 0.08);
+      transform: translateX(3px);
+    }
+
+    td.numeric {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .table-empty {
+      margin: 0.5rem 0 0;
+      color: var(--text-secondary);
+    }
+
+    .raw-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.9rem;
+      background: none;
+      border: none;
+      color: var(--accent);
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .raw-toggle:hover {
+      text-decoration: underline;
+    }
+
+    pre.raw-view {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: rgba(6, 14, 28, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius-md);
+      max-height: 320px;
+      overflow: auto;
+      color: #e0e7ff;
+      font-size: 0.85rem;
+    }
+
+    @media (max-width: 720px) {
+      body {
+        padding: 1.5rem;
+      }
+
+      header.topbar {
+        align-items: stretch;
+      }
+
+      .language-switcher {
+        align-items: flex-start;
+      }
+
+      .card {
+        padding: 1rem;
+      }
+
+      .action-row {
+        align-items: stretch;
+      }
+
+      .chip-row {
+        width: 100%;
+      }
+
+      .action-controls {
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .insights-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+      }
+
+      .ambient span {
+        opacity: 0.35;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="ambient" aria-hidden="true">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+  <div class="app">
+    <header class="topbar">
+      <div class="branding">
+        <h1 data-i18n="title">Multi-sensor situation room</h1>
+        <p data-i18n="subtitle">Review fused detections and predictive tracking without leaving the operations console.</p>
+      </div>
+      <div class="language-switcher">
+        <label for="language" id="language-label" data-i18n="languageLabel">Interface language</label>
+        <select id="language">
+          <option value="en">English</option>
+          <option value="uk">Українська</option>
+        </select>
+      </div>
+    </header>
+
+    <section class="telemetry" aria-label="Live telemetry">
+      <article class="telemetry-card" aria-live="polite">
+        <div class="telemetry-label" data-i18n="telemetryLastUpdated">Last update</div>
+        <div class="telemetry-value" id="telemetry-last-update" data-i18n="telemetryLastUpdatedEmpty">—</div>
+        <div class="telemetry-sub" id="telemetry-last-hint" data-i18n="telemetryLastUpdatedHint">Awaiting data</div>
+      </article>
+      <article class="telemetry-card" aria-live="polite">
+        <div class="telemetry-label" data-i18n="telemetryRefresh">Refresh mode</div>
+        <div class="telemetry-value" id="telemetry-refresh" data-i18n="telemetryRefreshManual">Manual</div>
+        <div class="telemetry-sub" id="telemetry-refresh-hint" data-i18n="telemetryRefreshHint">Tap refresh or enable auto updates.</div>
+      </article>
+      <article class="telemetry-card" aria-live="polite">
+        <div class="telemetry-label" data-i18n="telemetrySensors">Active sensors</div>
+        <div class="telemetry-value" id="telemetry-sensors" data-i18n="telemetrySensorsNone">0</div>
+        <div class="telemetry-sub" id="telemetry-sensors-hint" data-i18n="telemetrySensorsHint">Awaiting signals</div>
+      </article>
+      <article class="telemetry-card telemetry-card--gauge" aria-live="polite">
+        <div class="telemetry-label" data-i18n="telemetryConfidence">Avg confidence</div>
+        <div class="telemetry-gauge" id="telemetry-confidence" role="img" aria-label="Average confidence">
+          <span id="telemetry-confidence-value" data-i18n="telemetryConfidenceValue">--</span>
+        </div>
+        <div class="telemetry-sub" id="telemetry-confidence-hint" data-i18n="telemetryConfidenceHint">Awaiting data</div>
+      </article>
+    </section>
+
+    <section class="card controls" aria-labelledby="controls-heading">
+      <div class="controls-header">
+        <div class="mode-switch" role="tablist" aria-label="Data mode">
+          <button type="button" class="active" data-type="detections" data-i18n="modeDetections">Detections</button>
+          <button type="button" data-type="predictions" data-i18n="modePredictions">Predictions</button>
+        </div>
+        <p class="mode-description" data-i18n="modeHint">Switch between real-time detections and forecasted trajectories.</p>
+      </div>
+      <div class="filter-grid">
+        <label class="field" for="area">
+          <span data-i18n="areaLabel">Area code</span>
+          <input id="area" name="area" value="demo" autocomplete="off" placeholder="demo" />
+        </label>
+        <label class="field" for="limit">
+          <span data-i18n="limitLabel">Records to load</span>
+          <input id="limit" name="limit" type="number" min="1" max="200" value="10" />
+        </label>
+        <div class="field" aria-live="polite">
+          <span data-i18n="statusLabel">Status</span>
+          <p id="status" data-status="idle" data-i18n="statusIdle">Waiting for your request.</p>
+        </div>
+      </div>
+      <div class="action-row">
+        <div class="chip-row" role="status" aria-live="polite">
+          <span class="chip" id="chip-type">Detections</span>
+          <span class="chip" id="chip-area">Area: demo</span>
+          <span class="chip" id="chip-records">No records yet</span>
+        </div>
+        <div class="action-controls">
+          <label class="toggle">
+            <input type="checkbox" id="auto-refresh" />
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            <span class="toggle-text">
+              <span data-i18n="autoRefreshLabel">Auto refresh</span>
+              <small id="auto-refresh-hint" data-i18n="autoRefreshOff">Off</small>
+            </span>
+          </label>
+          <button class="primary" id="refresh" type="button">
+            <span class="icon" aria-hidden="true">⟳</span>
+            <span data-i18n="refresh">Refresh data</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="summary-heading">
+      <div class="section-header">
+        <h2 id="summary-heading" data-i18n="summaryHeading">Operational summary</h2>
+        <p data-i18n="summaryLead">Key metrics from the selected feeds.</p>
+      </div>
+      <div id="summary" class="summary-grid hidden"></div>
+      <p id="summary-empty" class="summary-card empty hidden" data-i18n="summaryEmpty">No records available for the selected filters.</p>
+    </section>
+
+    <section class="card" aria-labelledby="insights-heading">
+      <div class="section-header">
+        <h2 id="insights-heading" data-i18n="insightsHeading">Operational insights</h2>
+        <p data-i18n="insightsLead">Sensor health, recent activity, and confidence tiers respond to your filters.</p>
+      </div>
+      <div class="insights-grid">
+        <article class="insight-panel" aria-live="polite">
+          <div class="panel-header">
+            <h3 data-i18n="coverageTitle">Sensor coverage</h3>
+            <span class="status-pill" id="coverage-status" data-variant="sparse" data-i18n="coverageStatusSparse">Sparse</span>
+          </div>
+          <p class="panel-subtitle" data-i18n="coverageLead">Sensors contributing to the current dataset.</p>
+          <div id="coverage-grid" class="coverage-grid"></div>
+          <p id="coverage-empty" class="panel-empty hidden" data-i18n="coverageEmpty">No sensor signals detected for this selection.</p>
+        </article>
+        <article class="insight-panel" aria-live="polite">
+          <div class="panel-header">
+            <h3 data-i18n="timelineTitle">Latest activity</h3>
+          </div>
+          <p class="panel-subtitle" data-i18n="timelineLead">Most recent fused detections or predictions.</p>
+          <ul id="timeline-list" class="timeline hidden"></ul>
+          <p id="timeline-empty" class="panel-empty" data-i18n="timelineEmpty">No recent events to display.</p>
+        </article>
+        <article class="insight-panel" aria-live="polite">
+          <div class="panel-header">
+            <h3 data-i18n="confidenceTitle">Confidence balance</h3>
+          </div>
+          <p class="panel-subtitle" data-i18n="confidenceLead">Distribution of high, medium, and low confidence items.</p>
+          <div id="confidence-bars" class="confidence-list hidden"></div>
+          <p id="confidence-empty" class="panel-empty" data-i18n="confidenceEmpty">Confidence metrics are not available.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="table-heading">
+      <div class="section-header with-action">
+        <div>
+          <h2 id="table-heading" data-i18n="tableHeading">Detailed records</h2>
+          <p data-i18n="tableLead">Inspect combined sensor reports and predictions.</p>
+        </div>
+        <button type="button" id="toggle-raw" class="raw-toggle" data-i18n="rawToggleShow">Show raw JSON</button>
+      </div>
+      <div id="table-wrapper" class="table-wrapper hidden"></div>
+      <p id="table-empty" class="table-empty" data-i18n="tableEmpty">No records to display yet.</p>
+      <pre id="raw-data" class="raw-view hidden"></pre>
+    </section>
+  </div>
+
+  <script>
+    const translations = {
+      en: {
+        title: "Multi-sensor situation room",
+        subtitle: "Review fused detections and predictive tracking without leaving the operations console.",
+        languageLabel: "Interface language",
+        modeDetections: "Detections",
+        modePredictions: "Predictions",
+        modeHint: "Switch between real-time detections and forecasted trajectories.",
+        areaLabel: "Area code",
+        areaPlaceholder: "Enter AO identifier",
+        limitLabel: "Records to load",
+        autoRefreshLabel: "Auto refresh",
+        autoRefreshOn: "Every 30s",
+        autoRefreshOff: "Off",
+        refresh: "Refresh data",
+        statusLabel: "Status",
+        statusIdle: "Waiting for your request.",
+        statusLoading: "Request in progress…",
+        statusError: "Unable to load data. Check connectivity and try again.",
+        statusSuccess: "Loaded {count} records in {area}.",
+        summaryHeading: "Operational summary",
+        summaryLead: "Key metrics from the selected feeds.",
+        summaryEmpty: "No records available for the selected filters.",
+        summaryTotalRecords: "Records received",
+        summaryUniqueClasses: "Unique categories",
+        summaryUniqueUnits: "Tracked units",
+        summaryAverageConfidence: "Average confidence",
+        summaryLastUpdated: "Last update",
+        summaryTopClasses: "Most frequent",
+        summaryHighlightTitle: "Confidence highlights",
+        summaryStrongest: "Highest confidence",
+        summaryWeakest: "Lowest confidence",
+        summaryUnknown: "Unlabelled",
+        insightsHeading: "Operational insights",
+        insightsLead: "Sensor health, recent activity, and confidence tiers respond to your filters.",
+        coverageTitle: "Sensor coverage",
+        coverageLead: "Sensors contributing to the current dataset.",
+        coverageEmpty: "No sensor signals detected for this selection.",
+        coverageStatusFull: "Full coverage",
+        coverageStatusPartial: "Partial",
+        coverageStatusSparse: "Sparse",
+        timelineTitle: "Latest activity",
+        timelineLead: "Most recent fused detections or predictions.",
+        timelineEmpty: "No recent events to display.",
+        confidenceTitle: "Confidence balance",
+        confidenceLead: "Distribution of high, medium, and low confidence items.",
+        confidenceEmpty: "Confidence metrics are not available.",
+        confidenceHigh: "High confidence",
+        confidenceMedium: "Medium confidence",
+        confidenceLow: "Low confidence",
+        tableHeading: "Detailed records",
+        tableLead: "Inspect combined sensor reports and predictions.",
+        tableEmpty: "No records to display yet.",
+        rawToggleShow: "Show raw JSON",
+        rawToggleHide: "Hide raw JSON",
+        chipTypeDetections: "Live detections",
+        chipTypePredictions: "Forecasted tracks",
+        chipArea: "Area: {area}",
+        chipRecords: "Records: {count}",
+        chipRecordsEmpty: "No records yet",
+        timeNever: "Not available",
+        sensorCamera: "Camera",
+        sensorLidar: "LIDAR",
+        sensorRadar: "Radar",
+        sensorBluetooth: "Bluetooth",
+        sensorAcoustic: "Acoustic",
+        sensorSatellite: "Satellite",
+        sensorManual: "Human review",
+        telemetryLastUpdated: "Last update",
+        telemetryLastUpdatedEmpty: "—",
+        telemetryLastUpdatedHint: "Awaiting data",
+        telemetryLastUpdatedRecent: "Just now",
+        telemetryLastUpdatedMinutes: "{minutes} min ago",
+        telemetryLastUpdatedHours: "{hours} hr ago",
+        telemetryRefresh: "Refresh mode",
+        telemetryRefreshManual: "Manual",
+        telemetryRefreshAuto: "Every 30s",
+        telemetryRefreshHint: "Tap refresh or enable auto updates.",
+        telemetryRefreshActiveHint: "Auto-refresh keeps this view current.",
+        telemetrySensors: "Active sensors",
+        telemetrySensorsNone: "0",
+        telemetrySensorsHint: "Awaiting signals",
+        telemetrySensorsActive: "{count}",
+        telemetryConfidence: "Avg confidence",
+        telemetryConfidenceValue: "--",
+        telemetryConfidenceHint: "Awaiting data",
+        telemetryConfidenceHigh: "Solid data",
+        telemetryConfidenceMedium: "Watch closely",
+        telemetryConfidenceLow: "Needs review",
+      },
+      uk: {
+        title: "Оперативна кімната з багатьма сенсорами",
+        subtitle: "Переглядайте об'єднані виявлення та прогнозування, не залишаючи операторську консоль.",
+        languageLabel: "Мова інтерфейсу",
+        modeDetections: "Виявлення",
+        modePredictions: "Прогнози",
+        modeHint: "Перемикайтеся між поточними виявленнями та прогнозованими траєкторіями.",
+        areaLabel: "Код району",
+        areaPlaceholder: "Вкажіть ідентифікатор району",
+        limitLabel: "Кількість записів",
+        autoRefreshLabel: "Автооновлення",
+        autoRefreshOn: "Кожні 30 с",
+        autoRefreshOff: "Вимкнено",
+        refresh: "Оновити дані",
+        statusLabel: "Стан",
+        statusIdle: "Очікую на запит.",
+        statusLoading: "Виконується запит…",
+        statusError: "Не вдалося отримати дані. Перевірте підключення та повторіть.",
+        statusSuccess: "Завантажено {count} записів для {area}.",
+        summaryHeading: "Оперативне зведення",
+        summaryLead: "Ключові показники для вибраних джерел.",
+        summaryEmpty: "За обраними фільтрами записів немає.",
+        summaryTotalRecords: "Отримано записів",
+        summaryUniqueClasses: "Унікальні категорії",
+        summaryUniqueUnits: "Відстежувані підрозділи",
+        summaryAverageConfidence: "Середня впевненість",
+        summaryLastUpdated: "Час останнього оновлення",
+        summaryTopClasses: "Найчастіші класи",
+        summaryHighlightTitle: "Підсумок довіри",
+        summaryStrongest: "Найвища впевненість",
+        summaryWeakest: "Найнижча впевненість",
+        summaryUnknown: "Без позначення",
+        insightsHeading: "Оперативні інсайти",
+        insightsLead: "Здоров'я сенсорів, недавня активність і рівні впевненості змінюються від ваших фільтрів.",
+        coverageTitle: "Покриття сенсорів",
+        coverageLead: "Які сенсори формують поточний набір даних.",
+        coverageEmpty: "Для цього вибору сигнали сенсорів відсутні.",
+        coverageStatusFull: "Повне",
+        coverageStatusPartial: "Часткове",
+        coverageStatusSparse: "Мінімальне",
+        timelineTitle: "Остання активність",
+        timelineLead: "Найсвіжіші об'єднані виявлення або прогнози.",
+        timelineEmpty: "Подій для відображення немає.",
+        confidenceTitle: "Баланс впевненості",
+        confidenceLead: "Розподіл записів із високою, середньою та низькою впевненістю.",
+        confidenceEmpty: "Показники впевненості недоступні.",
+        confidenceHigh: "Висока впевненість",
+        confidenceMedium: "Середня впевненість",
+        confidenceLow: "Низька впевненість",
+        tableHeading: "Детальні записи",
+        tableLead: "Перегляньте об'єднані звіти сенсорів та прогнози.",
+        tableEmpty: "Записів поки немає.",
+        rawToggleShow: "Показати JSON",
+        rawToggleHide: "Приховати JSON",
+        chipTypeDetections: "Поточні виявлення",
+        chipTypePredictions: "Прогнозовані траєкторії",
+        chipArea: "Район: {area}",
+        chipRecords: "Записів: {count}",
+        chipRecordsEmpty: "Записів ще немає",
+        timeNever: "Немає даних",
+        sensorCamera: "Камера",
+        sensorLidar: "Лідар",
+        sensorRadar: "Радар",
+        sensorBluetooth: "Bluetooth",
+        sensorAcoustic: "Акустичний",
+        sensorSatellite: "Супутник",
+        sensorManual: "Ручна перевірка",
+        telemetryLastUpdated: "Останнє оновлення",
+        telemetryLastUpdatedEmpty: "—",
+        telemetryLastUpdatedHint: "Очікування даних",
+        telemetryLastUpdatedRecent: "Щойно",
+        telemetryLastUpdatedMinutes: "{minutes} хв тому",
+        telemetryLastUpdatedHours: "{hours} год тому",
+        telemetryRefresh: "Режим оновлення",
+        telemetryRefreshManual: "Вручну",
+        telemetryRefreshAuto: "Кожні 30 с",
+        telemetryRefreshHint: "Натисніть «Оновити» або увімкніть автооновлення.",
+        telemetryRefreshActiveHint: "Автооновлення підтримує актуальність даних.",
+        telemetrySensors: "Активні сенсори",
+        telemetrySensorsNone: "0",
+        telemetrySensorsHint: "Очікування сигналів",
+        telemetrySensorsActive: "{count}",
+        telemetryConfidence: "Сер. впевненість",
+        telemetryConfidenceValue: "--",
+        telemetryConfidenceHint: "Очікування даних",
+        telemetryConfidenceHigh: "Надійні дані",
+        telemetryConfidenceMedium: "Потребує уваги",
+        telemetryConfidenceLow: "Потребує перевірки",
+      },
+    };
+
+    let currentLang = "en";
+    let currentType = "detections";
+    const cachedData = { detections: [], predictions: [] };
+    let rawVisible = false;
+    const confidenceKeys = new Set(["confidence", "fused_confidence", "score", "probability"]);
+    const AUTO_REFRESH_MS = 30000;
+    let autoRefreshEnabled = false;
+    let autoRefreshTimer = null;
+    let lastUpdatedAt = null;
+    const sensorOrder = ["camera", "lidar", "radar", "bluetooth", "acoustic", "satellite", "manual"];
+    const sensorLabelKeys = {
+      camera: "sensorCamera",
+      lidar: "sensorLidar",
+      radar: "sensorRadar",
+      bluetooth: "sensorBluetooth",
+      acoustic: "sensorAcoustic",
+      satellite: "sensorSatellite",
+      manual: "sensorManual",
+    };
+
+    const areaInput = document.getElementById("area");
+    const limitInput = document.getElementById("limit");
+    const refreshButton = document.getElementById("refresh");
+    const statusEl = document.getElementById("status");
+    const summaryEl = document.getElementById("summary");
+    const summaryEmptyEl = document.getElementById("summary-empty");
+    const tableWrapper = document.getElementById("table-wrapper");
+    const tableEmpty = document.getElementById("table-empty");
+    const rawDataEl = document.getElementById("raw-data");
+    const rawToggle = document.getElementById("toggle-raw");
+    const languageSelect = document.getElementById("language");
+    const chipType = document.getElementById("chip-type");
+    const chipArea = document.getElementById("chip-area");
+    const chipRecords = document.getElementById("chip-records");
+    const coverageGrid = document.getElementById("coverage-grid");
+    const coverageEmpty = document.getElementById("coverage-empty");
+    const coverageStatus = document.getElementById("coverage-status");
+    const timelineList = document.getElementById("timeline-list");
+    const timelineEmpty = document.getElementById("timeline-empty");
+    const confidenceBars = document.getElementById("confidence-bars");
+    const confidenceEmpty = document.getElementById("confidence-empty");
+    const autoRefreshInput = document.getElementById("auto-refresh");
+    const autoRefreshHint = document.getElementById("auto-refresh-hint");
+    const telemetryLastUpdateEl = document.getElementById("telemetry-last-update");
+    const telemetryLastHintEl = document.getElementById("telemetry-last-hint");
+    const telemetryRefreshValueEl = document.getElementById("telemetry-refresh");
+    const telemetryRefreshHintEl = document.getElementById("telemetry-refresh-hint");
+    const telemetrySensorsValueEl = document.getElementById("telemetry-sensors");
+    const telemetrySensorsHintEl = document.getElementById("telemetry-sensors-hint");
+    const telemetryConfidenceGaugeEl = document.getElementById("telemetry-confidence");
+    const telemetryConfidenceValueEl = document.getElementById("telemetry-confidence-value");
+    const telemetryConfidenceHintEl = document.getElementById("telemetry-confidence-hint");
+
+    function t(key, vars = {}) {
+      const dict = translations[currentLang] || translations.en;
+      const fallback = translations.en[key] || key;
+      const template = dict[key] || fallback;
+      return template.replace(/\{(\w+)\}/g, (_, name) => vars[name] ?? "");
+    }
+
+    function formatConfidenceValue(value) {
+      if (typeof value !== "number" || !Number.isFinite(value)) {
+        return null;
+      }
+      const normalized = value <= 1 ? value * 100 : value;
+      const clamped = Math.max(0, Math.min(normalized, 100));
+      return `${clamped.toFixed(1)}%`;
+    }
+
+    function describeTarget(item) {
+      if (!item || typeof item !== "object") {
+        return t("summaryUnknown");
+      }
+      const category = extractCategory(item);
+      const unit = extractUnitId(item);
+      if (unit) {
+        return `${category} · ${unit}`;
+      }
+      const area = item.area || item.region;
+      if (typeof area === "string" && area.trim().length) {
+        return `${category} · ${area}`;
+      }
+      return category;
+    }
+
+    function updateChips(countOverride) {
+      const count = typeof countOverride === "number" && Number.isFinite(countOverride)
+        ? countOverride
+        : cachedData[currentType]?.length || 0;
+      if (chipType) {
+        const key = currentType === "predictions" ? "chipTypePredictions" : "chipTypeDetections";
+        chipType.textContent = t(key);
+        chipType.dataset.variant = currentType;
+      }
+      if (chipArea) {
+        const areaText = areaInput.value.trim() || "demo";
+        chipArea.textContent = t("chipArea", { area: areaText });
+      }
+      if (chipRecords) {
+        if (count > 0) {
+          chipRecords.textContent = t("chipRecords", { count: count.toLocaleString() });
+        } else {
+          chipRecords.textContent = t("chipRecordsEmpty");
+        }
+      }
+    }
+
+    function updateAutoRefreshUI() {
+      if (autoRefreshInput) {
+        autoRefreshInput.checked = autoRefreshEnabled;
+      }
+      if (autoRefreshHint) {
+        autoRefreshHint.textContent = autoRefreshEnabled ? t("autoRefreshOn") : t("autoRefreshOff");
+      }
+      if (telemetryRefreshValueEl) {
+        telemetryRefreshValueEl.textContent = autoRefreshEnabled ? t("telemetryRefreshAuto") : t("telemetryRefreshManual");
+      }
+      if (telemetryRefreshHintEl) {
+        telemetryRefreshHintEl.textContent = t(autoRefreshEnabled ? "telemetryRefreshActiveHint" : "telemetryRefreshHint");
+      }
+    }
+
+    function relativeTimeFrom(date) {
+      if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+        return t("telemetryLastUpdatedHint");
+      }
+      const diffMs = Date.now() - date.getTime();
+      if (diffMs < 60000) {
+        return t("telemetryLastUpdatedRecent");
+      }
+      const diffMinutes = Math.round(diffMs / 60000);
+      if (diffMinutes < 60) {
+        return t("telemetryLastUpdatedMinutes", { minutes: diffMinutes });
+      }
+      const diffHours = Math.round(diffMinutes / 60);
+      return t("telemetryLastUpdatedHours", { hours: diffHours });
+    }
+
+    function updateLastUpdateTelemetry(date) {
+      lastUpdatedAt = date instanceof Date && !Number.isNaN(date.getTime()) ? date : null;
+      if (!telemetryLastUpdateEl || !telemetryLastHintEl) {
+        return;
+      }
+      if (!lastUpdatedAt) {
+        telemetryLastUpdateEl.textContent = t("telemetryLastUpdatedEmpty");
+        telemetryLastUpdateEl.removeAttribute("data-timestamp");
+        telemetryLastHintEl.textContent = t("telemetryLastUpdatedHint");
+        return;
+      }
+      telemetryLastUpdateEl.textContent = lastUpdatedAt.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+      telemetryLastUpdateEl.dataset.timestamp = lastUpdatedAt.toISOString();
+      telemetryLastHintEl.textContent = relativeTimeFrom(lastUpdatedAt);
+    }
+
+    function updateConfidenceTelemetry(value) {
+      if (!telemetryConfidenceGaugeEl || !telemetryConfidenceValueEl || !telemetryConfidenceHintEl) {
+        return;
+      }
+      if (typeof value !== "number" || Number.isNaN(value)) {
+        telemetryConfidenceGaugeEl.style.setProperty("--fill", "0deg");
+        telemetryConfidenceGaugeEl.style.removeProperty("--gauge-color");
+        telemetryConfidenceValueEl.textContent = t("telemetryConfidenceValue");
+        const pending = t("telemetryConfidenceHint");
+        telemetryConfidenceHintEl.textContent = pending;
+        telemetryConfidenceGaugeEl.setAttribute("aria-label", `${t("telemetryConfidence")}: ${pending}`);
+        return;
+      }
+      const percent = Math.max(0, Math.min(value, 100));
+      let color = "#ffd166";
+      let hintKey = "telemetryConfidenceMedium";
+      if (percent >= 75) {
+        color = "#4cd4a9";
+        hintKey = "telemetryConfidenceHigh";
+      } else if (percent < 45) {
+        color = "#ff6b6b";
+        hintKey = "telemetryConfidenceLow";
+      }
+      telemetryConfidenceGaugeEl.style.setProperty("--fill", `${percent}deg`);
+      telemetryConfidenceGaugeEl.style.setProperty("--gauge-color", color);
+      const rounded = Math.round(percent);
+      telemetryConfidenceValueEl.textContent = `${rounded}%`;
+      const hintText = t(hintKey);
+      telemetryConfidenceHintEl.textContent = hintText;
+      telemetryConfidenceGaugeEl.setAttribute(
+        "aria-label",
+        `${t("telemetryConfidence")}: ${rounded}% (${hintText})`,
+      );
+    }
+
+    function setAutoRefresh(enabled) {
+      autoRefreshEnabled = Boolean(enabled);
+      if (autoRefreshTimer) {
+        clearInterval(autoRefreshTimer);
+        autoRefreshTimer = null;
+      }
+      if (autoRefreshEnabled) {
+        autoRefreshTimer = setInterval(() => {
+          fetchData();
+        }, AUTO_REFRESH_MS);
+      }
+      updateAutoRefreshUI();
+    }
+
+    function detectSensors(item) {
+      const sensors = new Set();
+      if (!item || typeof item !== "object") {
+        return sensors;
+      }
+
+      const examine = (value, keyHint) => {
+        if (value === null || value === undefined) {
+          return;
+        }
+        if (Array.isArray(value)) {
+          value.forEach((entry) => examine(entry, keyHint));
+          return;
+        }
+        if (typeof value === "object") {
+          if (keyHint && /sensor|source|modal|platform/i.test(keyHint)) {
+            Object.values(value).forEach((entry) => examine(entry, keyHint));
+          }
+          return;
+        }
+        const text = String(value).toLowerCase();
+        if (/(camera|optic|photo|imag|eo|video|frame)/.test(text)) {
+          sensors.add("camera");
+        }
+        if (/(lidar|point|laser|depth|cloud)/.test(text)) {
+          sensors.add("lidar");
+        }
+        if (/(radar|sar)/.test(text)) {
+          sensors.add("radar");
+        }
+        if (/(bluetooth|ble|rssi|beacon)/.test(text)) {
+          sensors.add("bluetooth");
+        }
+        if (/(acoustic|audio|sound|mic)/.test(text)) {
+          sensors.add("acoustic");
+        }
+        if (/(satellite|space|orbital|planet)/.test(text)) {
+          sensors.add("satellite");
+        }
+        if (/(human|manual|operator|feedback)/.test(text)) {
+          sensors.add("manual");
+        }
+      };
+
+      const candidateKeys = [
+        "source",
+        "sources",
+        "sensor",
+        "sensors",
+        "sensor_type",
+        "sensortype",
+        "sensorTypes",
+        "origin",
+        "modalities",
+        "modality",
+        "platform",
+      ];
+
+      candidateKeys.forEach((key) => {
+        if (Object.prototype.hasOwnProperty.call(item, key)) {
+          examine(item[key], key);
+        }
+      });
+
+      if (item.camera || item.image || item.frame || item.image_path || item.image_url) {
+        sensors.add("camera");
+      }
+      if (item.lidar || item.pointcloud || item.point_cloud || item.sensor_points || item.cloud) {
+        sensors.add("lidar");
+      }
+      if (item.bluetooth || item.rssi || item.beacon) {
+        sensors.add("bluetooth");
+      }
+      if (item.acoustic || item.audio) {
+        sensors.add("acoustic");
+      }
+      if (item.radar) {
+        sensors.add("radar");
+      }
+      if (item.satellite || item.orbit || item.space_source) {
+        sensors.add("satellite");
+      }
+      if (item.human_feedback || item.reviewer || item.operator || item.manual_review) {
+        sensors.add("manual");
+      }
+
+      return sensors;
+    }
+
+    function renderCoverage(data = []) {
+      if (!coverageGrid || !coverageStatus || !coverageEmpty) {
+        return;
+      }
+      coverageGrid.innerHTML = "";
+      const counts = new Map();
+      data.forEach((item) => {
+        detectSensors(item).forEach((sensor) => {
+          counts.set(sensor, (counts.get(sensor) || 0) + 1);
+        });
+      });
+      const entries = sensorOrder
+        .map((sensor) => [sensor, counts.get(sensor) || 0])
+        .filter(([, count]) => count > 0);
+      const hasSensors = entries.length > 0;
+      coverageGrid.classList.toggle("hidden", !hasSensors);
+      coverageEmpty.classList.toggle("hidden", hasSensors);
+      let variant = "sparse";
+      let statusKey = "coverageStatusSparse";
+      if (entries.length >= 3) {
+        variant = "full";
+        statusKey = "coverageStatusFull";
+      } else if (entries.length === 2) {
+        variant = "partial";
+        statusKey = "coverageStatusPartial";
+      }
+      coverageStatus.dataset.variant = variant;
+      coverageStatus.textContent = t(statusKey);
+      if (telemetrySensorsValueEl) {
+        if (hasSensors) {
+          telemetrySensorsValueEl.textContent = t("telemetrySensorsActive", { count: entries.length.toLocaleString() });
+          if (telemetrySensorsHintEl) {
+            telemetrySensorsHintEl.textContent = t(statusKey);
+          }
+        } else {
+          telemetrySensorsValueEl.textContent = t("telemetrySensorsNone");
+          if (telemetrySensorsHintEl) {
+            telemetrySensorsHintEl.textContent = t("telemetrySensorsHint");
+          }
+        }
+      }
+      if (!hasSensors) {
+        return;
+      }
+      const total = entries.reduce((sum, [, value]) => sum + value, 0);
+      entries.forEach(([sensor, value]) => {
+        const row = document.createElement("div");
+        row.className = "coverage-item";
+        row.dataset.sensor = sensor;
+        const label = document.createElement("strong");
+        label.textContent = t(sensorLabelKeys[sensor] || sensor);
+        const count = document.createElement("span");
+        const percent = total ? Math.round((value / total) * 100) : 0;
+        count.textContent = `${value.toLocaleString()} · ${percent}%`;
+        row.appendChild(label);
+        row.appendChild(count);
+        coverageGrid.appendChild(row);
+      });
+    }
+
+    function renderTimeline(data = []) {
+      if (!timelineList || !timelineEmpty) {
+        return;
+      }
+      timelineList.innerHTML = "";
+      const events = [];
+      data.forEach((item) => {
+        const date = formatDate(item.timestamp || item.time || item.detected_at || item.updated_at || item.created_at);
+        if (!date || Number.isNaN(date.getTime())) {
+          return;
+        }
+        events.push({
+          date,
+          label: describeTarget(item),
+          confidence: formatConfidenceValue(extractConfidence(item)),
+        });
+      });
+      events.sort((a, b) => b.date - a.date);
+      const recent = events.slice(0, 6);
+      const hasEvents = recent.length > 0;
+      timelineList.classList.toggle("hidden", !hasEvents);
+      timelineEmpty.classList.toggle("hidden", hasEvents);
+      if (!hasEvents) {
+        return;
+      }
+      recent.forEach((event) => {
+        const li = document.createElement("li");
+        const line = document.createElement("div");
+        line.className = "timeline-line";
+        const labelSpan = document.createElement("span");
+        labelSpan.className = "timeline-label";
+        labelSpan.textContent = event.label;
+        line.appendChild(labelSpan);
+        if (event.confidence) {
+          const confSpan = document.createElement("span");
+          confSpan.className = "timeline-confidence";
+          confSpan.textContent = event.confidence;
+          line.appendChild(confSpan);
+        }
+        li.appendChild(line);
+        const timeEl = document.createElement("time");
+        timeEl.dateTime = event.date.toISOString();
+        timeEl.textContent = event.date.toLocaleString();
+        li.appendChild(timeEl);
+        timelineList.appendChild(li);
+      });
+    }
+
+    function renderConfidence(data = []) {
+      if (!confidenceBars || !confidenceEmpty) {
+        return;
+      }
+      confidenceBars.innerHTML = "";
+      const tiers = { high: 0, medium: 0, low: 0 };
+      let total = 0;
+      data.forEach((item) => {
+        const raw = extractConfidence(item);
+        if (raw === null) {
+          return;
+        }
+        const normalized = raw > 1 ? raw / 100 : raw;
+        if (!Number.isFinite(normalized)) {
+          return;
+        }
+        total += 1;
+        if (normalized >= 0.75) {
+          tiers.high += 1;
+        } else if (normalized >= 0.4) {
+          tiers.medium += 1;
+        } else {
+          tiers.low += 1;
+        }
+      });
+      const hasConfidence = total > 0;
+      confidenceBars.classList.toggle("hidden", !hasConfidence);
+      confidenceEmpty.classList.toggle("hidden", hasConfidence);
+      if (!hasConfidence) {
+        return;
+      }
+      ["high", "medium", "low"].forEach((tier) => {
+        const count = tiers[tier];
+        const percent = total ? Math.round((count / total) * 100) : 0;
+        const row = document.createElement("div");
+        row.className = "confidence-row";
+        row.dataset.tier = tier;
+        row.innerHTML = `
+          <div class="row-head">
+            <span>${t(tier === "high" ? "confidenceHigh" : tier === "medium" ? "confidenceMedium" : "confidenceLow")}</span>
+            <span>${percent}% (${count})</span>
+          </div>
+          <div class="confidence-bar"><span style="width: ${percent}%;"></span></div>
+        `;
+        confidenceBars.appendChild(row);
+      });
+    }
+
+    function renderInsights(data = []) {
+      renderCoverage(data);
+      renderTimeline(data);
+      renderConfidence(data);
+    }
+
+    function setLanguage(lang) {
+      currentLang = translations[lang] ? lang : "en";
+      languageSelect.value = currentLang;
+      document.documentElement.lang = currentLang;
+      document.querySelectorAll("[data-i18n]").forEach((el) => {
+        const key = el.dataset.i18n;
+        if (key) {
+          el.textContent = t(key);
+        }
+      });
+      areaInput.placeholder = t("areaPlaceholder");
+      rawToggle.textContent = rawVisible ? t("rawToggleHide") : t("rawToggleShow");
+      updateStatus(statusEl.dataset.status || "idle", {
+        count: cachedData[currentType]?.length || 0,
+        area: areaInput.value,
+        skipTelemetry: true,
+      });
+      renderSummary(currentType, cachedData[currentType]);
+      renderTable(cachedData[currentType]);
+      renderInsights(cachedData[currentType]);
+      updateAutoRefreshUI();
+      updateChips();
+      updateLastUpdateTelemetry(lastUpdatedAt);
+    }
+
+    function updateStatus(state, vars = {}) {
+      const { skipTelemetry, ...statusVars } = vars;
+      statusEl.dataset.status = state;
+      if (state === "loading") {
+        statusEl.textContent = t("statusLoading");
+      } else if (state === "error") {
+        statusEl.textContent = t("statusError");
+      } else if (state === "success") {
+        statusEl.textContent = t("statusSuccess", statusVars);
+        if (!skipTelemetry) {
+          updateLastUpdateTelemetry(new Date());
+        }
+      } else {
+        statusEl.textContent = t("statusIdle");
+      }
+      updateChips(typeof statusVars.count === "number" ? statusVars.count : undefined);
+    }
+
+    function changeType(type) {
+      if (currentType === type) {
+        return;
+      }
+      currentType = type;
+      document.querySelectorAll(".mode-switch button").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.type === type);
+      });
+      renderSummary(type, cachedData[type]);
+      renderTable(cachedData[type]);
+      renderInsights(cachedData[type]);
+      updateStatus(statusEl.dataset.status || "idle", {
+        count: cachedData[type]?.length || 0,
+        area: areaInput.value,
+        skipTelemetry: true,
+      });
+      updateChips();
+    }
+
+    function formatDate(value) {
+      if (!value) {
+        return null;
+      }
+      try {
+        if (typeof value === "object") {
+          if (value.$date) {
+            return new Date(value.$date);
+          }
+          if (value.$oid) {
+            return null;
+          }
+        }
+        return new Date(value);
+      } catch (err) {
+        return null;
+      }
+    }
+
+    function extractConfidence(item) {
+      const keys = ["fused_confidence", "confidence", "score", "probability"];
+      for (const key of keys) {
+        const val = item[key];
+        if (typeof val === "number" && Number.isFinite(val)) {
+          return val;
+        }
+      }
+      return null;
+    }
+
+    function extractCategory(item) {
+      const keys = ["label", "class", "category", "type", "target"];
+      for (const key of keys) {
+        const val = item[key];
+        if (typeof val === "string" && val.trim().length) {
+          return val;
+        }
+      }
+      return t("summaryUnknown");
+    }
+
+    function extractUnitId(item) {
+      const keys = ["unit_id", "track_id", "target_id", "id"];
+      for (const key of keys) {
+        const val = item[key];
+        if (val !== undefined && val !== null && String(val).trim().length) {
+          return String(val);
+        }
+      }
+      return null;
+    }
+
+    function renderSummary(type, data = []) {
+      summaryEl.innerHTML = "";
+      const hasData = Array.isArray(data) && data.length > 0;
+      summaryEl.classList.toggle("hidden", !hasData);
+      summaryEmptyEl.classList.toggle("hidden", hasData);
+      if (!hasData) {
+        updateConfidenceTelemetry(Number.NaN);
+        return;
+      }
+
+      const totalCard = document.createElement("div");
+      totalCard.className = "summary-card";
+      totalCard.innerHTML = `
+        <span class="label">${t("summaryTotalRecords")}</span>
+        <span class="value">${data.length.toLocaleString()}</span>
+      `;
+      summaryEl.appendChild(totalCard);
+
+      const categories = new Map();
+      const unitIds = new Set();
+      let confidenceSum = 0;
+      let confidenceCount = 0;
+      let latestDate = null;
+      let highestConfidenceItem = null;
+      let highestConfidenceValue = -Infinity;
+      let lowestConfidenceItem = null;
+      let lowestConfidenceValue = Infinity;
+
+      for (const item of data) {
+        const category = extractCategory(item);
+        categories.set(category, (categories.get(category) || 0) + 1);
+
+        const unit = extractUnitId(item);
+        if (unit) {
+          unitIds.add(unit);
+        }
+
+        const conf = extractConfidence(item);
+        if (conf !== null) {
+          confidenceSum += conf;
+          confidenceCount += 1;
+          if (conf > highestConfidenceValue) {
+            highestConfidenceValue = conf;
+            highestConfidenceItem = item;
+          }
+          if (conf < lowestConfidenceValue) {
+            lowestConfidenceValue = conf;
+            lowestConfidenceItem = item;
+          }
+        }
+
+        const tsCandidate = item.timestamp || item.time || item.detected_at || item.updated_at || item.created_at;
+        const parsed = formatDate(tsCandidate);
+        if (parsed && (!latestDate || parsed > latestDate)) {
+          latestDate = parsed;
+        }
+      }
+
+      const categoryCard = document.createElement("div");
+      categoryCard.className = "summary-card";
+      const uniqueCategories = categories.size;
+      categoryCard.innerHTML = `
+        <span class="label">${t("summaryUniqueClasses")}</span>
+        <span class="value">${uniqueCategories}</span>
+      `;
+      summaryEl.appendChild(categoryCard);
+
+      if (unitIds.size > 0) {
+        const unitCard = document.createElement("div");
+        unitCard.className = "summary-card";
+        unitCard.innerHTML = `
+          <span class="label">${t("summaryUniqueUnits")}</span>
+          <span class="value">${unitIds.size}</span>
+        `;
+        summaryEl.appendChild(unitCard);
+      }
+
+      if (confidenceCount > 0) {
+        const avg = (confidenceSum / confidenceCount) * 100;
+        const confidenceCard = document.createElement("div");
+        confidenceCard.className = "summary-card";
+        confidenceCard.innerHTML = `
+          <span class="label">${t("summaryAverageConfidence")}</span>
+          <span class="value">${avg.toFixed(1)}<small>%</small></span>
+        `;
+        const track = document.createElement("div");
+        track.className = "confidence-track";
+        const fill = document.createElement("span");
+        fill.className = "confidence-fill";
+        fill.style.width = `${Math.round(Math.max(0, Math.min(100, avg)))}%`;
+        track.appendChild(fill);
+        confidenceCard.appendChild(track);
+        summaryEl.appendChild(confidenceCard);
+
+        updateConfidenceTelemetry(avg);
+
+        const highlightRows = [];
+        if (highestConfidenceItem) {
+          const best = formatConfidenceValue(highestConfidenceValue);
+          if (best) {
+            highlightRows.push(`
+              <div class="highlight-row">
+                <span class="highlight-label">${t("summaryStrongest")}</span>
+                <span class="highlight-detail">${describeTarget(highestConfidenceItem)}</span>
+                <span class="highlight-value">${best}</span>
+              </div>
+            `);
+          }
+        }
+        if (lowestConfidenceItem && lowestConfidenceItem !== highestConfidenceItem) {
+          const weakest = formatConfidenceValue(lowestConfidenceValue);
+          if (weakest) {
+            highlightRows.push(`
+              <div class="highlight-row">
+                <span class="highlight-label">${t("summaryWeakest")}</span>
+                <span class="highlight-detail">${describeTarget(lowestConfidenceItem)}</span>
+                <span class="highlight-value">${weakest}</span>
+              </div>
+            `);
+          }
+        }
+        if (highlightRows.length) {
+          const highlightCard = document.createElement("div");
+          highlightCard.className = "summary-card highlight";
+          highlightCard.innerHTML = `
+            <span class="label">${t("summaryHighlightTitle")}</span>
+            ${highlightRows.join("")}
+          `;
+          summaryEl.appendChild(highlightCard);
+        }
+      } else {
+        updateConfidenceTelemetry(Number.NaN);
+      }
+
+      const topEntries = Array.from(categories.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3);
+
+      if (topEntries.length) {
+        const listCard = document.createElement("div");
+        listCard.className = "summary-card";
+        const listItems = topEntries
+          .map(([name, count]) => `<li>${name} · ${count}</li>`)
+          .join("");
+        listCard.innerHTML = `
+          <span class="label">${t("summaryTopClasses")}</span>
+          <ul>${listItems}</ul>
+        `;
+        summaryEl.appendChild(listCard);
+      }
+
+      const lastCard = document.createElement("div");
+      lastCard.className = "summary-card";
+      const timeLabel = latestDate ? latestDate.toLocaleString() : t("timeNever");
+      lastCard.innerHTML = `
+        <span class="label">${t("summaryLastUpdated")}</span>
+        <span class="value">${timeLabel}</span>
+      `;
+      summaryEl.appendChild(lastCard);
+    }
+
+    function getOrderedKeys(data) {
+      const preferred = [
+        "timestamp",
+        "time",
+        "detected_at",
+        "area",
+        "unit_id",
+        "track_id",
+        "label",
+        "class",
+        "category",
+        "type",
+        "target",
+        "confidence",
+        "fused_confidence",
+        "score",
+        "probability",
+        "x",
+        "y",
+        "lat",
+        "lon",
+        "location",
+        "status",
+      ];
+      const keys = new Set();
+      data.forEach((item) => Object.keys(item).forEach((key) => keys.add(key)));
+      const ordered = [];
+      preferred.forEach((key) => {
+        if (keys.has(key)) {
+          ordered.push(key);
+          keys.delete(key);
+        }
+      });
+      return ordered.concat(Array.from(keys).sort());
+    }
+
+    function formatHeader(key) {
+      return key
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (char) => char.toUpperCase());
+    }
+
+    function formatValue(value) {
+      if (value === null || value === undefined) {
+        return "—";
+      }
+      if (typeof value === "number") {
+        return Number.isFinite(value) ? value.toFixed(3).replace(/\.000$/, "") : String(value);
+      }
+      if (typeof value === "object") {
+        if (value.$date) {
+          const parsed = formatDate(value);
+          return parsed ? parsed.toLocaleString() : String(value.$date);
+        }
+        if (value.$oid) {
+          return value.$oid;
+        }
+        return JSON.stringify(value);
+      }
+      return String(value);
+    }
+
+    function renderTable(data = []) {
+      tableWrapper.innerHTML = "";
+      const hasData = Array.isArray(data) && data.length > 0;
+      tableWrapper.classList.toggle("hidden", !hasData);
+      tableEmpty.classList.toggle("hidden", hasData);
+      rawDataEl.textContent = hasData ? JSON.stringify(data, null, 2) : "";
+      rawDataEl.classList.toggle("hidden", !rawVisible || !hasData);
+      rawToggle.classList.toggle("hidden", !hasData);
+      rawToggle.textContent = rawVisible ? t("rawToggleHide") : t("rawToggleShow");
+      if (!hasData) {
+        return;
+      }
+
+      const table = document.createElement("table");
+      const thead = document.createElement("thead");
+      const headerRow = document.createElement("tr");
+      const keys = getOrderedKeys(data);
+      keys.forEach((key) => {
+        const th = document.createElement("th");
+        th.textContent = formatHeader(key);
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+
+      const tbody = document.createElement("tbody");
+      data.forEach((item) => {
+        const row = document.createElement("tr");
+        keys.forEach((key) => {
+          const cell = document.createElement("td");
+          const value = item[key];
+          const isConfidenceKey = confidenceKeys.has(key);
+          let display = formatValue(value);
+          let formattedConfidence = null;
+          if (isConfidenceKey) {
+            const numeric = typeof value === "number" ? value : Number(value);
+            formattedConfidence = formatConfidenceValue(numeric);
+            if (formattedConfidence) {
+              display = formattedConfidence;
+            }
+          }
+          cell.textContent = display;
+          if (typeof value === "number" || formattedConfidence) {
+            cell.classList.add("numeric");
+          }
+          row.appendChild(cell);
+        });
+        tbody.appendChild(row);
+      });
+      table.appendChild(tbody);
+      tableWrapper.appendChild(table);
+    }
+
+    async function fetchData() {
+      const area = areaInput.value.trim() || "demo";
+      const limit = Math.max(1, Math.min(Number(limitInput.value) || 10, 500));
+      limitInput.value = limit;
+      const endpoint = `/${currentType}/${encodeURIComponent(area)}?limit=${limit}`;
+      updateStatus("loading");
+      refreshButton.disabled = true;
+      try {
+        const response = await fetch(endpoint);
+        if (!response.ok) {
+          throw new Error(response.statusText);
+        }
+        const data = await response.json();
+        cachedData[currentType] = Array.isArray(data) ? data : [];
+        renderSummary(currentType, cachedData[currentType]);
+        renderTable(cachedData[currentType]);
+        renderInsights(cachedData[currentType]);
+        updateStatus("success", { count: cachedData[currentType].length, area });
+      } catch (err) {
+        console.error(err);
+        updateStatus("error");
+      } finally {
+        refreshButton.disabled = false;
+      }
+    }
+
+    document.querySelectorAll(".mode-switch button").forEach((button) => {
+      button.addEventListener("click", () => changeType(button.dataset.type));
+    });
+
+    refreshButton.addEventListener("click", fetchData);
+    areaInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        fetchData();
+      }
+    });
+    areaInput.addEventListener("input", () => updateChips());
+    limitInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        fetchData();
+      }
+    });
+
+    rawToggle.addEventListener("click", () => {
+      rawVisible = !rawVisible;
+      renderTable(cachedData[currentType]);
+    });
+
+    languageSelect.addEventListener("change", (event) => {
+      setLanguage(event.target.value);
+    });
+
+    if (autoRefreshInput) {
+      autoRefreshInput.addEventListener("change", (event) => {
+        setAutoRefresh(event.target.checked);
+        if (event.target.checked) {
+          fetchData();
+        }
+      });
+    }
+
+    setInterval(() => {
+      if (lastUpdatedAt) {
+        updateLastUpdateTelemetry(lastUpdatedAt);
+      }
+    }, 60000);
+
+    setLanguage(currentLang);
+    fetchData();
+  </script>
+</body>
+</html>
