@@ -1,0 +1,232 @@
+- Use Python with TensorFlow/Keras for model development.
+- Data sources include declassified archives, modern conflict reports and satellite imagery.
+- Preprocessing steps: standardize numeric values, encode categories, create time-series format.
+- Key features: speed, terrain, logistics, formation patterns, communications.
+- RNN/LSTM architecture targeted for sequence prediction; may expand to Bi-LSTM or attention mechanisms later.
+
+- Integrate logistics, supply chain and morale metrics from OSINT feeds.
+- Consider Bidirectional LSTM with attention or Transformer models for better sequence context.
+- Build a pipeline for continuous data updates and periodic retraining.
+- Store movement data and predictions in MongoDB for geospatial queries.
+- Organize code as modules: config, database, data_ingestion, model, visualization, alerts, main.
+- Provide a FastAPI (api.py) service exposing prediction and query endpoints.
+- Train YOLOv8 using dataset_loader.py and train_yolo.py for vehicle detection.
+- Use detect_troops.py to add detections to MongoDB and trigger alerts.
+- Include satellite_pipeline.py for classified imagery hooks and osint_scraper.py for public feeds.
+- Automate the full workflow with run_real_time_pipeline.py.
+
+- Augment training images using Albumentations in dataset_augmentation.py.
+- Setup scripts (setup.sh/start.sh) automate dependency install and pipeline startup.
+- Verify dependency downloads with hashes or trusted mirrors; tampered packages could weaponize updates if infrastructure falls.
+- Add clip_identifier.py using CLIP embeddings for zero-shot image classification.
+- Add swin_identifier.py using Swin Transformer embeddings for target classification.
+- watch_directory.py monitors new images and triggers detection automatically.
+- info_gathering/camera_collector.py captures frames from webcams or videos for dataset collection.
+- info_gathering/source_finder.py queries ChatGPT in a background thread to suggest new image or video sources.
+- info_gathering/source_catalog.py persists discovered sources in a JSON file and removes duplicates after optional URL checks.
+- cli/discover_sources.py runs a one-shot ChatGPT query and appends results to the source catalog.
+- dashboard integrates source discovery and catalog listing so operators can find and review imagery feeds without leaving the CLI.
+- pipeline/monitor.py periodically downloads Sentinel Hub imagery and runs the realtime pipeline.
+- transformer_feature_refiner.py refines YOLO detections with attention layers.
+- confidence_scorer.py blends YOLO and Transformer results and logs anomalies.
+- cluster_movements.py applies DBSCAN to logged positions for pattern discovery.
+- doctrine_library/ stores BTG patterns with doctrine_loader.py for matching.
+- ASP.NET web app consumes FastAPI endpoints to display maps and doctrine status.
+- Secure comms use Scapy-based packet sanitization and a multi-tier intranet.
+- movement_logger.py records detections with time and location for clustering.
+- cluster_strategy_tracker.py performs DBSCAN on logs and creates heatmaps.
+- state_encoder.py converts recent detections into grid tensors for model input.
+- heatmap.py generates matplotlib heatmaps from stored detections.
+- uncertainty_heatmap.py creates blurred uncertainty maps emphasizing low-confidence detections.
+- movement_stats.py computes speed and heading statistics from movement logs.
+- acceleration_stats.py measures acceleration and acceleration_anomaly.py flags outliers.
+- cli/acceleration_report.py lists acceleration anomalies and accepts `--hours`
+  and `--z` flags for unattended runs.
+- doctrine_movement.py now exposes `doctrine_movement_hierarchy` so the CLI can render unit, group, and battalion drilldowns in a single pass when operators choose the "all" option.
+- detection_streaks.py computes longest consecutive detection streak per class,
+  with streak_report.py printing the results.
+- feature_fusion.py merges color histograms, HOG features and edge density, and in high-memory mode layers on Lab/Gabor/Fourier/GLCM/Hu/wavelet/EfficientNet descriptors for richer object vectors.
+- ensemble_identifier.py averages predictions from multiple classifiers for a unified result; ensemble_classify.py exposes the CLI.
+- meta_analysis.py aggregates detection counts, feedback accuracy and cluster summaries for high-level reports.
+- cli/report.py queries MongoDB for recent detections and displays a translated
+  summary table; `--area` and `--limit` flags allow non-interactive runs.
+- threat_assessment.py now reports nearest strategic sites, applies site
+  weighting, estimates time-to-arrival and outputs categorical threat levels.
+- movement_predictor.py now fits regression lines across recent points to estimate velocity, speed, and confidence radius for forecasts.
+- app/alerts/__init__.py stores GUI-configured alert rules, normalizes labels/recipients, and triggers SMS/email dispatch via
+  utils.twilio_alerts and utils.email_alerts. email_alerts.py wraps SMTP delivery with TLS support.
+- FastAPI exposes `/alerts`, `/alerts/{id}`, and `/alerts/{id}/test` so the dashboard and automation scripts can manage alert rules.
+- doctrine_matcher and emerging_tactic_detector identify era-specific tactics and discover new patterns.
+- ASP.NET controller AiProxyController proxies FastAPI endpoints for the web dashboard.
+- russian_vehicle_dataset.py and russian_troop_dataset.py scrape OSINT images for training.
+- hyperparameter_search.py runs grid searches over batch size, learning rate and image size for YOLO training.
+- organize_dataset.py and organize_troop_dataset.py place images by category before YOLO training.
+- confidence_stats.py computes detection confidence statistics to surface low-performing classes.
+- anomaly_detector.py checks detection trends against baseline rates and flags spikes; anomaly_report.py prints the results.
+- burst_detector.py finds time buckets with unusually high detection counts; burst_report.py displays these spikes.
+- lag_correlation.py measures correlation between class counts across time lags and is accessible via lag_report.py.
+- peak_times.py finds the hour and weekday with the most detections for each class; peak_report.py displays the results.
+- hourly_activity.py tallies detection counts per hour of day; activity_report.py displays a translated table.
+- detection_volatility.py computes per-class daily count volatility; volatility_report.py lists standard deviations.
+- translation/translator.py leverages HuggingFace models to localize dashboard text via the `UI_LANG` setting.
+- cli/dashboard.py accepts a `--lang` argument to override the language at launch.
+- README.uk.md mirrors the English README so Ukrainian operators can read localized documentation.
+- train_russian_yolo.py and train_russian_troop_yolo.py generate detectors for vehicles and troops.
+- merge_images.py and train_sequential_yolo.py support memory-efficient sequential training.
+- verify_dataset.py, verify_labels.py and fix_labels.py clean bad images or labels.
+- image_similarity.py and human_verification.py add a review layer for uncertain detections.
+- human_feedback_viewer.py provides a Tkinter GUI to mark predictions as correct or incorrect.
+- feedback_logger.py writes these decisions to the `feedback` collection for later training.
+- flag_anomalies.py and detect_russian_troops_with_anomalies.py log low-confidence cases without moving files.
+- detect_russian_troops_with_auto_updates.py integrates watch_directory.py for hands-free processing.
+- transformer_feature_refiner.py, extract_yolo_features.py and detect_and_refine_pipeline.py combine YOLO with a Transformer and score results.
+- tta_transformer_predict.py and confidence_logger.py monitor prediction quality over time.
+- analysis/confidence_calibrator.py fits an isotonic regression model from feedback to adjust detector probabilities.
+- geo_mapper.py visualizes detections on a Folium map. Run `python -m app.analysis.geo_mapper AREA` to generate an HTML file.
+- geojson_export.py converts detection documents to GeoJSON and export_geojson.py writes recent records to disk.
+
+- satellite/builtin_catalog.py seeds `data/builtin_space` з прикладами космічних сцен (російські війська, танки, російські та
+  іранські дрони), щоб відпрацьовувати аналіз без зовнішніх знімків.
+- detection/known_assets.py і CLI `space_identification.py` повертають каталогізовані ідентифікації цих сцен і дозволяють
+  операторам переглядати деталі конкретного запису.
+
+- enhanced_image_processing.py improves satellite image contrast and sharpness before detection.
+- threat_model_trainer.py trains a logistic or random-forest classifier on cluster features to predict threat levels.
+- analysis/threat_model.py loads the saved classifier and returns threat labels from feature mappings.
+- troop_transformer.py defines a Transformer network for forecasting troop locations.
+- run_real_time_pipeline.py ties image retrieval, preprocessing, detection and prediction into one script.
+- satellite_fetcher.py integrates Sentinel Hub imagery.
+- satellite_inference.py detects vehicles in Sentinel images and posts results to the backend.
+- backend_api (Rust + actix-web) ingests metadata over QUIC with MongoDB storage.
+- trajectory_model.py implements a Transformer-based movement predictor and includes a dataset preparer BTGTrajectoryDataset.
+- analysis/movement_predictor.py returns regression forecasts with surety scoring; the `surety` payload lists scored checks so services can reason about history length, trajectory fit, and speed plausibility before trusting a prediction.
+- doctrine_classifier.py tags movement sequences and checks deviations from predicted behavior.
+- packet_sanitizer.py and quic_server.rs enforce zero-trust networking with Scapy/eBPF filtering.
+- mobile_alert_app/ provides cross-platform warnings for civilians.
+
+- tactical_wrapper.py wraps YOLO outputs and assigns doctrine labels before
+  storing results.
+- btg_trajectory_dataset.py loads movement logs for the BTGTransformer.
+- deviation_checker.py logs prediction errors and flags anomalies.
+- dbscan_cluster.py clusters recent positions with DBSCAN and stores cluster
+  centers in the `movement_clusters` collection.
+- image_metadata.rs extends the backend struct with a doctrine field.
+- Detection documents in Mongo now also include this `doctrine` label.
+
+- sentinel_hub_fetcher.py obtains OAuth tokens and downloads WMS tiles.
+- satellite_inference_pipeline.py runs detection, tags doctrine and posts results.
+- movement_history.py queries Mongo for recent positions per unit.
+- trajectory_inference.py feeds those points into BTGTransformer for prediction.
+- lidar_drone_detector.py will use point clouds to spot small UAVs.
+- pipeline/run_real_time_pipeline.py provides a CLI wrapper around the satellite inference pipeline.
+  - cli/dashboard.py offers an interactive menu to run pipeline jobs plus
+    separate map and training pages. The training page launches the training wizard, self-reinforcement, auto dataset trainer, and hyperparameter search, while the map page handles detection maps, heatmaps, movement clustering, meta analysis, and movement statistics. The main dashboard also configures environment values.
+  - The dashboard's object drilldown aggregates average speeds for armor, aircraft, and drone units and, with `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER` configured, can send SMS summaries via Twilio.
+- realtime.py saves detections and predictions in MongoDB.
+- sentinel_hub_fetcher.py uses environment variables `SENTINEL_CLIENT_ID`,
+  `SENTINEL_CLIENT_SECRET` and `SENTINEL_INSTANCE_ID` to download imagery.
+- yolo.detect_vehicles currently returns mock coordinates until models are added.
+- dataset_augmentation.py provides Albumentations-based augmentation utilities.
+- watch_directory.py polls a folder for new images and triggers the realtime
+  pipeline automatically.
+- ground_troop.py performs orientation-based detection for noisy images.
+- drones/live_feed.py connects to drone video streams and logs detections.
+- info_gathering/camera_collector.py saves periodic snapshots from webcams for training data.
+- troop_identifier.py classifies detected troops by type and uniform.
+ - pseudo_labeler.py logs each labeled image with its confidence score in the item catalog.
+ - troop_identifier.py classifies detected troops by type and uniform.
+- drone_identifier.py assigns a basic category to observed UAVs.
+- vehicle_identifier.py classifies basic vehicle types from images.
+- unified_identifier.py provides a single model for troops, vehicles and drones.
+- cli/extend_unified_model.py grows that classifier by appending neurons for operator-supplied labels so new targets share the same model.
+- training/dataset_loader.py creates data.yaml files for YOLO datasets.
+- training/train_yolo.py trains detection models via the Ultralytics API with custom batch size, image size and learning rate options.
+- train_sequential_yolo.py iterates through multiple data.yaml files to train large datasets in manageable chunks.
+- train_with_augmentation.py optionally augments images and trains YOLO in one pass.
+- auto_dataset_trainer.py splits raw datasets, augments images and trains YOLO end-to-end.
+- troop_training_cli.py labels troop images and trains a small classifier from a directory or CSV.
+  - training/item_catalog.py stores `item_id` and class pairs in a CSV catalog, with cli/item_catalog.py to register and list items by classifier.
+  - utils/pseudo_labeler.py generates YOLO-format label files from new images for self-training.
+  - cli/self_reinforce.py labels images, copies them into the dataset and retrains the detector.
+  - cli/train_wizard.py guides users through choosing folders and training a YOLO model with prompts and optional flags for paths, classes, epochs, and augmentation.
+  - training/self_training_loop.py repeats pseudo labeling and training for several iterations.
+  - training/self_training_aug.py adds augmentation during each self-training cycle.
+  - training/active_learning.py integrates human feedback by reviewing low-confidence detections before merging them back into the dataset.
+- movement_logger.py logs detection coordinates to the movements collection.
+- analysis/cluster_strategy_tracker.py runs DBSCAN then heatmap generation.
+  - analysis/threat_assessment.py computes threat scores, applies site weights,
+    estimates time-to-arrival, and reports threat levels for clusters.
+- analysis/image_stats.py calculates brightness and blur for training images.
+- analysis/movement_stats.py computes average speed and heading from logged movements.
+- analysis/acceleration_stats.py measures average and peak acceleration from movement logs.
+- analysis/acceleration_anomaly.py flags units with atypical acceleration using z-scores.
+- analysis/hog_features.py extracts HOG descriptors for more detailed image analysis.
+- cli/configure.py writes a `.env` file with interactive prompts for environment settings.
+- cli/train_wizard.py, cli/configure.py and utils/human_feedback_viewer.py translate prompts and labels based on `UI_LANG`.
+- analysis/confidence_fusion.py merges detector and classifier scores into a fused confidence.
+- dashboard map page lets operators pick a start and end date for maps, heatmaps, clustering, meta analysis, and movement stats, and can now score clusters with threat_assessment.
+- cli/dashboard.py now uses a Rich layout with separate map and training pages. The map page builds detection maps, heatmaps, clusters unit movements, and runs meta analysis or movement stats. The training page groups self-reinforcement, auto training, and hyperparameter search, while the main menu still streams drone feeds and captures camera frames.
+- demo_dataset.py generates a small synthetic dataset with simple shapes so the pipeline can be tested offline.
+- `.env.example` lists required environment variables for quick setup.
+- `web/index.html` provides a minimal HTML/JS GUI served via FastAPI at `/gui/`.
+- `MODEL_CARD.md` documents data sources, evaluation, and limitations.
+- `OPS_RUNBOOK.md` explains setup, monitoring, and alert procedures.
+- `cli/dashboard.py` now offers a help/about panel and lets operators change the UI language without restarting.
+- `cli/dashboard.py` can show a configuration summary to verify current settings.
+- analysis/detection_trends.py counts detections per class per day, and cli/trend_report displays the results in a table.
+- analysis/cooccurrence.py tallies how often classes appear together; cli/cooccurrence_report renders a co-occurrence matrix.
+- analysis/weekly_activity.py counts detections by weekday; cli/weekly_report.py displays the results with translated labels.
+- analysis/moving_average.py computes rolling daily averages to smooth counts; cli/moving_report.py shows the results.
+- analysis/interarrival.py calculates average and median time between detections for each class; cli/interarrival_report.py displays the results.
+- analysis/change_point.py spots day-to-day count shifts using z-scores; cli/changepoint_report.py lists them.
+- analysis/class_diversity.py computes daily class entropy; cli/diversity_report.py displays the results.
+- analysis/speed_anomaly.py computes per-unit average speeds and z-scores; cli/speed_report.py shows outliers.
+  - lidar_detector.py simulates LIDAR-based detection for troops, vehicles, and drones and notes whether units are in cover.
+  - sensor_fusion.py combines camera, LIDAR, and Bluetooth scores using reliability weights from config, reports an uncertainty value, and `detect_fused_objects` wraps all sensors while cli/fusion_report.py displays fused results with cover status. The CLI supports `--image` and `--pointcloud` arguments to skip prompts.
+  - analysis/sensor_certainty.py provides `fuse_sensor_confidences` for weighted averaging and uncertainty; cli/sensor_reliability_report.py prints the configured sensor weights.
+- camera_detector.py simulates image-based detection for troops, vehicles, and drones so fusion covers both sensor types.
+- bluetooth_detector.py parses RSSI logs into troop, vehicle, and drone detections. fusion_report and coanalysis_report support a `--bluetooth` log to include these readings in sensor fusion.
+- Dependencies are pinned and installed via scripts/start.sh; verify package hashes and consider offline mirrors to reduce supply-chain risk in hostile environments.
+- training/verify_dataset.py scans YOLO datasets to report images missing labels and orphaned label files before training.
+- scripts/setup.sh installs CPU packages first and, if a GPU is detected, automatically adds CUDA-enabled PyTorch and TensorFlow.
+- training/sensor_auto_trainer.py fits a RandomForest classifier from sensor feature CSVs; cli/train_sensor.py prompts for paths and saves a model.
+- analysis/pointcloud_coanalysis.py cross-checks image and point cloud detections; cli/coanalysis_report.py lists fused matches.
+- sensor_auto_trainer.auto_train_directory trains models for all CSV files in a folder and is available via `train_sensor --dir`.
+- coanalysis_report now runs camera and LIDAR detectors on raw inputs before fusing results.
+- analysis/image_pointcloud.py extracts a point cloud from an image for sensor matching.
+- train_sensor supports `--images` and `--labels` to build classifiers from image-derived point clouds.
+- coanalysis_report can export an image's point cloud to CSV with `--export`.
+- sensor_pointcloud_trainer.py combines sensor features with image-derived point clouds; `train_sensor_pointcloud` CLI wraps the trainer and the dashboard exposes it in the training menu.
+- gaussian_pointcloud_trainer.py fits per-class Gaussians from labeled point clouds; analysis/gaussian_pointcloud_match compares fused image and sensor clouds to those models using Mahalanobis distance.
+- gaussian_pointcloud_match can also rank classes by probability; gaussian_match_report uses `--top` to display multiple candidates.
+- gaussian_pointcloud_update.py incrementally updates saved Gaussian statistics; cli/update_gaussian_model.py exposes the updater.
+- fused_gaussian_trainer.py trains Gaussians from paired image and sensor point clouds, and fused_gaussian_match.py ranks classes; `train_fused_gaussian.py` and `fused_gaussian_report.py` wrap these helpers.
+- pointnet_model.py defines a minimal PointNet-style encoder; pointnet_gaussian_trainer.py learns its weights and Gaussian class stats, and pointnet_gaussian_match.py compares fused image/sensor clouds in the encoded space.
+- gaussian_mixture_trainer.py fits Gaussian mixture models for multi-modal sensor features; analysis/gaussian_mixture_match ranks feature inputs with those mixtures and cli/gaussian_mixture_report prints the probabilities.
+- acoustic_detector.py converts acoustic feature logs into detections, and acoustic_trainer.py with cli/train_acoustic.py trains a RandomForest to classify those features.
+- gaussian_nb_trainer.py trains a Gaussian Naive Bayes model from fused image and sensor point clouds; gaussian_nb_match.py and CLI wrappers provide classification probabilities.
+- gaussian_process_trainer.py fits a Gaussian Process classifier on fused image and sensor point clouds, with gaussian_process_match.py and CLIs to report class probabilities.
+- gaussian_kde_trainer.py fits per-class Gaussian kernel-density estimators from fused image and sensor clouds, and gaussian_kde_match.py with CLI wrappers reports KDE probabilities.
+- vit_identifier.py uses a pretrained Vision Transformer to embed images and a logistic classifier to label troops, vehicles, or drones; train via train_vit_identifier.py.
+- resnet_identifier.py extracts ResNet18 embeddings for target classification; train via train_resnet_identifier.py.
+- orb_bow_trainer.py and orb_bow_match.py implement an ORB bag-of-visual-words image classifier with train_orb_bow.py and orb_bow_report.py wrappers.
+- convnext_identifier.py extracts ConvNeXt embeddings with train_convnext_identifier.py and convnext_classify.py for inference.
+- prediction_correlation.py and prediction_correlation_report.py measure agreement between different model confidences.
+- cohesion_analyzer.py and cohesion_report.py compare outputs from multiple classifiers and report consensus, weighted consensus, and agreement levels.
+- method_cohesion.py and method_cohesion_report.py aggregate anomaly, burst, change-point, volatility, detection-streak, and interarrival detectors, show overlapping classes, and include a matrix of method overlaps. The helper also accepts custom `(key, label, func, kwargs)` specs when you need to inject additional analytics, and the dashboard analysis menu exposes this report.
+feature_fused_identifier.py with feature_fused_trainer.py uses fused color, Lab, HOG, Gabor, Fourier, and texture features (plus edge density) for lightweight classification, expanding automatically when high-memory features are enabled.
+- dashboard.py now includes an analysis reports submenu for acceleration and speed anomalies, class diversity, detection streaks, volatility, hourly activity, interarrival times, detection trends, peak detection times, detection anomalies, bursts, change points, class co-occurrence, lag correlations, moving averages, weekly activity, and confidence summaries.
+- doctrine_movement_drilldown aggregates movement records by doctrine and hierarchy level, while cli/doctrine_movement_report.py renders the timeline in Rich tables and is wired into the dashboard analysis submenu.
+- analysis submenu also exposes prediction-correlation and sensor-reliability reports, and the map menu adds uncertainty heatmaps and GeoJSON export.
+- training menu exposes dataset verification and demo dataset generation for easier preparation.
+- training menu now includes a confidence calibration option that fits isotonic regression models from feedback CSVs.
+- ``RESOLUTION_SCALE`` environment variable allows ``image_pointcloud`` and
+  ``hog_features`` to upsample images for higher-resolution point clouds and
+  descriptors when memory permits.
+- ``FEATURE_RICHNESS`` increases histogram bins, HOG granularity, and
+  point-cloud density for richer analysis when extra memory is available.
+- ``HIGH_MEMORY_MODE`` enables multi-scale histograms, multi-resolution HOG,
+  Local Binary Pattern histograms, color moments, Lab histograms, Gabor
+  responses, low-frequency Fourier coefficients, GLCM texture metrics,
+  augmented-view histograms, and sub-pixel Gaussian-weighted point clouds for
+  ultra-detailed analysis on high-memory systems.
