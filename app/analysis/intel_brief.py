@@ -1,0 +1,1458 @@
+"""Compose a consolidated intelligence brief from stored telemetry."""
+from __future__ import annotations
+
+import math
+from datetime import UTC, datetime, timedelta
+from typing import Any, Dict, Iterable, List, MutableMapping, Optional, Tuple
+
+from pymongo.errors import PyMongoError
+
+from ..database import get_collection
+from ..movement_history import recent_detections, recent_predictions
+from .meta_analysis import meta_analysis
+from .threat_assessment import score_clusters
+
+
+def _utcnow() -> datetime:
+    """Return the current UTC time."""
+    return datetime.now(UTC)
+
+
+def _normalize_document(doc: MutableMapping[str, Any]) -> Dict[str, Any]:
+    """Return a JSON-serialisable copy of a MongoDB document."""
+    payload: Dict[str, Any] = {k: v for k, v in doc.items() if k != "_id"}
+    if doc.get("_id") is not None:
+        payload["id"] = str(doc["_id"])
+    return payload
+
+
+def _has_timestamp(collection_name: str) -> bool:
+    """Return ``True`` if a collection stores timestamp fields."""
+    try:
+        coll = get_collection(collection_name)
+        return coll.count_documents({"timestamp": {"$exists": True}}, limit=1) > 0
+    except Exception:
+        return False
+
+
+def _recent_documents(
+    collection_name: str,
+    *,
+    hours: int,
+    limit: int,
+    area: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Fetch a capped list of recent documents from a collection."""
+    coll = get_collection(collection_name)
+    query: Dict[str, Any] = {}
+    if area:
+        query["area"] = area
+
+    cursor = None
+    if _has_timestamp(collection_name):
+        cutoff = _utcnow() - timedelta(hours=hours)
+        query["timestamp"] = {"$gte": cutoff}
+        cursor = coll.find(query).sort("timestamp", -1).limit(limit)
+    else:
+        cursor = coll.find(query).sort("_id", -1).limit(limit)
+
+    return [_normalize_document(doc) for doc in cursor]
+
+
+def _recent_clusters(hours: int, area: Optional[str]) -> List[Dict[str, Any]]:
+    """Load recent movement clusters for threat scoring."""
+    coll = get_collection("movement_clusters")
+    query: Dict[str, Any] = {}
+    if area:
+        query["area"] = area
+
+    has_ts = _has_timestamp("movement_clusters")
+    if has_ts:
+        query["timestamp"] = {"$gte": _utcnow() - timedelta(hours=hours)}
+        cursor = coll.find(query).sort("timestamp", -1)
+    else:
+        cursor = coll.find(query)
+
+    clusters = [_normalize_document(doc) for doc in cursor]
+    return clusters
+
+
+def _coerce_utc_datetime(value: Any) -> Optional[datetime]:
+    """Convert supported timestamp formats to a timezone-aware UTC datetime."""
+
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            return value.replace(tzinfo=UTC)
+        return value.astimezone(UTC)
+
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        if text.endswith("Z"):
+            text = text[:-1] + "+00:00"
+        try:
+            parsed = datetime.fromisoformat(text)
+        except ValueError:
+            return None
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=UTC)
+        return parsed.astimezone(UTC)
+
+    return None
+
+
+def _latest_timestamp(records: Iterable[MutableMapping[str, Any]]) -> Optional[datetime]:
+    """Return the most recent timestamp found in an iterable of records."""
+
+    latest: Optional[datetime] = None
+    for record in records:
+        timestamp = _coerce_utc_datetime(
+            record.get("timestamp")
+            or record.get("created_at")
+            or record.get("updated_at")
+        )
+        if timestamp is None:
+            continue
+        if latest is None or timestamp > latest:
+            latest = timestamp
+    return latest
+
+
+def _freshness_status(
+    *,
+    minutes_old: Optional[float],
+    warn_threshold: float,
+    stale_threshold: float,
+) -> str:
+    """Categorise data recency using configured thresholds."""
+
+    if minutes_old is None:
+        return "unknown"
+    if minutes_old <= warn_threshold:
+        return "fresh"
+    if minutes_old <= stale_threshold:
+        return "warning"
+    return "stale"
+
+
+def _append_recommendation(target: Dict[str, Any], message: str) -> None:
+    """Append a recommendation to the brief if it is not already listed."""
+
+    if not message:
+        return
+    existing = target.setdefault("recommendations", [])
+    if message not in existing:
+        existing.append(message)
+
+
+def _analyse_detection_quality(meta: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Evaluate detection summary metadata for confidence and coverage gaps."""
+
+    detections = meta.get("detections") if isinstance(meta, dict) else None
+    if not isinstance(detections, dict) or not detections:
+        return None
+
+    total_count = 0
+    weighted_conf_total = 0.0
+    active_classes = 0
+    low_confidence: List[str] = []
+    sparse_classes: List[str] = []
+
+    for cls, stats in detections.items():
+        if not isinstance(stats, dict):
+            continue
+        count = stats.get("count")
+        avg_conf = stats.get("avg_conf")
+
+        numeric_count = int(count) if isinstance(count, (int, float)) else 0
+        numeric_conf = float(avg_conf) if isinstance(avg_conf, (int, float)) else None
+
+        if numeric_count > 0:
+            total_count += numeric_count
+            active_classes += 1
+            if numeric_conf is not None:
+                weighted_conf_total += numeric_conf * numeric_count
+            if numeric_count < 3:
+                sparse_classes.append(cls)
+        else:
+            sparse_classes.append(cls)
+
+        if numeric_conf is not None and numeric_conf < 0.55:
+            low_confidence.append(cls)
+        elif numeric_conf is None:
+            # Unknown confidence is a coverage gap when paired with detections.
+            if numeric_count > 0:
+                sparse_classes.append(cls)
+
+    if total_count == 0 and not low_confidence and not sparse_classes:
+        return None
+
+    weighted_avg_conf: Optional[float] = None
+    if total_count:
+        weighted_avg_conf = round(weighted_conf_total / total_count, 3)
+
+    diversity_ratio: Optional[float] = None
+    if detections:
+        diversity_ratio = round(active_classes / max(len(detections), 1), 3)
+
+    notes: List[str] = []
+    if weighted_avg_conf is not None:
+        if weighted_avg_conf < 0.6:
+            notes.append(
+                "Average detection confidence is degrading below 0.60 across active classes."
+            )
+        elif weighted_avg_conf < 0.7:
+            notes.append("Average detection confidence is trending below 0.70.")
+
+    quality: Dict[str, Any] = {
+        "total_detections": total_count,
+        "active_classes": active_classes,
+    }
+    if weighted_avg_conf is not None:
+        quality["weighted_avg_confidence"] = weighted_avg_conf
+    if diversity_ratio is not None:
+        quality["active_class_ratio"] = diversity_ratio
+    if low_confidence:
+        quality["low_confidence_classes"] = sorted(set(low_confidence))
+    if sparse_classes:
+        quality["sparse_class_coverage"] = sorted(set(sparse_classes))
+    if notes:
+        quality["notes"] = notes
+
+    return quality
+
+
+def _derive_response_pressure(brief: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Synthesise analyst workload pressure from activity and quality signals."""
+
+    activity_summary = brief.get("activity_summary") or {}
+    readiness = brief.get("response_readiness") or {}
+    detection_quality = brief.get("detection_quality") or {}
+    meta = brief.get("meta") or {}
+
+    detections = activity_summary.get("detections")
+    predictions = activity_summary.get("predictions")
+    detection_rate = activity_summary.get("detection_rate_per_hour")
+
+    det_count = int(detections) if isinstance(detections, (int, float)) else 0
+    pred_count = int(predictions) if isinstance(predictions, (int, float)) else 0
+    rate_per_hour = float(detection_rate) if isinstance(detection_rate, (int, float)) else None
+
+    if det_count == 0 and pred_count == 0:
+        return None
+
+    backlog = max(pred_count - det_count, 0)
+    unmatched = max(det_count - pred_count, 0)
+    ratio = None
+    if det_count > 0 or pred_count > 0:
+        ratio = round(pred_count / max(det_count, 1), 2)
+
+    backlog_major = max(4, math.ceil(pred_count * 0.5))
+    backlog_minor = max(2, math.ceil(pred_count * 0.25))
+    shortfall_major = max(4, math.ceil(det_count * 0.4))
+    shortfall_minor = max(2, math.ceil(det_count * 0.2))
+
+    drivers: List[str] = []
+    actions: List[str] = []
+    severity = 0
+    status = "balanced"
+
+    if pred_count and det_count == 0:
+        severity = 2
+        status = "critical_backlog"
+        drivers.append("Predictions are unaddressed with no corresponding detections processed.")
+        actions.append("Assign surge analysts to triage queued predictions immediately.")
+    elif backlog >= backlog_major:
+        severity = 2
+        status = "critical_backlog"
+        drivers.append("Predictions are outpacing detections creating a critical analyst backlog.")
+        actions.append("Assign surge analysts to triage queued predictions immediately.")
+    elif backlog >= backlog_minor:
+        severity = max(severity, 1)
+        status = "backlog"
+        drivers.append("Analyst queue is building as predictions exceed detections.")
+        actions.append("Schedule additional analysts to work through the prediction queue.")
+
+    if det_count and pred_count == 0:
+        severity = 2
+        status = "prediction_gap"
+        drivers.append("Detections lack matching predictions indicating modelling gaps.")
+        actions.append("Coordinate with modelling teams to regenerate predictions for unmatched detections.")
+    elif unmatched >= shortfall_major:
+        severity = 2
+        status = "prediction_gap"
+        drivers.append("Detection volume is outpacing predictions signalling modelling drift.")
+        actions.append("Coordinate with modelling teams to regenerate predictions for unmatched detections.")
+    elif unmatched >= shortfall_minor:
+        severity = max(severity, 1)
+        if status == "balanced":
+            status = "prediction_gap_watch"
+        drivers.append("Detections are trending higher than predictions; monitor modelling coverage.")
+        actions.append("Audit prediction pipeline for missed detection classes.")
+
+    weighted_conf = detection_quality.get("weighted_avg_confidence")
+    if isinstance(weighted_conf, (float, int)) and weighted_conf < 0.6:
+        severity = max(severity, 1)
+        drivers.append("Low weighted detection confidence is slowing analyst triage cycles.")
+        actions.append("Pair analysts with sensor engineers to revalidate low-confidence detections.")
+        if status == "balanced":
+            status = "quality_watch"
+
+    feedback_accuracy = meta.get("feedback_accuracy")
+    if isinstance(feedback_accuracy, (float, int)) and feedback_accuracy < 0.6:
+        severity = 2
+        drivers.append("Feedback accuracy is degraded, extending review loops.")
+        actions.append("Initiate focused feedback calibration to restore analyst confidence.")
+        if status in {"balanced", "quality_watch"}:
+            status = "feedback_strain"
+
+    readiness_level = (readiness.get("level") or "").lower()
+    if readiness_level in {"critical", "strained"}:
+        drivers.append("Response readiness is already strained, limiting analyst slack.")
+
+    clearance: Optional[float] = None
+    if rate_per_hour and backlog:
+        clearance = round(backlog / max(rate_per_hour, 0.01), 2)
+
+    support_window = readiness.get("support_window_hours")
+    if isinstance(support_window, (float, int)):
+        clearance = min(clearance, float(support_window)) if clearance else float(support_window)
+
+    drivers = list(dict.fromkeys(drivers))
+    actions = list(dict.fromkeys(actions))
+
+    pressure: Dict[str, Any] = {
+        "status": status,
+        "pending_predictions": backlog,
+        "unmatched_detections": unmatched,
+        "inbox_ratio": ratio,
+        "severity": severity,
+    }
+    if clearance is not None:
+        pressure["estimated_clearance_hours"] = clearance
+    if drivers:
+        pressure["drivers"] = drivers
+    if actions:
+        pressure["recommended_actions"] = actions
+
+    return pressure
+
+
+def _derive_support_priorities(brief: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Translate analytics into concrete cross-team support priorities."""
+
+    readiness = brief.get("response_readiness") or {}
+    posture = brief.get("operational_posture") or {}
+    pressure = brief.get("response_pressure") or {}
+    freshness = brief.get("data_freshness") or {}
+    detection_quality = brief.get("detection_quality") or {}
+    gaps = brief.get("intelligence_gaps") or []
+    health = brief.get("health") or {}
+
+    priorities: List[Dict[str, Any]] = []
+    drivers: List[str] = []
+    actions: List[str] = []
+    severity = 0
+
+    def _add_priority(
+        team: str,
+        urgency: str,
+        reason: str,
+        *,
+        window: Optional[float] = None,
+        action: Optional[str] = None,
+    ) -> None:
+        entry: Dict[str, Any] = {"team": team, "urgency": urgency, "reason": reason}
+        if isinstance(window, (float, int)):
+            entry["support_window_hours"] = round(float(window), 2)
+        priorities.append(entry)
+        drivers.append(reason)
+        if action:
+            actions.append(action)
+
+    readiness_level = str(readiness.get("level", "")).lower()
+    support_window = readiness.get("support_window_hours")
+    if readiness_level == "critical":
+        severity = max(severity, 2)
+        _add_priority(
+            "Command Liaison",
+            "immediate",
+            "Response readiness is critical and requires leadership intervention.",
+            window=support_window,
+            action="Notify command staff and mobilise reserve teams to restore readiness.",
+        )
+    elif readiness_level == "strained":
+        severity = max(severity, 1)
+        _add_priority(
+            "Command Liaison",
+            "next_shift",
+            "Response readiness is strained and needs staffing adjustments.",
+            window=support_window,
+            action="Coordinate staffing adjustments to relieve strained readiness levels.",
+        )
+
+    posture_status = str(posture.get("status", "")).lower()
+    if posture_status == "recover":
+        severity = max(severity, 2)
+        _add_priority(
+            "Command Liaison",
+            "immediate",
+            "Operational posture is in recovery and needs executive oversight.",
+            window=support_window,
+            action="Stand up an incident bridge to steer recovery operations.",
+        )
+    elif posture_status == "reinforce":
+        severity = max(severity, 1)
+        _add_priority(
+            "Operations Planning",
+            "next_shift",
+            "Operational posture requires reinforcement across watch rotations.",
+            window=support_window,
+            action="Extend watch rotations and confirm reinforcement resources are booked.",
+        )
+
+    pressure_status = str(pressure.get("status", "")).lower()
+    backlog = pressure.get("pending_predictions")
+    unmatched = pressure.get("unmatched_detections")
+    clearance = pressure.get("estimated_clearance_hours")
+    if pressure_status == "critical_backlog":
+        severity = max(severity, 2)
+        _add_priority(
+            "Analysis Cell",
+            "immediate",
+            "Analyst queue is critically backlogged and requires surge staffing.",
+            window=clearance,
+            action="Deploy surge analysts to clear the critical prediction backlog.",
+        )
+    elif pressure_status == "backlog":
+        severity = max(severity, 1)
+        _add_priority(
+            "Analysis Cell",
+            "next_shift",
+            "Analyst workload backlog is forming as predictions outpace detections.",
+            window=clearance,
+            action="Schedule additional analysts to work down the prediction backlog.",
+        )
+
+    if pressure_status in {"prediction_gap", "prediction_gap_watch"} or (
+        isinstance(unmatched, (int, float)) and unmatched > 0
+    ):
+        severity = max(severity, 2 if pressure_status == "prediction_gap" else 1)
+        _add_priority(
+            "Model Operations",
+            "immediate" if pressure_status == "prediction_gap" else "next_shift",
+            "Detections are outpacing predictions and require model support.",
+            window=clearance,
+            action="Task model operations to regenerate predictions for unmatched detections.",
+        )
+
+    feeds = freshness.get("feeds") if isinstance(freshness, dict) else {}
+    for feed_name, feed_info in (feeds or {}).items():
+        status = str(feed_info.get("status", "")).lower()
+        age = feed_info.get("age_minutes")
+        if status == "stale":
+            severity = max(severity, 2)
+            _add_priority(
+                "Telemetry Operations",
+                "immediate",
+                f"{feed_name.capitalize()} feed is stale and requires recovery support.",
+                window=age,
+                action=f"Deploy telemetry engineers to restore the {feed_name} feed immediately.",
+            )
+        elif status == "warning":
+            severity = max(severity, 1)
+            _add_priority(
+                "Telemetry Operations",
+                "next_shift",
+                f"{feed_name.capitalize()} feed freshness is degrading and needs attention.",
+                window=age,
+                action=f"Schedule telemetry checks to stabilise the {feed_name} feed before it stalls.",
+            )
+
+    weighted_conf = detection_quality.get("weighted_avg_confidence")
+    if isinstance(weighted_conf, (float, int)) and weighted_conf < 0.6:
+        severity = max(severity, 1)
+        _add_priority(
+            "Sensor Engineering",
+            "next_shift",
+            "Weighted detection confidence is degrading below 0.60.",
+            action="Partner with sensor engineering to uplift low-confidence detections.",
+        )
+
+    low_conf_classes = detection_quality.get("low_confidence_classes")
+    if isinstance(low_conf_classes, list) and low_conf_classes:
+        severity = max(severity, 1)
+        classes = ", ".join(sorted(set(str(cls) for cls in low_conf_classes)))
+        _add_priority(
+            "Sensor Engineering",
+            "next_shift",
+            f"Low-confidence detections detected for classes: {classes}.",
+            action="Calibrate affected sensors to restore confidence in highlighted classes.",
+        )
+
+    sparse_classes = detection_quality.get("sparse_class_coverage")
+    if isinstance(sparse_classes, list) and sparse_classes:
+        severity = max(severity, 1)
+        classes = ", ".join(sorted(set(str(cls) for cls in sparse_classes)))
+        _add_priority(
+            "Collection Planning",
+            "next_shift",
+            f"Detection coverage is sparse for classes: {classes}.",
+            action="Task collection planning to expand coverage for the sparse classes.",
+        )
+
+    gap_team_map = {
+        "prediction_coverage": "Model Operations",
+        "prediction_visibility": "Model Operations",
+        "detections_freshness": "Telemetry Operations",
+        "predictions_freshness": "Telemetry Operations",
+        "clusters_freshness": "Telemetry Operations",
+        "feedback_accuracy": "Analyst Enablement",
+        "cluster_scoring": "Data Science Ops",
+    }
+
+    for gap in gaps if isinstance(gaps, list) else []:
+        gap_name = str(gap.get("gap", ""))
+        team = gap_team_map.get(gap_name)
+        if not team:
+            continue
+        detail = str(gap.get("detail", "")) or "Gap detected."
+        severity = max(severity, 2 if gap.get("severity") == "critical" else 1)
+        urgency = "immediate" if gap.get("severity") == "critical" else "next_shift"
+        action = gap.get("recommended_action")
+        _add_priority(team, urgency, detail, action=action)
+
+    risk_level = str(health.get("risk_level", "")).lower()
+    if risk_level in {"high", "severe"}:
+        severity = max(severity, 2)
+        _add_priority(
+            "Incident Management",
+            "immediate",
+            f"Overall risk level is {risk_level} and warrants a coordinated response.",
+            action="Convene cross-functional leadership to manage the elevated risk.",
+        )
+    elif risk_level in {"elevated"}:
+        severity = max(severity, 1)
+        _add_priority(
+            "Incident Management",
+            "next_shift",
+            "Risk level is elevated and benefits from additional oversight.",
+            action="Assign an incident coordinator to monitor elevated risk conditions.",
+        )
+
+    if not priorities and severity == 0:
+        return {"status": "monitor"}
+
+    unique_priorities: List[Dict[str, Any]] = []
+    seen = set()
+    for entry in priorities:
+        key = (entry.get("team"), entry.get("reason"))
+        if key in seen:
+            continue
+        seen.add(key)
+        unique_priorities.append(entry)
+
+    priorities = unique_priorities
+    drivers = list(dict.fromkeys(drivers))
+    actions = list(dict.fromkeys(actions))
+
+    status = "monitor"
+    if severity >= 2:
+        status = "mobilise"
+    elif severity == 1:
+        status = "reinforce"
+
+    summary: Dict[str, Any] = {
+        "status": status,
+        "severity": severity,
+    }
+    if priorities:
+        summary["priorities"] = priorities
+        summary["teams"] = sorted({entry["team"] for entry in priorities})
+    if drivers:
+        summary["drivers"] = drivers
+    if actions:
+        summary["recommended_actions"] = actions
+
+    return summary
+
+
+def _derive_intelligence_gaps(brief: Dict[str, Any]) -> Optional[List[Dict[str, Any]]]:
+    """Highlight critical intelligence coverage or fidelity gaps.
+
+    The brief already aggregates numerous signals (tempo, freshness, posture,
+    health, etc.).  This helper scans those pre-computed blocks to surface
+    concrete gaps analysts should close quickly.  Each gap carries a severity
+    indicator and an optional remediation action that feeds back into the
+    consolidated recommendations list.
+    """
+
+    gaps: List[Dict[str, Any]] = []
+
+    def _add_gap(key: str, *, severity: str, detail: str, action: Optional[str] = None) -> None:
+        entry: Dict[str, Any] = {"gap": key, "severity": severity, "detail": detail}
+        if action:
+            entry["recommended_action"] = action
+        gaps.append(entry)
+
+    activity_summary = brief.get("activity_summary") or {}
+    detections = activity_summary.get("detections")
+    predictions = activity_summary.get("predictions")
+    coverage = activity_summary.get("prediction_coverage")
+
+    if isinstance(coverage, (float, int)):
+        if coverage < 0.4:
+            _add_gap(
+                "prediction_coverage",
+                severity="critical",
+                detail="Prediction coverage is critically low (below 40%).",
+                action="Escalate inference pipeline recovery to restore prediction coverage.",
+            )
+        elif coverage < 0.7:
+            _add_gap(
+                "prediction_coverage",
+                severity="major",
+                detail="Prediction coverage is drifting under 70%.",
+                action="Audit inference workloads to improve prediction throughput.",
+            )
+    elif isinstance(detections, (float, int)) and detections and not predictions:
+        _add_gap(
+            "prediction_visibility",
+            severity="major",
+            detail="Predictions are missing despite active detections.",
+            action="Verify prediction exports are enabled for the selected window.",
+        )
+
+    freshness = brief.get("data_freshness") or {}
+    feeds = freshness.get("feeds") if isinstance(freshness, dict) else {}
+    for feed_name, feed_info in (feeds or {}).items():
+        status = str(feed_info.get("status", "")).lower()
+        age = feed_info.get("age_minutes")
+        if status == "stale":
+            detail = (
+                f"{feed_name.capitalize()} feed is stale"
+                + (f" (~{age:.0f} minutes old)." if isinstance(age, (float, int)) else ".")
+            )
+            _add_gap(
+                f"{feed_name}_freshness",
+                severity="critical",
+                detail=detail,
+                action="Dispatch telemetry recovery for the stale data feed.",
+            )
+        elif status == "warning":
+            detail = (
+                f"{feed_name.capitalize()} feed freshness is degrading"
+                + (f" (~{age:.0f} minutes old)." if isinstance(age, (float, int)) else ".")
+            )
+            _add_gap(
+                f"{feed_name}_freshness",
+                severity="major",
+                detail=detail,
+                action="Investigate latency before the feed becomes stale.",
+            )
+        elif status == "unknown":
+            _add_gap(
+                f"{feed_name}_freshness",
+                severity="minor",
+                detail=f"Freshness for the {feed_name} feed is unknown.",
+            )
+
+    meta = brief.get("meta") or {}
+    feedback_accuracy = meta.get("feedback_accuracy")
+    if feedback_accuracy is None:
+        _add_gap(
+            "feedback_accuracy",
+            severity="major",
+            detail="Feedback accuracy telemetry is unavailable for this window.",
+            action="Resume feedback capture to restore analyst accuracy tracking.",
+        )
+    elif isinstance(feedback_accuracy, (float, int)):
+        if feedback_accuracy < 0.6:
+            _add_gap(
+                "feedback_accuracy",
+                severity="critical",
+                detail="Feedback accuracy is below 60%.",
+                action="Schedule immediate analyst calibration to lift accuracy.",
+            )
+        elif feedback_accuracy < 0.75:
+            _add_gap(
+                "feedback_accuracy",
+                severity="major",
+                detail="Feedback accuracy is trending below 75%.",
+                action="Plan refresher training to stabilise analyst accuracy.",
+            )
+
+    cluster_count = meta.get("cluster_count")
+    if isinstance(cluster_count, (int, float)) and cluster_count > 0 and not brief.get("cluster_threats"):
+        _add_gap(
+            "cluster_scoring",
+            severity="major",
+            detail="Movement clusters are present but threat scoring is unavailable.",
+            action="Validate the cluster scoring service is healthy.",
+        )
+
+    if not gaps:
+        return None
+
+    # Deduplicate gaps by (gap, detail) pairs in case heuristics overlap.
+    unique: List[Dict[str, Any]] = []
+    seen = set()
+    for gap in gaps:
+        key = (gap.get("gap"), gap.get("detail"))
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(gap)
+
+    return unique
+
+
+def _summarise_freshness(
+    *,
+    generated_at: datetime,
+    activity: Dict[str, Any],
+    clusters: Iterable[MutableMapping[str, Any]],
+    hours: int,
+) -> Optional[Dict[str, Any]]:
+    """Assess data freshness for key feeds and return actionable insights."""
+
+    feeds: List[Tuple[str, Optional[datetime]]] = [
+        ("detections", _latest_timestamp(activity.get("detections", []))),
+        ("predictions", _latest_timestamp(activity.get("predictions", []))),
+        ("clusters", _latest_timestamp(clusters)),
+    ]
+
+    if not any(ts for _, ts in feeds):
+        return None
+
+    window_minutes = hours * 60
+    warn_threshold = max(45.0, min(window_minutes * 0.5, 180.0))
+    stale_threshold = max(90.0, min(window_minutes * 0.75, 360.0))
+
+    summary: Dict[str, Any] = {"feeds": {}}
+    max_age: Optional[float] = None
+    stalest_feed: Optional[str] = None
+
+    for name, latest in feeds:
+        if latest is None:
+            summary["feeds"][name] = {"status": "unknown"}
+            continue
+        minutes_old = (generated_at - latest).total_seconds() / 60.0
+        minutes_old = max(0.0, round(minutes_old, 2))
+        status = _freshness_status(
+            minutes_old=minutes_old,
+            warn_threshold=warn_threshold,
+            stale_threshold=stale_threshold,
+        )
+        summary["feeds"][name] = {
+            "latest_timestamp": latest.isoformat().replace("+00:00", "Z"),
+            "age_minutes": minutes_old,
+            "status": status,
+        }
+        if max_age is None or minutes_old > max_age:
+            max_age = minutes_old
+            stalest_feed = name
+
+    if max_age is not None:
+        summary["worst_case_minutes"] = max_age
+    if stalest_feed is not None:
+        summary["stalest_feed"] = stalest_feed
+
+    return summary
+
+
+def _assess_activity(
+    activity: Dict[str, Any], *, hours: int, activity_limit: int
+) -> Optional[Dict[str, Any]]:
+    """Summarise operational tempo and data coverage for the brief."""
+
+    detections = activity.get("detections", []) if activity else []
+    predictions = activity.get("predictions", []) if activity else []
+
+    detection_count = len(detections)
+    prediction_count = len(predictions)
+    if detection_count == 0 and prediction_count == 0:
+        return None
+
+    summary: Dict[str, Any] = {
+        "detections": detection_count,
+        "predictions": prediction_count,
+        "detection_rate_per_hour": round(detection_count / float(hours), 2)
+        if hours
+        else None,
+    }
+
+    coverage_ratio: Optional[float] = None
+    if detection_count:
+        coverage_ratio = prediction_count / detection_count
+        summary["prediction_coverage"] = round(coverage_ratio, 2)
+
+    surge_threshold = max(math.ceil(activity_limit * 0.75), 6)
+    elevated_threshold = max(math.ceil(activity_limit * 0.4), 3)
+
+    if detection_count >= surge_threshold:
+        tempo = "surge"
+    elif detection_count >= elevated_threshold:
+        tempo = "elevated"
+    elif detection_count > 0:
+        tempo = "steady"
+    else:
+        tempo = "quiet"
+    summary["tempo"] = tempo
+
+    notes: List[str] = []
+    if coverage_ratio is not None:
+        if coverage_ratio < 0.5:
+            notes.append(
+                "Prediction coverage is below 50%; inference jobs may be stalled."
+            )
+        elif coverage_ratio < 0.75:
+            notes.append("Prediction coverage is drifting lower than usual.")
+
+    if tempo == "surge":
+        notes.append("Detections are hitting surge levels for the configured window.")
+    elif tempo == "elevated":
+        notes.append("Detections are elevated compared to the configured limit.")
+
+    if notes:
+        summary["notes"] = notes
+
+    return summary
+
+
+def _threat_level_rank(level: Optional[str]) -> int:
+    """Translate textual threat levels to a comparable severity score."""
+
+    mapping = {
+        "critical": 3,
+        "severe": 3,
+        "extreme": 3,
+        "high": 2,
+        "elevated": 1,
+        "medium": 1,
+        "moderate": 1,
+        "low": 0,
+    }
+    if level is None:
+        return 0
+    return mapping.get(level.lower(), 0)
+
+
+def _risk_level_rank(level: Optional[str]) -> int:
+    """Translate health risk levels into numeric severity."""
+
+    mapping = {
+        "severe": 4,
+        "critical": 4,
+        "high": 3,
+        "elevated": 2,
+        "guarded": 1,
+        "low": 1,
+        "minimal": 0,
+        "stable": 0,
+    }
+    if level is None:
+        return 0
+    return mapping.get(level.lower(), 0)
+
+
+def _derive_brief_health(brief: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Generate a holistic health snapshot for the intelligence brief."""
+
+    activity_summary = brief.get("activity_summary") or {}
+    meta = brief.get("meta") or {}
+    threats = brief.get("cluster_threats") or []
+    freshness = brief.get("data_freshness") or {}
+
+    if not any([activity_summary, meta, threats, freshness]):
+        return None
+
+    drivers: List[str] = []
+    risk_score = 0
+    confidence_score = 3  # 3 = high, 2 = moderate, 1 = low
+
+    tempo = (activity_summary.get("tempo") or "").lower()
+    if tempo == "surge":
+        risk_score += 2
+        drivers.append("Detections are surging against the configured limit.")
+    elif tempo == "elevated":
+        risk_score += 1
+        drivers.append("Detections remain elevated for this window.")
+
+    coverage = activity_summary.get("prediction_coverage")
+    if isinstance(coverage, (float, int)) and coverage < 0.5:
+        risk_score += 1
+        confidence_score = min(confidence_score, 2)
+        drivers.append("Prediction coverage is degraded below 50%.")
+
+    threat_level = None
+    if threats:
+        threat = max(threats, key=lambda c: _threat_level_rank(c.get("threat_level")))
+        threat_level = threat.get("threat_level")
+        rank = _threat_level_rank(threat_level)
+        if rank >= 2:
+            risk_score += rank
+            drivers.append(
+                "Highest cluster threat is flagged as high or above."
+            )
+        elif rank == 1:
+            risk_score += 1
+            drivers.append("Cluster threat levels are moderate within the window.")
+
+    feeds = freshness.get("feeds") or {}
+    feed_statuses = [str(info.get("status", "unknown")).lower() for info in feeds.values()]
+    stale_count = feed_statuses.count("stale")
+    warn_count = feed_statuses.count("warning")
+
+    if stale_count:
+        risk_score += 2
+        confidence_score = 1
+        drivers.append("One or more data feeds are stale.")
+    elif warn_count:
+        risk_score += 1
+        confidence_score = min(confidence_score, 2)
+        drivers.append("Data freshness is degrading toward stale thresholds.")
+
+    feedback_accuracy = meta.get("feedback_accuracy")
+    if isinstance(feedback_accuracy, (float, int)):
+        if feedback_accuracy < 0.6:
+            confidence_score = 1
+            drivers.append("Operator feedback accuracy is critically low.")
+        elif feedback_accuracy < 0.75:
+            confidence_score = min(confidence_score, 2)
+            drivers.append("Feedback accuracy is trending below target levels.")
+
+    confidence_map = {3: "high", 2: "moderate", 1: "low"}
+    confidence = confidence_map.get(max(min(confidence_score, 3), 1), "moderate")
+
+    if risk_score >= 5:
+        risk_level = "severe"
+    elif risk_score >= 3:
+        risk_level = "high"
+    elif risk_score >= 1:
+        risk_level = "elevated"
+    else:
+        risk_level = "guarded"
+
+    summary_parts = [
+        f"Operational risk assessed as {risk_level}.",
+        f"Confidence in the brief is {confidence}.",
+    ]
+    summary = " ".join(summary_parts) if summary_parts else None
+
+    recommended_actions: List[str] = []
+    if risk_level in {"severe", "high"}:
+        recommended_actions.append(
+            "Coordinate immediate response options with the duty officer."
+        )
+    if confidence == "low":
+        recommended_actions.append(
+            "Prioritise restoration of telemetry feeds and analyst validation."
+        )
+
+    health_payload: Dict[str, Any] = {
+        "risk_level": risk_level,
+        "confidence": confidence,
+        "drivers": drivers,
+    }
+    if summary:
+        health_payload["summary"] = summary.strip()
+    if recommended_actions:
+        health_payload["recommended_actions"] = recommended_actions
+    if threat_level:
+        health_payload["highest_threat_level"] = threat_level
+
+    return health_payload
+
+
+def _derive_operational_posture(brief: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Summarise the recommended operational posture for the duty team."""
+
+    health = brief.get("health") or {}
+    activity_summary = brief.get("activity_summary") or {}
+    freshness = brief.get("data_freshness") or {}
+    threats = brief.get("cluster_threats") or []
+
+    if not any([health, activity_summary, freshness, threats]):
+        return None
+
+    risk_level = health.get("risk_level")
+    risk_rank = _risk_level_rank(risk_level)
+
+    feeds = freshness.get("feeds") if isinstance(freshness, dict) else {}
+    stale_feeds: List[str] = []
+    warning_feeds: List[str] = []
+    for feed_name, info in (feeds or {}).items():
+        status = str(info.get("status", "")).lower()
+        if status == "stale":
+            stale_feeds.append(feed_name)
+        elif status == "warning":
+            warning_feeds.append(feed_name)
+
+    tempo = str(activity_summary.get("tempo", "")).lower()
+    coverage = activity_summary.get("prediction_coverage")
+
+    highest_threat_level: Optional[str] = None
+    if threats:
+        top_cluster = max(threats, key=lambda c: _threat_level_rank(c.get("threat_level")))
+        highest_threat_level = top_cluster.get("threat_level")
+
+    status = "monitor"
+    focus = "Maintain situational awareness with routine coverage."
+    horizon_hours = 12.0
+    drivers: List[str] = []
+
+    if stale_feeds:
+        status = "recover"
+        focus = "Restore telemetry coverage for stale feeds to regain confidence."
+        horizon_hours = 1.0
+        drivers.append(f"Stale feeds detected: {', '.join(sorted(stale_feeds))}.")
+    elif risk_rank >= 4:
+        status = "stabilise"
+        focus = "Coordinate immediate response actions with leadership oversight."
+        horizon_hours = 2.0
+        drivers.append("Risk level is assessed as severe.")
+    elif risk_rank == 3:
+        status = "stabilise"
+        focus = "Escalate to leadership and ready contingency assets."
+        horizon_hours = 4.0
+        drivers.append("Risk level is high.")
+    elif risk_rank == 2:
+        status = "reinforce"
+        focus = "Reinforce monitoring teams and pre-stage rapid response options."
+        horizon_hours = 6.0
+        drivers.append("Risk level is elevated.")
+
+    if tempo in {"surge", "elevated"}:
+        if status == "monitor":
+            status = "reinforce"
+            focus = "Sustain elevated watch rotations due to heightened tempo."
+            horizon_hours = min(horizon_hours, 6.0)
+        drivers.append(f"Operational tempo registered as {tempo}.")
+
+    if isinstance(coverage, (float, int)) and coverage < 0.5:
+        drivers.append("Prediction coverage is degraded below 50%.")
+
+    if highest_threat_level and _threat_level_rank(highest_threat_level) >= 2:
+        if status == "monitor":
+            status = "reinforce"
+            focus = "Maintain readiness for high-threat cluster escalation."
+            horizon_hours = min(horizon_hours, 4.0)
+        drivers.append(f"Highest cluster threat level is {highest_threat_level}.")
+
+    if warning_feeds and status != "recover":
+        drivers.append(f"Feeds trending stale: {', '.join(sorted(warning_feeds))}.")
+        if status == "monitor":
+            focus = "Address telemetry drift while maintaining baseline watch."
+            horizon_hours = min(horizon_hours, 8.0)
+
+    drivers = list(dict.fromkeys(drivers))
+
+    posture: Dict[str, Any] = {
+        "status": status,
+        "focus": focus,
+        "horizon_hours": round(horizon_hours, 2),
+        "confidence": health.get("confidence", "moderate"),
+    }
+    if drivers:
+        posture["drivers"] = drivers
+    if highest_threat_level:
+        posture["highest_threat_level"] = highest_threat_level
+    if risk_level:
+        posture["risk_level"] = risk_level
+
+    return posture
+
+
+def _derive_response_readiness(brief: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Recommend staffing and readiness actions for operational support teams."""
+
+    health = brief.get("health") or {}
+    posture = brief.get("operational_posture") or {}
+    freshness = brief.get("data_freshness") or {}
+    activity_summary = brief.get("activity_summary") or {}
+    meta = brief.get("meta") or {}
+
+    if not any([health, posture, freshness, activity_summary, meta]):
+        return None
+
+    drivers: List[str] = []
+    actions: List[str] = []
+
+    severity = 0  # 0 steady, 1 strained, 2 critical
+
+    posture_status = str(posture.get("status", "")).lower()
+    if posture_status == "recover":
+        severity = max(severity, 2)
+        drivers.append("Operational posture is set to telemetry recovery.")
+    elif posture_status in {"stabilise", "reinforce"}:
+        severity = max(severity, 1)
+        focus = posture.get("focus")
+        if focus:
+            drivers.append(f"Posture guidance: {focus}")
+
+    risk_level = health.get("risk_level")
+    risk_rank = _risk_level_rank(risk_level)
+    if risk_rank >= 4:
+        severity = 2
+        drivers.append("Health assessment marks risk as severe.")
+    elif risk_rank >= 3:
+        severity = max(severity, 2)
+        drivers.append("Risk level is high requiring rapid coordination.")
+    elif risk_rank >= 2:
+        severity = max(severity, 1)
+        drivers.append("Risk is elevated and needs reinforced coverage.")
+
+    feeds = freshness.get("feeds") if isinstance(freshness, dict) else {}
+    feed_statuses = [str(info.get("status", "")).lower() for info in (feeds or {}).values()]
+    stale_count = feed_statuses.count("stale")
+    warn_count = feed_statuses.count("warning")
+    if stale_count:
+        severity = 2
+        drivers.append("One or more telemetry feeds are stale.")
+        actions.append("Assign engineers to restore stale telemetry immediately.")
+    elif warn_count:
+        severity = max(severity, 1)
+        drivers.append("Telemetry freshness is degrading toward stale thresholds.")
+
+    tempo = str(activity_summary.get("tempo", "")).lower()
+    if tempo == "surge":
+        severity = max(severity, 2)
+        drivers.append("Operational tempo is surging within the window.")
+    elif tempo == "elevated":
+        severity = max(severity, 1)
+        drivers.append("Operational tempo remains elevated.")
+
+    coverage = activity_summary.get("prediction_coverage")
+    if isinstance(coverage, (float, int)) and coverage < 0.5:
+        severity = max(severity, 1)
+        drivers.append("Prediction coverage is degraded below 50%.")
+        actions.append("Review inference pipeline capacity to raise coverage.")
+
+    feedback_accuracy = meta.get("feedback_accuracy")
+    if isinstance(feedback_accuracy, (float, int)):
+        if feedback_accuracy < 0.6:
+            severity = 2
+            drivers.append("Feedback accuracy is critically low.")
+            actions.append("Schedule immediate analyst feedback calibration.")
+        elif feedback_accuracy < 0.75:
+            severity = max(severity, 1)
+            drivers.append("Feedback accuracy is trending below target levels.")
+
+    cluster_count = meta.get("cluster_count")
+    if isinstance(cluster_count, (float, int)):
+        if cluster_count >= 25:
+            severity = 2
+            drivers.append("High volume of active movement clusters detected.")
+        elif cluster_count >= 10:
+            severity = max(severity, 1)
+            drivers.append("Movement cluster load is elevated.")
+
+    severity = max(0, min(severity, 2))
+    if severity == 2:
+        level = "critical"
+        recommended_staffing = 6
+        support_window = 2.0
+        actions.append("Stage rapid response teams and leadership liaisons.")
+    elif severity == 1:
+        level = "strained"
+        recommended_staffing = 4
+        support_window = 4.0
+        actions.append("Extend watch rotations and brief standby responders.")
+    else:
+        level = "steady"
+        recommended_staffing = 2
+        support_window = 8.0
+
+    posture_horizon = posture.get("horizon_hours")
+    if isinstance(posture_horizon, (float, int)) and posture_horizon > 0:
+        support_window = min(support_window, float(posture_horizon))
+
+    drivers = list(dict.fromkeys(drivers))
+    actions = list(dict.fromkeys(actions))
+
+    readiness: Dict[str, Any] = {
+        "level": level,
+        "recommended_staffing": recommended_staffing,
+        "support_window_hours": round(support_window, 2),
+    }
+    if drivers:
+        readiness["drivers"] = drivers
+    if actions:
+        readiness["priority_actions"] = actions
+    if risk_level:
+        readiness["risk_level"] = risk_level
+    if tempo:
+        readiness["tempo"] = tempo
+
+    return readiness
+
+
+def gather_intelligence_brief(
+    *,
+    area: Optional[str] = None,
+    hours: int = 24,
+    activity_limit: int = 20,
+) -> Dict[str, Any]:
+    """Return a consolidated intelligence brief.
+
+    Parameters
+    ----------
+    area:
+        Restrict the report to a particular operational area when provided.
+    hours:
+        Look-back window for time-bounded metrics such as detection summaries
+        and cluster scoring.
+    activity_limit:
+        Maximum number of raw detection/prediction records to include.
+    """
+
+    if hours <= 0:
+        raise ValueError("hours must be a positive integer")
+    if activity_limit <= 0:
+        raise ValueError("activity_limit must be a positive integer")
+
+    normalized_area = area.strip() if area else None
+    if normalized_area == "":
+        normalized_area = None
+
+    generated_at = _utcnow()
+    brief: Dict[str, Any] = {
+        "generated_at": generated_at.isoformat().replace("+00:00", "Z"),
+        "area": normalized_area,
+        "errors": [],
+    }
+
+    # Meta overview (detection counts, feedback accuracy, cluster count)
+    try:
+        meta = meta_analysis(hours=hours)
+        brief["meta"] = meta
+        if meta.get("detections"):
+            top_cls, stats = max(
+                meta["detections"].items(),
+                key=lambda item: item[1].get("count", 0),
+            )
+            brief.setdefault("insights", {})["top_detection_class"] = {
+                "class": top_cls,
+                **stats,
+            }
+        if meta.get("feedback_accuracy") is not None and meta["feedback_accuracy"] < 0.75:
+            _append_recommendation(
+                brief,
+                "Feedback accuracy is trending low; schedule a targeted review session.",
+            )
+        quality = _analyse_detection_quality(meta)
+        if quality:
+            brief["detection_quality"] = quality
+            detection_insight: Dict[str, Any] = {
+                key: value
+                for key, value in quality.items()
+                if key in {"weighted_avg_confidence", "low_confidence_classes", "active_class_ratio"}
+            }
+            if detection_insight:
+                brief.setdefault("insights", {})["detection_quality"] = detection_insight
+            low_conf = quality.get("low_confidence_classes", [])
+            if low_conf:
+                joined = ", ".join(low_conf)
+                _append_recommendation(
+                    brief,
+                    f"Low detection confidence flagged for classes: {joined}. Calibrate the associated sensors.",
+                )
+            sparse = quality.get("sparse_class_coverage", [])
+            if sparse:
+                joined = ", ".join(sparse)
+                _append_recommendation(
+                    brief,
+                    f"Detection coverage is sparse for classes: {joined}. Review collection plans to balance coverage.",
+                )
+            for note in quality.get("notes", []):
+                _append_recommendation(brief, note)
+    except (PyMongoError, ConnectionError, OSError) as exc:
+        brief["errors"].append(f"Meta analysis unavailable: {exc}")
+    except Exception as exc:  # pragma: no cover - defensive catch
+        brief["errors"].append(f"Meta analysis failed: {exc}")
+
+    # Recent detections and predictions
+    activity: Dict[str, Any] = {}
+    try:
+        if normalized_area:
+            activity["detections"] = [
+                _normalize_document(doc)
+                for doc in recent_detections(normalized_area, limit=activity_limit)
+            ]
+            activity["predictions"] = [
+                _normalize_document(doc)
+                for doc in recent_predictions(normalized_area, limit=activity_limit)
+            ]
+        else:
+            activity["detections"] = _recent_documents(
+                "detections", hours=hours, limit=activity_limit
+            )
+            activity["predictions"] = _recent_documents(
+                "predictions", hours=hours, limit=activity_limit
+            )
+    except (PyMongoError, ConnectionError, OSError) as exc:
+        brief["errors"].append(f"Failed to load recent activity: {exc}")
+    except Exception as exc:  # pragma: no cover - defensive catch
+        brief["errors"].append(f"Unexpected activity error: {exc}")
+    if activity:
+        brief["recent_activity"] = activity
+        if activity.get("detections") and not activity.get("predictions"):
+            _append_recommendation(
+                brief,
+                "Predictions are unavailable for the selected scope; verify the inference pipeline.",
+            )
+        summary = _assess_activity(activity, hours=hours, activity_limit=activity_limit)
+        if summary:
+            brief["activity_summary"] = summary
+            brief.setdefault("insights", {})["operational_tempo"] = {
+                key: value
+                for key, value in summary.items()
+                if key in {"tempo", "prediction_coverage", "detections", "predictions"}
+            }
+            for note in summary.get("notes", []):
+                _append_recommendation(brief, note)
+
+    # Threat scoring from movement clusters
+    cluster_docs: List[Dict[str, Any]] = []
+    try:
+        clusters = _recent_clusters(hours=hours, area=normalized_area)
+        cluster_docs = clusters
+        if clusters:
+            scored = score_clusters(clusters)
+            brief["cluster_threats"] = scored
+            highest = max(scored, key=lambda c: c.get("threat_score", 0))
+            brief.setdefault("insights", {})["highest_threat_cluster"] = {
+                "threat_level": highest.get("threat_level"),
+                "threat_score": highest.get("threat_score"),
+                "nearest_site": highest.get("nearest_site"),
+                "eta_minutes": highest.get("eta_minutes"),
+            }
+            if any(c.get("threat_level") in {"high", "critical"} for c in scored):
+                _append_recommendation(
+                    brief,
+                    "Escalate monitoring on clusters flagged as high or critical threat levels.",
+                )
+        else:
+            brief.setdefault("insights", {})["highest_threat_cluster"] = None
+    except (PyMongoError, ConnectionError, OSError) as exc:
+        brief["errors"].append(f"Threat assessment unavailable: {exc}")
+    except Exception as exc:  # pragma: no cover - defensive catch
+        brief["errors"].append(f"Threat assessment failed: {exc}")
+
+    freshness = _summarise_freshness(
+        generated_at=generated_at,
+        activity=activity,
+        clusters=cluster_docs,
+        hours=hours,
+    )
+    if freshness:
+        brief["data_freshness"] = freshness
+        feeds = freshness.get("feeds", {})
+        for feed_name, feed_info in feeds.items():
+            status = feed_info.get("status")
+            if status == "warning":
+                _append_recommendation(
+                    brief,
+                    f"{feed_name.capitalize()} feed is getting stale; investigate pipeline latency.",
+                )
+            elif status == "stale":
+                _append_recommendation(
+                    brief,
+                    f"{feed_name.capitalize()} feed is stale; prioritise data ingestion recovery.",
+                )
+        if freshness.get("stalest_feed"):
+            brief.setdefault("insights", {})["data_freshness"] = {
+                "stalest_feed": freshness["stalest_feed"],
+                "worst_case_minutes": freshness.get("worst_case_minutes"),
+            }
+
+    health = _derive_brief_health(brief)
+    if health:
+        brief["health"] = health
+        for action in health.get("recommended_actions", []):
+            _append_recommendation(brief, action)
+
+    posture = _derive_operational_posture(brief)
+    if posture:
+        brief["operational_posture"] = posture
+        brief.setdefault("insights", {})["operational_posture"] = {
+            "status": posture.get("status"),
+            "focus": posture.get("focus"),
+            "horizon_hours": posture.get("horizon_hours"),
+        }
+        status = posture.get("status")
+        if status == "recover":
+            _append_recommendation(
+                brief,
+                "Assign a telemetry recovery lead to restore degraded feeds within the hour.",
+            )
+        elif status == "stabilise":
+            _append_recommendation(
+                brief,
+                "Ensure command staff are briefed on the stabilisation posture and response plans.",
+            )
+        elif status == "reinforce":
+            _append_recommendation(
+                brief,
+                "Extend analyst coverage to manage the elevated operational tempo.",
+            )
+
+    readiness = _derive_response_readiness(brief)
+    if readiness:
+        brief["response_readiness"] = readiness
+        brief.setdefault("insights", {})["response_readiness"] = {
+            "level": readiness.get("level"),
+            "recommended_staffing": readiness.get("recommended_staffing"),
+            "support_window_hours": readiness.get("support_window_hours"),
+        }
+        for action in readiness.get("priority_actions", []):
+            _append_recommendation(brief, action)
+
+    pressure = _derive_response_pressure(brief)
+    if pressure:
+        brief["response_pressure"] = pressure
+        brief.setdefault("insights", {})["response_pressure"] = {
+            "status": pressure.get("status"),
+            "pending_predictions": pressure.get("pending_predictions"),
+            "unmatched_detections": pressure.get("unmatched_detections"),
+            "severity": pressure.get("severity"),
+        }
+        for action in pressure.get("recommended_actions", []):
+            _append_recommendation(brief, action)
+
+    gaps = _derive_intelligence_gaps(brief)
+    if gaps:
+        brief["intelligence_gaps"] = gaps
+        critical = sum(1 for gap in gaps if gap.get("severity") == "critical")
+        major = sum(1 for gap in gaps if gap.get("severity") == "major")
+        brief.setdefault("insights", {})["intelligence_gaps"] = {
+            "total": len(gaps),
+            "critical": critical,
+            "major": major,
+        }
+        for gap in gaps:
+            action = gap.get("recommended_action")
+            if action:
+                _append_recommendation(brief, action)
+
+    support = _derive_support_priorities(brief)
+    if support:
+        brief["support_priorities"] = support
+        brief.setdefault("insights", {})["support_priorities"] = {
+            "status": support.get("status"),
+            "priority_count": len(support.get("priorities", [])),
+        }
+        for action in support.get("recommended_actions", []):
+            _append_recommendation(brief, action)
+
+    if not brief.get("recommendations") and not brief.get("errors"):
+        brief["recommendations"] = [
+            "Continue routine monitoring; no immediate anomalies detected in the selected window."
+        ]
+
+    return brief
+
+
+__all__ = ["gather_intelligence_brief"]
