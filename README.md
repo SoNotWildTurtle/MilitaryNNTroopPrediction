@@ -90,6 +90,124 @@ python -m app.cli.space_identification ru_troops_kherson
 
 Items are stored in a CSV catalog so operators can sort them by classifier and review model confidence. The `pseudo_labeler` automatically registers each labeled image with its score.
 
+### Intelligence brief
+
+Generate a consolidated situational report that merges detection metrics, cluster
+threat scoring and recent model activity:
+
+```bash
+python -m app.cli.intel_brief --area donetsk --hours 12
+```
+
+Use `--limit` to cap how many raw records each section includes and `--raw` to
+output the JSON payload instead of the formatted Rich tables. Inputs must be
+positive integers; invalid values abort with a helpful error message. When no
+area is provided, the brief aggregates detections and predictions across all
+tracked sectors.
+
+The same payload is available through the API for dashboards or external
+systems:
+
+```http
+GET /intel/brief?area=donetsk&hours=12&limit=25
+```
+
+Hours and limits are validated by FastAPI, returning `400` if the request is
+outside the supported range.
+
+Alongside raw counts, the brief now inspects **detection quality**. It computes
+the weighted average confidence across active classes, highlights any labels
+with sub-0.55 confidence, and calls out classes that only appear sparsely in
+the window or are missing confidence telemetry. Those classes are promoted into
+the recommendation list so sensor calibrations and collection plans can be
+triaged before they produce blind spots. The detection quality metrics are
+exposed through the CLI tables and the `insights` payload so dashboards can
+track confidence drift over time.
+
+The briefing payload also contains an **operational tempo** section that
+summarises raw activity volumes, detection rates per hour and the prediction
+coverage ratio so analysts can see whether inference pipelines are keeping pace
+with detections. Surge conditions automatically surface as recommendations in
+both the CLI and API responses, alongside warnings when less than half of recent
+detections received predictions.
+
+To support bughunting and pipeline triage, the payload now tracks **data
+freshness** for detections, predictions and cluster scoring feeds. Each feed
+reports the latest timestamp observed, how many minutes old it is relative to
+the generated brief, and whether the stream is *fresh*, approaching a latency
+warning, or fully *stale*. The stalest feed is highlighted so analysts can jump
+straight to the failing ingestion job, and stale feeds automatically trigger
+recovery recommendations in the CLI output.
+
+The consolidated brief also publishes a **health assessment** that fuses
+operational tempo, threat scores, data freshness and feedback accuracy into a
+single risk indicator. Analysts receive a concise summary of the current risk
+band, confidence level, and the drivers pushing the rating higher or lower.
+When the risk climbs to *high* or *severe*, the brief automatically surfaces
+response playbook prompts, while low confidence highlights data recovery tasks
+to restore telemetry fidelity before decision-making.
+
+Building on the health score, the brief derives an **operational posture** so
+watch officers immediately know the stance to adopt for the next shift. The
+posture blends risk level, tempo, telemetry freshness and high-threat clusters
+to highlight whether teams should *monitor*, *reinforce*, *stabilise*, or
+*recover*. Each summary includes the focus for the next planning horizon,
+confidence inherited from the health snapshot, and the key drivers that triggered
+the recommendation, keeping command and intelligence sections aligned on the
+response cadence.
+
+To translate those insights into staffing plans, the payload now includes a
+**response readiness** block. It fuses posture, risk, telemetry freshness,
+feedback accuracy and cluster load to recommend how many personnel to schedule
+on the next shift, how long heightened coverage should persist, and which
+immediate actions to prioritise (telemetry recovery, analyst calibration, rapid
+response staging). The CLI renders the readiness table with drivers and priority
+actions, and the API exposes the same recommendations for orchestration systems
+that need to scale watch rotations automatically.
+
+Analyst workload can also bottleneck decision-making, so the brief introduces an
+**analyst response pressure** synthesis. It compares recent detections and
+predictions, folds in detection confidence, feedback accuracy, and current
+readiness levels, then reports whether the prediction queue is balanced,
+building, or in a critical backlog. The block calculates pending predictions,
+unmatched detections, and an estimated clearance horizon so shift leads know how
+quickly to surge staffing. When the workload spikes, the brief publishes the
+drivers, queues targeted remediation actions (triage the backlog, regenerate
+predictions, calibrate feedback), and surfaces a compact insight so dashboards
+can visualise pressure alongside posture and readiness trends.
+
+Coordinating the recovery often demands help from multiple teams, so the brief
+now emits a **support priorities** queue. It fuses readiness, posture, pressure,
+freshness, detection quality, and intelligence gap signals to list which teams
+need to mobilise (telemetry, model operations, sensor engineering, command
+liaisons, analyst enablement) and how urgent their intervention is. Each row
+captures the driver, an optional support window, and concrete follow-up actions
+so watch officers can immediately page the right specialists. The summary rolls
+up into the `insights` payload and renders in the CLI for quick situational
+awareness during shift changeovers.
+
+Confidence in the telemetry is just as important as staffing. The brief now
+publishes an **intelligence confidence index** that blends feedback accuracy,
+detection quality, telemetry freshness, open intelligence gaps, and the health
+assessment into a single score. The block exposes the confidence level, score,
+and supporting components (weighted confidence, active class ratio, stale or
+warning feeds, unresolved gaps) so analysts can trace exactly why trust dipped.
+Drivers and recommended actions cascade into the global recommendations list
+and render in the CLI, helping teams prioritise telemetry recovery, calibration
+cycles, or incident coordination before decision quality erodes.
+
+To keep teams focused on the most pressing blind spots, the brief highlights an
+**intelligence gaps** table. It inspects the existing tempo, freshness, and
+meta-analysis blocks to flag when prediction coverage collapses, telemetry
+feeds go stale, feedback accuracy disappears, or cluster scoring falls behind.
+Each row carries a severity badge and an optional remediation task, and the
+counts are summarised under the `insights` payload so downstream dashboards can
+plot the outstanding critical gaps alongside posture and readiness metrics.
+
+> **Tip:** FastAPI powers both the REST interface and the regression tests. Run
+> `bash scripts/setup.sh` (or `pip install fastapi uvicorn`) before `pytest` so
+> the API tests execute instead of being skipped in minimal environments.
+
 ### SMS & email alerts
 
 Configure Twilio credentials in your environment or `.env` file to enable SMS notifications from the dashboard:
