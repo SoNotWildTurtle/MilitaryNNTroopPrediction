@@ -646,6 +646,59 @@ def _render_contingency_plans(plan: Optional[Dict[str, Any]]) -> None:
             console.print(f"- {action}")
 
 
+def _render_resource_sustainment(plan: Optional[Dict[str, Any]]) -> None:
+    if not plan:
+        return
+
+    console.print(_t("Resource sustainment"), style="bold")
+
+    status = str(plan.get("status", "balanced"))
+    severity = plan.get("severity")
+    line = f"{_t('Status')}: {status.replace('_', ' ').title()}"
+    if isinstance(severity, (int, float)):
+        line += f" ({_t('Severity')}: {int(severity)})"
+    window = plan.get("resupply_window_hours")
+    if isinstance(window, (int, float)):
+        line += f" • {_t('Resupply window')}: {float(window):.1f} {_t('hours')}"
+    console.print(line)
+
+    needs = plan.get("resource_needs")
+    if isinstance(needs, list) and needs:
+        console.print(_t("Resource needs:"), style="bold")
+        for need in needs:
+            console.print(f"- {need}")
+
+    allocation = plan.get("allocation_plan")
+    if isinstance(allocation, list) and allocation:
+        table = Table(title=_t("Allocation plan"))
+        table.add_column(_t("Resource"))
+        table.add_column(_t("Priority"))
+        table.add_column(_t("Focus"))
+        table.add_column(_t("Quantity"), justify="right")
+        table.add_column(_t("Window (hr)"), justify="right")
+        for entry in allocation:
+            quantity = entry.get("quantity")
+            window_value = entry.get("window_hours")
+            table.add_row(
+                str(entry.get("resource", "-")),
+                str(entry.get("priority", "-")),
+                str(entry.get("focus", "-")),
+                str(int(quantity)) if isinstance(quantity, (int, float)) else "-",
+                f"{float(window_value):.1f}" if isinstance(window_value, (int, float)) else "-",
+            )
+        console.print(table)
+
+    if plan.get("drivers"):
+        console.print(_t("Drivers:"), style="bold")
+        for driver in plan["drivers"]:
+            console.print(f"- {driver}")
+
+    if plan.get("recommended_actions"):
+        console.print(_t("Sustainment actions:"), style="bold")
+        for action in plan["recommended_actions"]:
+            console.print(f"- {action}")
+
+
 def _render_communication_plan(plan: Optional[Dict[str, Any]]) -> None:
     if not plan:
         return
@@ -753,6 +806,8 @@ def main(area: Optional[str], hours: int, limit: int, raw: bool) -> None:
         _render_contingency_plans(brief["contingency_plans"])
     if brief.get("communication_plan"):
         _render_communication_plan(brief["communication_plan"])
+    if brief.get("resource_sustainment"):
+        _render_resource_sustainment(brief["resource_sustainment"])
     if brief.get("intelligence_gaps"):
         _render_intelligence_gaps(brief["intelligence_gaps"])
     if brief.get("insights"):

@@ -1905,6 +1905,420 @@ def _derive_contingency_plans(brief: Dict[str, Any]) -> Optional[Dict[str, Any]]
     return payload if payload else None
 
 
+def _derive_resource_sustainment(brief: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Translate posture and support analytics into a resource sustainment plan."""
+
+    readiness = brief.get("response_readiness") or {}
+    pressure = brief.get("response_pressure") or {}
+    support = brief.get("support_priorities") or {}
+    freshness = brief.get("data_freshness") or {}
+    gaps = brief.get("intelligence_gaps") or []
+    outlook = brief.get("operational_outlook") or {}
+    directives = brief.get("command_directives") or {}
+    contingency = brief.get("contingency_plans") or {}
+    communication = brief.get("communication_plan") or {}
+    health = brief.get("health") or {}
+    detection_quality = brief.get("detection_quality") or {}
+    meta = brief.get("meta") or {}
+    activity = brief.get("activity_summary") or {}
+
+    if not any(
+        [
+            readiness,
+            pressure,
+            support,
+            freshness,
+            gaps,
+            outlook,
+            directives,
+            contingency,
+            communication,
+            health,
+            detection_quality,
+            meta,
+            activity,
+        ]
+    ):
+        return None
+
+    severity = 0
+    drivers: List[str] = []
+    actions: List[str] = []
+    resource_needs: List[str] = []
+    allocation: List[Dict[str, Any]] = []
+    window_candidates: List[float] = []
+
+    def _add_driver(message: str) -> None:
+        if message:
+            drivers.append(message)
+
+    def _add_action(message: str) -> None:
+        if message:
+            actions.append(message)
+
+    def _add_need(label: str) -> None:
+        if label:
+            resource_needs.append(label)
+
+    def _register_window(value: Optional[float]) -> None:
+        if isinstance(value, (float, int)) and value > 0:
+            window_candidates.append(float(value))
+
+    def _register_minutes(minutes: Optional[float]) -> Optional[float]:
+        if isinstance(minutes, (float, int)) and minutes > 0:
+            hours_value = float(minutes) / 60.0
+            window_candidates.append(hours_value)
+            return hours_value
+        return None
+
+    def _add_allocation(
+        resource: str,
+        priority: str,
+        focus: str,
+        *,
+        quantity: Optional[float] = None,
+        window: Optional[float] = None,
+    ) -> None:
+        if not resource or not focus:
+            return
+        entry: Dict[str, Any] = {
+            "resource": resource,
+            "priority": priority,
+            "focus": focus,
+        }
+        if isinstance(quantity, (float, int)) and quantity > 0:
+            entry["quantity"] = int(math.ceil(float(quantity)))
+        if isinstance(window, (float, int)) and window > 0:
+            entry["window_hours"] = round(float(window), 2)
+        allocation.append(entry)
+
+    readiness_level = str(readiness.get("level", "")).lower()
+    support_window = readiness.get("support_window_hours")
+    _register_window(support_window if isinstance(support_window, (float, int)) else None)
+    recommended_staffing = readiness.get("recommended_staffing")
+    if readiness_level == "critical":
+        severity += 8
+        _add_driver("Response readiness is critical and requires immediate staffing.")
+        _add_need("Surge analyst coverage")
+        _add_action("Mobilise reserve analysts to restore readiness coverage.")
+        _add_allocation(
+            "Analyst surge team",
+            "immediate",
+            "Restore readiness coverage",
+            quantity=recommended_staffing,
+            window=support_window if isinstance(support_window, (float, int)) else None,
+        )
+    elif readiness_level == "strained":
+        severity += 4
+        _add_driver("Response readiness is strained and needs reinforcement.")
+        _add_need("Staffing reinforcement")
+        _add_action("Schedule relief analysts to stabilise strained readiness.")
+        _add_allocation(
+            "Shift relief analysts",
+            "next_shift",
+            "Stabilise readiness levels",
+            quantity=recommended_staffing,
+            window=support_window if isinstance(support_window, (float, int)) else None,
+        )
+    elif isinstance(recommended_staffing, (float, int)) and recommended_staffing > 4:
+        severity += 2
+        _add_driver("Elevated staffing recommendations indicate heavier coverage requirements.")
+        _add_need("Extended analyst coverage")
+        _add_allocation(
+            "Analyst coverage",
+            "next_shift",
+            "Sustain elevated staffing",
+            quantity=recommended_staffing,
+            window=support_window if isinstance(support_window, (float, int)) else None,
+        )
+
+    pressure_status = str(pressure.get("status", "")).lower()
+    backlog = pressure.get("pending_predictions")
+    unmatched = pressure.get("unmatched_detections")
+    clearance = pressure.get("estimated_clearance_hours")
+    _register_window(clearance if isinstance(clearance, (float, int)) else None)
+    if pressure_status == "critical_backlog":
+        severity += 6
+        _add_driver("Analyst response pressure is in critical backlog status.")
+        _add_need("Backlog triage cell")
+        _add_action("Deploy surge analysts to clear the critical prediction backlog.")
+        _add_allocation(
+            "Backlog triage team",
+            "immediate",
+            "Clear prediction backlog",
+            quantity=backlog,
+            window=clearance if isinstance(clearance, (float, int)) else None,
+        )
+    elif pressure_status in {"backlog", "prediction_gap"}:
+        severity += 4
+        if pressure_status == "backlog":
+            _add_driver("Analyst queue is building as predictions outpace detections.")
+            _add_need("Analyst backlog relief")
+            _add_action("Schedule additional analysts to work through the prediction backlog.")
+            _add_allocation(
+                "Prediction triage",
+                "next_shift",
+                "Work down prediction backlog",
+                quantity=backlog,
+                window=clearance if isinstance(clearance, (float, int)) else None,
+            )
+        else:
+            _add_driver("Detections are outpacing predictions signalling modelling gaps.")
+            _add_need("Model support surge")
+            _add_action("Coordinate with modelling teams to regenerate predictions for unmatched detections.")
+            _add_allocation(
+                "Model operations",
+                "immediate",
+                "Regenerate predictions for unmatched detections",
+                quantity=unmatched,
+                window=clearance if isinstance(clearance, (float, int)) else None,
+            )
+    elif pressure_status in {"prediction_gap_watch", "quality_watch", "feedback_strain"}:
+        severity += 2
+        _add_driver("Analyst pressure signals quality or prediction coverage strain.")
+        _add_need("Analyst quality support")
+        _add_action("Pair analysts with engineering partners to stabilise throughput and confidence.")
+
+    support_status = str(support.get("status", "")).lower()
+    if support_status == "mobilise":
+        severity += 5
+        _add_driver("Support priorities call for immediate cross-team mobilisation.")
+        _add_need("Cross-team mobilisation")
+        _add_action("Coordinate mobilisation tasks across highlighted support teams.")
+    elif support_status == "reinforce":
+        severity += 3
+        _add_driver("Support priorities emphasise reinforcement activities.")
+        _add_need("Reinforcement coordination")
+        _add_action("Confirm reinforcement tasks are staffed before the next shift.")
+
+    priorities = support.get("priorities") if isinstance(support, dict) else None
+    if isinstance(priorities, list):
+        for entry in priorities:
+            if not isinstance(entry, dict):
+                continue
+            team = str(entry.get("team", "")).strip()
+            reason = str(entry.get("reason", "")).strip() or "Support task"
+            urgency = str(entry.get("urgency", "monitor"))
+            window = entry.get("support_window_hours")
+            _register_window(window if isinstance(window, (float, int)) else None)
+            if team:
+                _add_need(f"{team} ({urgency})")
+            _add_allocation(
+                team or "Support team",
+                urgency,
+                reason,
+                window=window if isinstance(window, (float, int)) else None,
+            )
+
+    feeds = freshness.get("feeds") if isinstance(freshness, dict) else {}
+    if isinstance(feeds, dict):
+        for feed_name, info in feeds.items():
+            if not isinstance(info, dict):
+                continue
+            status = str(info.get("status", "")).lower()
+            age = info.get("age_minutes")
+            if status == "stale":
+                severity += 3
+                _add_driver(f"{feed_name.capitalize()} feed is stale and blocking sustained operations.")
+                _add_need(f"{feed_name} telemetry recovery")
+                hours_value = _register_minutes(age)
+                _add_action(f"Deploy telemetry engineers to restore the {feed_name} feed immediately.")
+                _add_allocation(
+                    "Telemetry engineering",
+                    "immediate",
+                    f"Restore {feed_name} feed",
+                    window=hours_value,
+                )
+            elif status == "warning":
+                severity += 1
+                _add_driver(f"{feed_name.capitalize()} feed freshness is degrading toward stale thresholds.")
+                _add_need(f"{feed_name} telemetry checks")
+                hours_value = _register_minutes(age)
+                _add_action(f"Schedule telemetry checks to stabilise the {feed_name} feed.")
+                _add_allocation(
+                    "Telemetry engineering",
+                    "next_shift",
+                    f"Stabilise {feed_name} feed freshness",
+                    window=hours_value,
+                )
+
+    for gap in gaps if isinstance(gaps, list) else []:
+        if not isinstance(gap, dict):
+            continue
+        gap_name = str(gap.get("gap", "")).strip() or "intelligence gap"
+        detail = str(gap.get("detail", "")).strip()
+        action = gap.get("recommended_action")
+        severity_label = str(gap.get("severity", "")).lower()
+        if severity_label == "critical":
+            severity += 3
+            _add_driver(detail or f"Critical gap detected: {gap_name}.")
+            _add_need(f"Resolve {gap_name}")
+            _add_action(action or f"Assign an owner to close the {gap_name} gap immediately.")
+            _add_allocation(
+                "Gap closure team",
+                "immediate",
+                detail or f"Close {gap_name} gap",
+            )
+        elif severity_label == "major":
+            severity += 2
+            _add_driver(detail or f"Major gap requires follow-up: {gap_name}.")
+            _add_need(f"Address {gap_name}")
+            if action:
+                _add_action(action)
+            _add_allocation(
+                "Gap closure team",
+                "next_shift",
+                detail or f"Address {gap_name} gap",
+            )
+        elif action:
+            severity += 1
+            _add_need(f"Monitor {gap_name}")
+            _add_action(action)
+
+    outlook_status = str(outlook.get("status", "")).lower()
+    outlook_severity = outlook.get("severity_score")
+    horizon = outlook.get("planning_horizon_hours")
+    _register_window(horizon if isinstance(horizon, (float, int)) else None)
+    if isinstance(outlook_severity, (float, int)):
+        if outlook_severity >= 18:
+            severity += 4
+            _add_driver("Operational outlook severity is approaching escalation thresholds.")
+        elif outlook_severity >= 12:
+            severity += 3
+            _add_driver("Operational outlook signals accelerated planning horizons.")
+        elif outlook_severity >= 6:
+            severity += 1
+            _add_driver("Operational outlook remains focused and needs resourcing oversight.")
+    if outlook_status in {"rapid_response", "escalation_imminent"}:
+        severity += 4
+        _add_need("Rapid response staging")
+        _add_action("Stage contingency resources to match the rapid response outlook.")
+    elif outlook_status in {"heightened_watch", "stabilisation", "stabilize"}:
+        severity += 2
+        _add_need("Sustained monitoring resources")
+
+    directive_severity = directives.get("severity")
+    planning_window = directives.get("planning_window_hours")
+    _register_window(planning_window if isinstance(planning_window, (float, int)) else None)
+    if isinstance(directive_severity, (float, int)):
+        if directive_severity >= 20:
+            severity += 3
+            _add_driver("Command directives severity is in the crisis band.")
+        elif directive_severity >= 12:
+            severity += 2
+            _add_driver("Command directives highlight accelerated leadership tasks.")
+        elif directive_severity >= 6:
+            severity += 1
+            _add_driver("Command directives emphasise focused follow-up actions.")
+
+    contingency_status = str(contingency.get("status", "")).lower()
+    activation_window = contingency.get("activation_window_hours")
+    _register_window(activation_window if isinstance(activation_window, (float, int)) else None)
+    if contingency_status == "activate":
+        severity += 4
+        _add_driver("Contingency scenarios are primed for activation.")
+        _add_need("Contingency resource staging")
+        _add_action("Pre-position contingency playbook owners and support teams.")
+    elif contingency_status == "ready":
+        severity += 2
+        _add_need("Contingency readiness checks")
+
+    communication_status = str(communication.get("status", "")).lower()
+    cadence = communication.get("update_cadence_minutes")
+    if isinstance(cadence, (float, int)) and cadence > 0:
+        _register_minutes(cadence)
+    if communication_status == "escalated":
+        severity += 3
+        _add_driver("Communication cadence is escalated requiring dedicated comms staffing.")
+        _add_need("Communications surge support")
+    elif communication_status == "heightened":
+        severity += 2
+        _add_need("Focused communications coverage")
+    elif communication_status == "focused":
+        severity += 1
+
+    risk_level = str(health.get("risk_level", "")).lower()
+    if risk_level in {"critical", "severe"}:
+        severity += 4
+        _add_driver("Overall risk level is severe and demands sustained resources.")
+        _add_need("Incident management coverage")
+    elif risk_level == "high":
+        severity += 3
+        _add_need("High-risk oversight")
+    elif risk_level == "elevated":
+        severity += 1
+
+    weighted_conf = detection_quality.get("weighted_avg_confidence")
+    if isinstance(weighted_conf, (float, int)):
+        if weighted_conf < 0.55:
+            severity += 2
+            _add_driver("Weighted detection confidence is critically low.")
+            _add_need("Sensor calibration resources")
+            _add_action("Partner with sensor engineering to uplift low-confidence detections.")
+        elif weighted_conf < 0.7:
+            severity += 1
+            _add_need("Sensor performance monitoring")
+
+    feedback_accuracy = meta.get("feedback_accuracy")
+    if isinstance(feedback_accuracy, (float, int)) and feedback_accuracy < 0.6:
+        severity += 2
+        _add_driver("Feedback accuracy is degraded, increasing rework cycles.")
+        _add_need("Feedback calibration support")
+        _add_action("Schedule analyst calibration to restore feedback accuracy.")
+
+    tempo = str(activity.get("tempo", "")).lower()
+    if tempo == "surge":
+        severity += 3
+        _add_driver("Operational tempo is surging within the window.")
+        _add_need("Surge logistics support")
+    elif tempo == "elevated":
+        severity += 1
+        _add_need("Elevated tempo monitoring")
+
+    resource_needs = list(dict.fromkeys(resource_needs))
+    drivers = list(dict.fromkeys(drivers))
+    actions = list(dict.fromkeys(actions))
+
+    unique_allocation: List[Dict[str, Any]] = []
+    seen_allocations = set()
+    for entry in allocation:
+        key = (entry.get("resource"), entry.get("priority"), entry.get("focus"))
+        if key in seen_allocations:
+            continue
+        seen_allocations.add(key)
+        unique_allocation.append(entry)
+    allocation = unique_allocation
+
+    resupply_window: Optional[float] = None
+    positive_windows = [window for window in window_candidates if window and window > 0]
+    if positive_windows:
+        resupply_window = round(min(positive_windows), 2)
+
+    status = "balanced"
+    if severity >= 20:
+        status = "surge"
+    elif severity >= 12:
+        status = "accelerate"
+    elif severity >= 6:
+        status = "reinforce"
+    elif severity >= 3:
+        status = "watch"
+
+    payload: Dict[str, Any] = {"status": status, "severity": severity}
+    if resupply_window is not None:
+        payload["resupply_window_hours"] = resupply_window
+    if resource_needs:
+        payload["resource_needs"] = resource_needs
+    if allocation:
+        payload["allocation_plan"] = allocation
+    if drivers:
+        payload["drivers"] = drivers
+    if actions:
+        payload["recommended_actions"] = actions
+
+    return payload if payload else None
+
+
 def _derive_communication_plan(brief: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """Produce a communications cadence and key messaging plan."""
 
@@ -3036,6 +3450,21 @@ def gather_intelligence_brief(
             "watch_items": contingency.get("watch_items", [])[:3],
         }
         for action in contingency.get("recommended_actions", []) or []:
+            _append_recommendation(brief, action)
+
+    sustainment = _derive_resource_sustainment(brief)
+    if sustainment:
+        brief["resource_sustainment"] = sustainment
+        insight: Dict[str, Any] = {
+            "status": sustainment.get("status"),
+            "needs": len(sustainment.get("resource_needs", [])),
+            "resupply_window_hours": sustainment.get("resupply_window_hours"),
+        }
+        allocation = sustainment.get("allocation_plan")
+        if isinstance(allocation, list) and allocation:
+            insight["allocation_count"] = len(allocation)
+        brief.setdefault("insights", {})["resource_sustainment"] = insight
+        for action in sustainment.get("recommended_actions", []) or []:
             _append_recommendation(brief, action)
 
     return brief

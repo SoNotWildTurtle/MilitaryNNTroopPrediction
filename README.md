@@ -239,6 +239,18 @@ surfaced in the CLI and summarised in `insights.contingency_plans`, helping
 dashboards visualise how close the organisation is to executing escalation
 playbooks.
 
+Keeping those playbooks supplied now falls to a **resource sustainment** plan.
+The synthesiser reviews readiness, analyst pressure, support priorities,
+telemetry freshness, outstanding gaps, leadership directives, contingency
+status, and communication cadence to highlight which teams need staffing,
+engineering, or logistics support. It calculates the tightest resupply window,
+lists aggregated resource needs, and publishes an allocation table with
+priorities, quantities, and windows. The Rich CLI renders the sustainment
+section with drivers and recommended actions, while the API exposes the payload
+under `resource_sustainment` and surfaces a compact summary inside
+`insights.resource_sustainment` so scheduling tooling can stage personnel ahead
+of surge or mobilisation events.
+
 To keep teams focused on the most pressing blind spots, the brief highlights an
 **intelligence gaps** table. It inspects the existing tempo, freshness, and
 meta-analysis blocks to flag when prediction coverage collapses, telemetry

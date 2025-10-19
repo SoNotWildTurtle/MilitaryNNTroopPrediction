@@ -780,6 +780,82 @@ def test_contingency_plans_escalate_for_crisis_signals():
     assert plans.get("watch_items")
 
 
+def test_resource_sustainment_surges_for_multifaceted_strain():
+    brief: Dict[str, Any] = {
+        "response_readiness": {
+            "level": "critical",
+            "support_window_hours": 2.0,
+            "recommended_staffing": 6,
+        },
+        "response_pressure": {
+            "status": "critical_backlog",
+            "pending_predictions": 14,
+            "unmatched_detections": 9,
+            "estimated_clearance_hours": 5.0,
+        },
+        "support_priorities": {
+            "status": "mobilise",
+            "priorities": [
+                {
+                    "team": "Telemetry Operations",
+                    "urgency": "immediate",
+                    "reason": "Predictions feed is stale",
+                    "support_window_hours": 1.5,
+                }
+            ],
+        },
+        "data_freshness": {
+            "feeds": {
+                "predictions": {"status": "stale", "age_minutes": 180.0}
+            }
+        },
+        "intelligence_gaps": [
+            {
+                "gap": "prediction_coverage",
+                "severity": "critical",
+                "detail": "Prediction coverage is critically low.",
+                "recommended_action": "Restore inference throughput immediately.",
+            }
+        ],
+        "operational_outlook": {
+            "status": "rapid_response",
+            "severity_score": 18,
+            "planning_horizon_hours": 4.0,
+        },
+        "command_directives": {
+            "severity": 15,
+            "planning_window_hours": 3.0,
+        },
+        "contingency_plans": {"status": "activate"},
+        "communication_plan": {"status": "escalated", "update_cadence_minutes": 45},
+        "health": {"risk_level": "severe"},
+        "detection_quality": {"weighted_avg_confidence": 0.5},
+        "meta": {"feedback_accuracy": 0.55},
+        "activity_summary": {"tempo": "surge"},
+    }
+
+    sustainment = intel_brief._derive_resource_sustainment(brief)
+    assert sustainment is not None
+    assert sustainment.get("status") in {"surge", "accelerate"}
+    assert sustainment.get("severity", 0) >= 18
+
+    needs = sustainment.get("resource_needs", [])
+    assert {"Surge analyst coverage", "Backlog triage cell", "predictions telemetry recovery"}.issubset(
+        set(needs)
+    )
+
+    actions = " ".join(sustainment.get("recommended_actions", []))
+    assert "surge analysts" in actions.lower()
+    assert "telemetry" in actions.lower()
+
+    allocation = sustainment.get("allocation_plan", [])
+    assert any(entry.get("resource") == "Analyst surge team" for entry in allocation)
+    assert any(entry.get("resource") == "Telemetry engineering" for entry in allocation)
+
+    window = sustainment.get("resupply_window_hours")
+    assert isinstance(window, (float, int)) and window <= 2.0
+
+
 def test_gather_intelligence_brief_builds_communication_plan(monkeypatch):
     now = datetime(2024, 9, 10, 8, tzinfo=UTC)
     monkeypatch.setattr(intel_brief, "_utcnow", lambda: now)
@@ -880,6 +956,14 @@ def test_gather_intelligence_brief_builds_communication_plan(monkeypatch):
     insight = brief.get("insights", {}).get("contingency_plans", {})
     assert insight.get("scenario_count") == len(contingency.get("scenarios", []))
     assert any("surge" in rec.lower() for rec in brief.get("recommendations", []))
+    sustainment = brief.get("resource_sustainment")
+    assert sustainment is not None
+    assert sustainment.get("status") in {"reinforce", "accelerate", "surge"}
+    sustainment_insight = brief.get("insights", {}).get("resource_sustainment", {})
+    assert sustainment_insight.get("status") == sustainment.get("status")
+    assert sustainment_insight.get("needs") == len(sustainment.get("resource_needs", []))
+    assert any("telemetry" in rec.lower() for rec in brief.get("recommendations", []))
+
 
 def test_detection_quality_highlights_low_confidence(monkeypatch):
     now = datetime(2024, 7, 10, 6, tzinfo=UTC)
