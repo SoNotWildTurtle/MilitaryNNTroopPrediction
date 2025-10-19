@@ -599,6 +599,53 @@ def _render_command_directives(directives: Optional[Dict[str, Any]]) -> None:
         console.print(table)
 
 
+def _render_contingency_plans(plan: Optional[Dict[str, Any]]) -> None:
+    if not plan:
+        return
+
+    console.print(_t("Contingency planning"), style="bold")
+
+    status = str(plan.get("status", "observe"))
+    severity = plan.get("severity")
+    line = f"{_t('Status')}: {status.replace('_', ' ').title()}"
+    if isinstance(severity, (int, float)):
+        line += f" ({_t('Severity')}: {int(severity)})"
+    window = plan.get("activation_window_hours")
+    if isinstance(window, (int, float)):
+        line += f" • {_t('Activation window')}: {float(window):.2f} {_t('hours')}"
+    console.print(line)
+
+    scenarios = plan.get("scenarios", []) if isinstance(plan, dict) else []
+    if scenarios:
+        table = Table(title=_t("Contingency scenarios"))
+        table.add_column(_t("Scenario"))
+        table.add_column(_t("Objective"))
+        table.add_column(_t("Confidence"))
+        table.add_column(_t("Owners"))
+        table.add_column(_t("Triggers"))
+        for entry in scenarios:
+            owners = ", ".join(entry.get("owners", [])) if entry.get("owners") else "-"
+            triggers = "; ".join(entry.get("triggers", [])) if entry.get("triggers") else "-"
+            table.add_row(
+                str(entry.get("name", "-")),
+                str(entry.get("objective", "-")),
+                str(entry.get("confidence", "-")),
+                owners,
+                triggers,
+            )
+        console.print(table)
+
+    if plan.get("watch_items"):
+        console.print(_t("Watch items:"), style="bold")
+        for item in plan["watch_items"]:
+            console.print(f"- {item}")
+
+    if plan.get("recommended_actions"):
+        console.print(_t("Contingency actions:"), style="bold")
+        for action in plan["recommended_actions"]:
+            console.print(f"- {action}")
+
+
 def _render_communication_plan(plan: Optional[Dict[str, Any]]) -> None:
     if not plan:
         return
@@ -702,6 +749,8 @@ def main(area: Optional[str], hours: int, limit: int, raw: bool) -> None:
         _render_operational_outlook(brief["operational_outlook"])
     if brief.get("command_directives"):
         _render_command_directives(brief["command_directives"])
+    if brief.get("contingency_plans"):
+        _render_contingency_plans(brief["contingency_plans"])
     if brief.get("communication_plan"):
         _render_communication_plan(brief["communication_plan"])
     if brief.get("intelligence_gaps"):

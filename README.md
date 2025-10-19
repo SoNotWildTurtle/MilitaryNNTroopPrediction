@@ -228,6 +228,17 @@ summarises the status, audience count, and cadence within
 `insights.communication_plan` so dashboards can schedule syncs alongside other
 operational analytics.
 
+To translate elevated signals into concrete playbooks, the brief also builds a
+**contingency planning** module. It fuses the operational outlook, command
+directives, posture, readiness, analyst pressure, support priorities, telemetry
+freshness, detection quality, confidence, and open intelligence gaps to lay out
+scenarios that might need activation. Each scenario captures triggers,
+objectives, suggested owners, and recommended actions so duty officers can
+rapidly mobilise the right teams. Watch items and activation windows are
+surfaced in the CLI and summarised in `insights.contingency_plans`, helping
+dashboards visualise how close the organisation is to executing escalation
+playbooks.
+
 To keep teams focused on the most pressing blind spots, the brief highlights an
 **intelligence gaps** table. It inspects the existing tempo, freshness, and
 meta-analysis blocks to flag when prediction coverage collapses, telemetry

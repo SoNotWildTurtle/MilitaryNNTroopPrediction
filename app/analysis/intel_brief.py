@@ -1490,6 +1490,421 @@ def _derive_command_directives(brief: Dict[str, Any]) -> Optional[Dict[str, Any]
     return payload if payload else None
 
 
+def _derive_contingency_plans(brief: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Create contingency scenarios that help teams prepare escalation paths."""
+
+    outlook = brief.get("operational_outlook") or {}
+    directives = brief.get("command_directives") or {}
+    posture = brief.get("operational_posture") or {}
+    readiness = brief.get("response_readiness") or {}
+    pressure = brief.get("response_pressure") or {}
+    support = brief.get("support_priorities") or {}
+    confidence = brief.get("intelligence_confidence") or {}
+    health = brief.get("health") or {}
+    freshness = brief.get("data_freshness") or {}
+    gaps = brief.get("intelligence_gaps") or []
+    detection_quality = brief.get("detection_quality") or {}
+    comms_plan = brief.get("communication_plan") or {}
+
+    if not any(
+        [
+            outlook,
+            directives,
+            posture,
+            readiness,
+            pressure,
+            support,
+            confidence,
+            health,
+            freshness,
+            gaps,
+            detection_quality,
+        ]
+    ):
+        return None
+
+    severity = 0
+    drivers: List[str] = []
+    watch_items: List[str] = []
+    actions: List[str] = []
+    window_candidates: List[float] = []
+    scenario_map: Dict[str, Dict[str, Any]] = {}
+
+    def _add_driver(message: str) -> None:
+        if message:
+            drivers.append(message)
+
+    def _add_watch(item: str) -> None:
+        if item:
+            watch_items.append(item)
+
+    def _add_action(message: str) -> None:
+        if message:
+            actions.append(message)
+
+    def _get_scenario(
+        key: str,
+        name: str,
+        objective: str,
+        *,
+        priority: int,
+    ) -> Dict[str, Any]:
+        entry = scenario_map.setdefault(
+            key,
+            {
+                "id": key,
+                "name": name,
+                "objective": objective,
+                "triggers": [],
+                "actions": [],
+                "owners": [],
+                "confidence": "moderate",
+                "priority": priority,
+            },
+        )
+        return entry
+
+    def _add_trigger(entry: Dict[str, Any], trigger: str) -> None:
+        if trigger:
+            triggers = entry.setdefault("triggers", [])
+            if trigger not in triggers:
+                triggers.append(trigger)
+
+    def _add_owner(entry: Dict[str, Any], owner: str) -> None:
+        if owner:
+            owners = entry.setdefault("owners", [])
+            if owner not in owners:
+                owners.append(owner)
+
+    def _set_confidence(entry: Dict[str, Any], confidence_level: str) -> None:
+        entry["confidence"] = confidence_level
+
+    def _add_scenario_action(entry: Dict[str, Any], action: str) -> None:
+        if action:
+            actions_list = entry.setdefault("actions", [])
+            if action not in actions_list:
+                actions_list.append(action)
+            _add_action(action)
+
+    outlook_status = str(outlook.get("status", "")).lower()
+    outlook_severity = outlook.get("severity_score")
+    if isinstance(outlook_severity, (int, float)):
+        if outlook_severity >= 18:
+            severity += 6
+            _add_driver("Operational outlook severity is nearing escalation thresholds.")
+        elif outlook_severity >= 12:
+            severity += 4
+            _add_driver("Operational outlook signals accelerated planning horizons.")
+        elif outlook_severity >= 6:
+            severity += 2
+            _add_driver("Operational outlook indicates focused monitoring is required.")
+
+    if outlook_status in {"escalation_imminent", "rapid_response"}:
+        severity += 5
+        scenario = _get_scenario(
+            "escalation_playbook",
+            "Escalation playbook",
+            "Coordinate cross-team escalation handling",
+            priority=0,
+        )
+        _add_trigger(scenario, "Operational outlook is at escalation posture.")
+        for driver in outlook.get("drivers", []) or []:
+            _add_trigger(scenario, str(driver))
+        _set_confidence(scenario, "high")
+        _add_scenario_action(
+            scenario,
+            "Activate executive incident bridge and execute escalation directives.",
+        )
+        for team in directives.get("coordination_teams", []) or []:
+            _add_owner(scenario, str(team))
+
+    directives_status = str(directives.get("status", "")).lower()
+    directives_severity = directives.get("severity")
+    if directives_status in {"escalate", "accelerate"}:
+        severity += 3
+        _add_driver("Command directives require accelerated response timelines.")
+    if isinstance(directives_severity, (int, float)) and directives_severity >= 12:
+        severity += 2
+        _add_driver("Command directives severity score is elevated.")
+
+    readiness_level = str(readiness.get("level", "")).lower()
+    readiness_window = readiness.get("support_window_hours")
+    if isinstance(readiness_window, (int, float)) and readiness_window > 0:
+        window_candidates.append(float(readiness_window))
+    if readiness_level == "critical":
+        severity += 6
+        scenario = _get_scenario(
+            "rapid_reinforcement",
+            "Rapid reinforcement",
+            "Restore analyst readiness",
+            priority=1,
+        )
+        _set_confidence(scenario, "high")
+        _add_trigger(
+            scenario,
+            "Response readiness is critical and requires immediate coverage expansion.",
+        )
+        _add_scenario_action(
+            scenario,
+            "Mobilise reserve analysts and extend watch rotations to restore readiness.",
+        )
+        _add_owner(scenario, "Command Liaison")
+    elif readiness_level == "strained":
+        severity += 3
+        scenario = _get_scenario(
+            "reinforce_readiness",
+            "Reinforce readiness",
+            "Stabilise staffing and shift coverage",
+            priority=2,
+        )
+        _add_trigger(scenario, "Response readiness is strained." )
+        _add_scenario_action(
+            scenario,
+            "Coordinate shift swaps and schedule surge analysts for the next watch.",
+        )
+        _add_owner(scenario, "Operations Planning")
+
+    pressure_status = str(pressure.get("status", "")).lower()
+    pressure_severity = pressure.get("severity")
+    clearance_window = pressure.get("estimated_clearance_hours")
+    if isinstance(clearance_window, (int, float)) and clearance_window > 0:
+        window_candidates.append(float(clearance_window))
+    if pressure_status == "critical_backlog":
+        severity += 5
+        scenario = _get_scenario(
+            "backlog_clearance",
+            "Backlog clearance surge",
+            "Clear critical analyst backlog",
+            priority=1,
+        )
+        _add_trigger(
+            scenario,
+            "Analyst response pressure is in critical backlog status.",
+        )
+        _set_confidence(scenario, "high")
+        _add_scenario_action(
+            scenario,
+            "Deploy surge staffing to burn down the backlog within the clearance window.",
+        )
+        _add_owner(scenario, "Analysis Cell")
+    elif pressure_status in {"backlog", "prediction_gap", "prediction_gap_watch"}:
+        severity += 3
+        scenario = _get_scenario(
+            "workload_rebalance",
+            "Workload rebalance",
+            "Stabilise analyst throughput",
+            priority=2,
+        )
+        _add_trigger(
+            scenario,
+            "Analyst workload pressure indicates backlog or prediction gaps.",
+        )
+        _add_scenario_action(
+            scenario,
+            "Shift analysts to prediction triage and expedite model support coordination.",
+        )
+        _add_owner(scenario, "Analysis Cell")
+        if pressure_status == "prediction_gap":
+            _set_confidence(scenario, "high")
+    if isinstance(pressure_severity, (int, float)) and pressure_severity >= 2:
+        severity += 2
+
+    support_status = str(support.get("status", "")).lower()
+    if support_status == "mobilise":
+        severity += 4
+        _add_driver("Support priorities call for immediate cross-team mobilisation.")
+    elif support_status == "reinforce":
+        severity += 2
+        _add_driver("Support priorities emphasise reinforcement actions.")
+
+    feeds = freshness.get("feeds") if isinstance(freshness, dict) else {}
+    for feed_name, feed_info in (feeds or {}).items():
+        status = str(feed_info.get("status", "")).lower()
+        age = feed_info.get("age_minutes")
+        if isinstance(age, (int, float)) and age > 0:
+            window_candidates.append(float(age) / 60.0)
+        if status == "stale":
+            severity += 5
+            scenario = _get_scenario(
+                f"restore_{feed_name}_feed",
+                f"Restore {feed_name} feed",
+                "Recover telemetry freshness",
+                priority=1,
+            )
+            detail = f"{feed_name.capitalize()} feed is stale."
+            _add_trigger(scenario, detail)
+            _add_scenario_action(
+                scenario,
+                f"Dispatch telemetry engineering to restore the {feed_name} feed immediately.",
+            )
+            _add_owner(scenario, "Telemetry Operations")
+            _set_confidence(scenario, "high")
+        elif status == "warning":
+            severity += 2
+            scenario = _get_scenario(
+                f"stabilise_{feed_name}_feed",
+                f"Stabilise {feed_name} feed",
+                "Prevent telemetry degradation",
+                priority=3,
+            )
+            _add_trigger(
+                scenario,
+                f"{feed_name.capitalize()} feed freshness is degrading.",
+            )
+            _add_scenario_action(
+                scenario,
+                f"Schedule telemetry checks to stabilise the {feed_name} feed.",
+            )
+            _add_owner(scenario, "Telemetry Operations")
+
+    if isinstance(gaps, list) and gaps:
+        critical = 0
+        major = 0
+        for gap in gaps:
+            if not isinstance(gap, dict):
+                continue
+            severity_label = str(gap.get("severity", "")).lower()
+            detail = str(gap.get("detail", ""))
+            action = gap.get("recommended_action")
+            if severity_label == "critical":
+                critical += 1
+                severity += 4
+                scenario = _get_scenario(
+                    "recover_intel_gap",
+                    "Recover critical intelligence gap",
+                    "Restore degraded intelligence signals",
+                    priority=0,
+                )
+                _add_trigger(scenario, detail or "Critical intelligence gap detected.")
+                if action:
+                    _add_scenario_action(scenario, str(action))
+                _set_confidence(scenario, "high")
+            elif severity_label == "major":
+                major += 1
+                severity += 2
+                scenario = _get_scenario(
+                    "resolve_major_gap",
+                    "Resolve major intelligence gap",
+                    "Address outstanding intelligence gaps",
+                    priority=2,
+                )
+                _add_trigger(scenario, detail or "Major intelligence gap detected.")
+                if action:
+                    _add_scenario_action(scenario, str(action))
+        if critical:
+            _add_driver(f"{critical} critical intelligence gap(s) remain open.")
+        if major:
+            _add_driver(f"{major} major intelligence gap(s) identified.")
+
+    weighted_conf = detection_quality.get("weighted_avg_confidence")
+    if isinstance(weighted_conf, (float, int)) and weighted_conf < 0.6:
+        severity += 2
+        _add_watch("Weighted detection confidence below 0.60.")
+        scenario = _get_scenario(
+            "uplift_detection_confidence",
+            "Uplift detection confidence",
+            "Improve detection quality and coverage",
+            priority=3,
+        )
+        _add_trigger(
+            scenario,
+            "Detection confidence is degrading below 0.60.",
+        )
+        _add_scenario_action(
+            scenario,
+            "Partner with sensor engineering to recalibrate low-confidence classes.",
+        )
+        _add_owner(scenario, "Sensor Engineering")
+
+    if isinstance(detection_quality.get("low_confidence_classes"), list):
+        low_conf = detection_quality.get("low_confidence_classes")
+        if low_conf:
+            _add_watch(
+                "Low-confidence classes present: "
+                + ", ".join(sorted(str(cls) for cls in set(low_conf))),
+            )
+
+    risk_level = str(health.get("risk_level", "")).lower()
+    if risk_level == "severe":
+        severity += 5
+        _add_driver("Health assessment indicates severe operational risk.")
+    elif risk_level == "high":
+        severity += 3
+        _add_driver("Health assessment indicates high operational risk.")
+    elif risk_level == "elevated":
+        severity += 1
+
+    confidence_level = str(confidence.get("level", "")).lower()
+    if confidence_level == "low":
+        severity += 4
+        _add_driver("Intelligence confidence is low and requires contingency coverage.")
+    elif confidence_level == "guarded":
+        severity += 2
+        _add_driver("Intelligence confidence is guarded; prepare mitigation actions.")
+
+    posture_status = str(posture.get("status", "")).lower()
+    if posture_status == "recover":
+        severity += 4
+    elif posture_status == "stabilise":
+        severity += 2
+
+    if comms_plan:
+        cadence = comms_plan.get("update_cadence_minutes")
+        if isinstance(cadence, (int, float)) and cadence > 0:
+            window_candidates.append(float(cadence) / 60.0)
+        status = str(comms_plan.get("status", "")).lower()
+        if status in {"crisis", "accelerate"}:
+            severity += 2
+            _add_driver("Communication plan is operating at elevated cadence.")
+
+    coordination_teams = directives.get("coordination_teams") or support.get("teams") or []
+    for entry in scenario_map.values():
+        if not entry.get("owners"):
+            for team in coordination_teams:
+                _add_owner(entry, str(team))
+
+    scenarios = sorted(
+        scenario_map.values(),
+        key=lambda item: (item.get("priority", 99), item.get("name", "")),
+    )
+    for entry in scenarios:
+        entry.pop("priority", None)
+
+    drivers = list(dict.fromkeys(drivers))
+    watch_items = list(dict.fromkeys(watch_items))
+    actions = list(dict.fromkeys(actions))
+
+    status = "observe"
+    if severity >= 20:
+        status = "activate"
+    elif severity >= 12:
+        status = "ready"
+    elif severity >= 6:
+        status = "prepare"
+
+    activation_window: Optional[float] = None
+    positive_windows = [window for window in window_candidates if window and window > 0]
+    if positive_windows:
+        activation_window = round(min(positive_windows), 2)
+
+    payload: Dict[str, Any] = {
+        "status": status,
+        "severity": severity,
+    }
+    if activation_window is not None:
+        payload["activation_window_hours"] = activation_window
+    if scenarios:
+        payload["scenarios"] = scenarios
+    if drivers:
+        payload["drivers"] = drivers
+    if watch_items:
+        payload["watch_items"] = watch_items
+    if actions:
+        payload["recommended_actions"] = actions
+
+    return payload if payload else None
+
+
 def _derive_communication_plan(brief: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """Produce a communications cadence and key messaging plan."""
 
@@ -2610,6 +3025,17 @@ def gather_intelligence_brief(
             insight["key_messages"] = key_messages[:2]
         brief.setdefault("insights", {})["communication_plan"] = insight
         for action in comms_plan.get("recommended_actions", []) or []:
+            _append_recommendation(brief, action)
+
+    contingency = _derive_contingency_plans(brief)
+    if contingency:
+        brief["contingency_plans"] = contingency
+        brief.setdefault("insights", {})["contingency_plans"] = {
+            "status": contingency.get("status"),
+            "scenario_count": len(contingency.get("scenarios", [])),
+            "watch_items": contingency.get("watch_items", [])[:3],
+        }
+        for action in contingency.get("recommended_actions", []) or []:
             _append_recommendation(brief, action)
 
     return brief

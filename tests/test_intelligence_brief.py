@@ -726,6 +726,60 @@ def test_communication_plan_escalates_for_crisis():
     assert any("situation report" in action.lower() for action in plan.get("recommended_actions", []))
 
 
+def test_contingency_plans_escalate_for_crisis_signals():
+    brief: Dict[str, Any] = {
+        "operational_outlook": {
+            "status": "escalation_imminent",
+            "severity_score": 22,
+            "drivers": ["Tempo surge", "Backlog severity"],
+        },
+        "command_directives": {
+            "status": "escalate",
+            "severity": 18,
+            "coordination_teams": ["Command Liaison", "Telemetry Operations"],
+        },
+        "operational_posture": {"status": "recover"},
+        "response_readiness": {"level": "critical", "support_window_hours": 1.5},
+        "response_pressure": {
+            "status": "critical_backlog",
+            "severity": 3,
+            "estimated_clearance_hours": 2.0,
+        },
+        "support_priorities": {"status": "mobilise", "teams": ["Incident Management"]},
+        "intelligence_confidence": {"level": "low"},
+        "health": {"risk_level": "severe"},
+        "data_freshness": {
+            "feeds": {
+                "detections": {"status": "stale", "age_minutes": 90},
+                "predictions": {"status": "warning", "age_minutes": 45},
+            }
+        },
+        "intelligence_gaps": [
+            {
+                "gap": "prediction_coverage",
+                "severity": "critical",
+                "detail": "Prediction coverage is below 40%.",
+                "recommended_action": "Restore inference pipeline throughput immediately.",
+            }
+        ],
+        "detection_quality": {"weighted_avg_confidence": 0.45},
+        "communication_plan": {"status": "crisis", "update_cadence_minutes": 30},
+    }
+
+    plans = intel_brief._derive_contingency_plans(brief)
+    assert plans is not None
+    assert plans.get("status") == "activate"
+    assert plans.get("severity") >= 20
+    scenarios = plans.get("scenarios", [])
+    assert any("Escalation" in scenario.get("name", "") for scenario in scenarios)
+    assert any("Command Liaison" in scenario.get("owners", []) for scenario in scenarios)
+    assert any(
+        "restore inference" in action.lower()
+        for action in plans.get("recommended_actions", []) or []
+    )
+    assert plans.get("watch_items")
+
+
 def test_gather_intelligence_brief_builds_communication_plan(monkeypatch):
     now = datetime(2024, 9, 10, 8, tzinfo=UTC)
     monkeypatch.setattr(intel_brief, "_utcnow", lambda: now)
@@ -819,6 +873,13 @@ def test_gather_intelligence_brief_builds_communication_plan(monkeypatch):
     )
     assert any("leadership" in rec.lower() for rec in brief.get("recommendations", []))
     assert any(entry.get("audience") for entry in plan.get("audiences", []))
+    contingency = brief.get("contingency_plans")
+    assert contingency is not None
+    assert contingency.get("status") in {"prepare", "ready", "activate"}
+    assert contingency.get("scenarios")
+    insight = brief.get("insights", {}).get("contingency_plans", {})
+    assert insight.get("scenario_count") == len(contingency.get("scenarios", []))
+    assert any("surge" in rec.lower() for rec in brief.get("recommendations", []))
 
 def test_detection_quality_highlights_low_confidence(monkeypatch):
     now = datetime(2024, 7, 10, 6, tzinfo=UTC)
