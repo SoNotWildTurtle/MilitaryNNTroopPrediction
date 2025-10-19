@@ -524,6 +524,81 @@ def _render_intelligence_gaps(gaps: Optional[List[Dict[str, Any]]]) -> None:
     console.print(table)
 
 
+def _render_command_directives(directives: Optional[Dict[str, Any]]) -> None:
+    if not directives:
+        return
+
+    console.print(_t("Command directives"), style="bold")
+
+    status = str(directives.get("status", "monitor"))
+    severity = directives.get("severity")
+    status_label = status.replace("_", " ").title()
+    status_line = f"{_t('Status')}: {status_label}"
+    if isinstance(severity, (int, float)):
+        status_line += f" ({_t('Severity')}: {int(severity)})"
+    console.print(status_line)
+
+    window = directives.get("planning_window_hours")
+    if isinstance(window, (float, int)):
+        console.print(f"{_t('Planning window (hrs)')}: {float(window):.2f}")
+
+    teams = directives.get("coordination_teams", [])
+    if teams:
+        console.print(_t("Coordination teams:"), style="bold")
+        for team in teams:
+            console.print(f"- {team}")
+
+    focus = directives.get("focus_areas", [])
+    if focus:
+        console.print(_t("Focus areas:"), style="bold")
+        for area in focus:
+            console.print(f"- {area}")
+
+    drivers = directives.get("drivers", [])
+    if drivers:
+        console.print(_t("Drivers:"), style="bold")
+        for driver in drivers:
+            console.print(f"- {driver}")
+
+    counts = directives.get("directive_counts", {})
+    if counts:
+        console.print(_t("Directive mix:"), style="bold")
+        for key, label in (
+            ("immediate", _t("Immediate")),
+            ("next_shift", _t("Next shift")),
+            ("monitor", _t("Monitor")),
+        ):
+            if counts.get(key):
+                console.print(f"- {label}: {counts[key]}")
+
+    queue = directives.get("directives", [])
+    if queue:
+        table = Table(title=_t("Directive queue"))
+        table.add_column(_t("Priority"))
+        table.add_column(_t("Action"))
+        table.add_column(_t("Source"))
+        table.add_column(_t("Context"))
+        table.add_column(_t("Window (hrs)"), justify="right")
+
+        for entry in queue:
+            priority = str(entry.get("priority", "monitor"))
+            label = {
+                "immediate": _t("Immediate"),
+                "next_shift": _t("Next shift"),
+                "monitor": _t("Monitor"),
+            }.get(priority, priority.replace("_", " ").title())
+            window_value = entry.get("window_hours")
+            table.add_row(
+                label,
+                str(entry.get("action", "-")),
+                str(entry.get("source", "-")),
+                str(entry.get("context", "-")) if entry.get("context") else "-",
+                f"{float(window_value):.2f}" if isinstance(window_value, (float, int)) else "-",
+            )
+
+        console.print(table)
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=_t("Generate an intelligence brief"))
     parser.add_argument("--area", type=str, help=_t("Optional area filter"))
@@ -579,6 +654,8 @@ def main(area: Optional[str], hours: int, limit: int, raw: bool) -> None:
         _render_intelligence_confidence(brief["intelligence_confidence"])
     if brief.get("operational_outlook"):
         _render_operational_outlook(brief["operational_outlook"])
+    if brief.get("command_directives"):
+        _render_command_directives(brief["command_directives"])
     if brief.get("intelligence_gaps"):
         _render_intelligence_gaps(brief["intelligence_gaps"])
     if brief.get("insights"):

@@ -286,6 +286,12 @@ def test_gather_intelligence_brief_with_area_and_clusters(monkeypatch):
     assert outlook.get("severity_score") is not None
     assert "operational_outlook" in brief.get("insights", {})
 
+    directives = brief.get("command_directives")
+    assert directives is not None
+    assert directives.get("status") in {"monitor", "focus", "accelerate", "escalate"}
+    assert isinstance(directives.get("directives", []), list)
+    assert "command_directives" in brief.get("insights", {})
+
 
 @pytest.mark.parametrize(
     "params",
@@ -380,6 +386,17 @@ def test_gather_intelligence_brief_activity_summary(monkeypatch):
     assert outlook.get("status") in {"rapid_response", "escalation_imminent", "heightened_watch"}
     assert outlook.get("severity_score", 0) >= 5
     assert any("tempo" in driver.lower() for driver in outlook.get("drivers", []))
+
+    directives = brief.get("command_directives")
+    assert directives is not None
+    assert directives.get("status") in {"focus", "accelerate", "escalate"}
+    counts = directives.get("directive_counts", {})
+    assert counts.get("immediate", 0) >= 1
+    assert any(
+        "rapid response" in entry.get("action", "").lower()
+        or "prediction" in entry.get("action", "").lower()
+        for entry in directives.get("directives", [])
+    )
 
 
 def test_gather_intelligence_brief_marks_stale_feeds(monkeypatch):
@@ -574,6 +591,95 @@ def test_operational_outlook_flags_escalation():
     assert "backlog" in drivers.lower() or "triage" in drivers.lower()
     actions = " ".join(outlook.get("recommended_actions", []))
     assert "leadership" in actions.lower() or "rapid response" in actions.lower()
+
+
+def test_command_directives_prioritise_immediate_actions():
+    brief: Dict[str, Any] = {
+        "operational_outlook": {
+            "status": "rapid_response",
+            "severity_score": 9,
+            "focus_areas": ["Telemetry recovery", "Analyst throughput"],
+            "planning_horizon_hours": 2.5,
+            "recommended_actions": [
+                "Maintain a rapid response posture and pre-stage reinforcement assets for the next few hours."
+            ],
+        },
+        "operational_posture": {
+            "status": "recover",
+            "focus": "Restore telemetry coverage for stale feeds to regain confidence.",
+            "horizon_hours": 3.0,
+        },
+        "response_readiness": {
+            "level": "critical",
+            "support_window_hours": 2.0,
+            "priority_actions": ["Stage rapid response teams and leadership liaisons."],
+        },
+        "response_pressure": {
+            "status": "critical_backlog",
+            "estimated_clearance_hours": 4.0,
+            "recommended_actions": ["Deploy surge analysts to clear the prediction backlog."],
+        },
+        "support_priorities": {
+            "status": "mobilise",
+            "priorities": [
+                {
+                    "team": "Telemetry Operations",
+                    "urgency": "immediate",
+                    "reason": "Telemetry feed is stale and requires recovery support.",
+                    "support_window_hours": 1.0,
+                },
+                {
+                    "team": "Analysis Cell",
+                    "urgency": "next_shift",
+                    "reason": "Analyst backlog is forming as predictions outpace detections.",
+                },
+            ],
+            "teams": ["Telemetry Operations", "Analysis Cell"],
+            "recommended_actions": [
+                "Notify command staff and mobilise reserve teams to restore readiness.",
+            ],
+        },
+        "intelligence_confidence": {
+            "level": "low",
+            "recommended_actions": [
+                "Launch a telemetry validation sprint to rebuild intelligence confidence."
+            ],
+        },
+        "intelligence_gaps": [
+            {
+                "gap": "predictions_freshness",
+                "severity": "critical",
+                "detail": "Predictions feed is stale.",
+                "recommended_action": "Restore predictions feed immediately.",
+            },
+            {
+                "gap": "feedback_accuracy",
+                "severity": "major",
+                "detail": "Feedback accuracy is trending down.",
+                "recommended_action": "Schedule analyst calibration block.",
+            },
+        ],
+        "health": {
+            "risk_level": "high",
+            "recommended_actions": ["Coordinate immediate response options with the duty officer."],
+        },
+        "recommendations": [
+            "Notify command staff and mobilise reserve teams to restore readiness.",
+            "Deploy surge analysts to clear the prediction backlog.",
+        ],
+    }
+
+    directives = intel_brief._derive_command_directives(brief)
+    assert directives is not None
+    assert directives.get("status") in {"accelerate", "escalate"}
+    assert directives.get("planning_window_hours") == pytest.approx(1.0, rel=1e-3)
+    immediate = [entry for entry in directives.get("directives", []) if entry.get("priority") == "immediate"]
+    assert immediate
+    assert any("telemetry" in entry.get("action", "").lower() for entry in immediate)
+    counts = directives.get("directive_counts", {})
+    assert counts.get("immediate", 0) >= len(immediate)
+    teams = directives.get("coordination_teams", [])
+    assert "Telemetry Operations" in teams and "Analysis Cell" in teams
 
 
 def test_detection_quality_highlights_low_confidence(monkeypatch):

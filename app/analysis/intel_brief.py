@@ -1206,6 +1206,290 @@ def _derive_operational_outlook(brief: Dict[str, Any]) -> Optional[Dict[str, Any
     return outlook
 
 
+def _derive_command_directives(brief: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Synthesize leadership-facing directives from fused analytics."""
+
+    outlook = brief.get("operational_outlook") or {}
+    posture = brief.get("operational_posture") or {}
+    readiness = brief.get("response_readiness") or {}
+    pressure = brief.get("response_pressure") or {}
+    support = brief.get("support_priorities") or {}
+    confidence = brief.get("intelligence_confidence") or {}
+    health = brief.get("health") or {}
+    gaps = brief.get("intelligence_gaps") or []
+    recommendations = brief.get("recommendations") or []
+
+    if not any(
+        [
+            outlook,
+            posture,
+            readiness,
+            pressure,
+            support,
+            confidence,
+            health,
+            gaps,
+            recommendations,
+        ]
+    ):
+        return None
+
+    severity = 0
+    drivers: List[str] = []
+    focus_areas: List[str] = []
+    coordination_teams: List[str] = []
+    window_candidates: List[float] = []
+    directives: List[Dict[str, Any]] = []
+    seen_actions: set[str] = set()
+
+    priority_order = {"immediate": 0, "next_shift": 1, "monitor": 2}
+
+    def _add_driver(message: str) -> None:
+        if message:
+            drivers.append(message)
+
+    def _add_focus(text: str) -> None:
+        if text:
+            focus_areas.append(text)
+
+    def _add_team(team: Optional[str]) -> None:
+        if team:
+            coordination_teams.append(str(team))
+
+    def _register_window(value: Any) -> None:
+        if isinstance(value, (float, int)) and value > 0:
+            window_candidates.append(float(value))
+
+    def _normalise_priority(priority: Any) -> str:
+        key = str(priority or "").lower()
+        return key if key in priority_order else "monitor"
+
+    def _add_directive(
+        priority: Any,
+        action: Any,
+        *,
+        source: str,
+        context: Optional[str] = None,
+        window: Any = None,
+    ) -> None:
+        text = str(action or "").strip()
+        if not text:
+            return
+        if text.lower() in seen_actions:
+            return
+        seen_actions.add(text.lower())
+        normalized_priority = _normalise_priority(priority)
+        entry: Dict[str, Any] = {
+            "priority": normalized_priority,
+            "action": text,
+            "source": source,
+        }
+        if context:
+            entry["context"] = context
+        if isinstance(window, (float, int)) and window > 0:
+            entry["window_hours"] = round(float(window), 2)
+        directives.append(entry)
+
+    def _bump_severity(amount: int) -> None:
+        nonlocal severity
+        severity += max(0, int(amount))
+
+    outlook_severity = outlook.get("severity_score")
+    if isinstance(outlook_severity, (int, float)):
+        _bump_severity(int(outlook_severity))
+    if isinstance(outlook.get("focus_areas"), list):
+        for area in outlook["focus_areas"]:
+            _add_focus(str(area))
+    _register_window(outlook.get("planning_horizon_hours"))
+    if outlook.get("recommended_actions"):
+        outlook_priority = "immediate" if severity >= 12 else ("next_shift" if severity >= 6 else "monitor")
+        for action in outlook.get("recommended_actions", []):
+            _add_directive(outlook_priority, action, source="Operational outlook")
+
+    posture_status = str(posture.get("status", "")).lower()
+    posture_focus = posture.get("focus")
+    if isinstance(posture_focus, str) and posture_focus:
+        _add_focus(posture_focus)
+    _register_window(posture.get("horizon_hours"))
+    if posture_status == "recover":
+        _bump_severity(5)
+        _add_driver("Operational posture is in recovery mode and needs immediate steering.")
+    elif posture_status == "stabilise":
+        _bump_severity(3)
+        _add_driver("Operational posture recommends stabilisation efforts across the shift.")
+    elif posture_status == "reinforce":
+        _bump_severity(2)
+        _add_driver("Operational posture calls for reinforcement of monitoring teams.")
+
+    readiness_level = str(readiness.get("level", "")).lower()
+    _register_window(readiness.get("support_window_hours"))
+    readiness_priority = "monitor"
+    if readiness_level == "critical":
+        _bump_severity(6)
+        readiness_priority = "immediate"
+        _add_driver("Response readiness is critical and needs leadership intervention.")
+    elif readiness_level == "strained":
+        _bump_severity(3)
+        readiness_priority = "next_shift"
+        _add_driver("Response readiness is strained and requires reinforcement.")
+    for action in readiness.get("priority_actions", []):
+        _add_directive(readiness_priority, action, source="Response readiness")
+
+    pressure_status = str(pressure.get("status", "")).lower()
+    _register_window(pressure.get("estimated_clearance_hours"))
+    pressure_priority = "monitor"
+    if pressure_status == "critical_backlog":
+        _bump_severity(5)
+        pressure_priority = "immediate"
+        _add_driver("Analyst response pressure reports a critical backlog of predictions.")
+    elif pressure_status == "prediction_gap":
+        _bump_severity(4)
+        pressure_priority = "immediate"
+        _add_driver("Prediction gaps require immediate model support.")
+    elif pressure_status in {"feedback_strain", "backlog", "prediction_gap_watch"}:
+        _bump_severity(3)
+        pressure_priority = "next_shift"
+        _add_driver("Analyst workload is straining and needs targeted relief.")
+    elif pressure_status in {"quality_watch"}:
+        _bump_severity(1)
+        pressure_priority = "monitor"
+    for action in pressure.get("recommended_actions", []):
+        _add_directive(pressure_priority, action, source="Response pressure")
+
+    support_status = str(support.get("status", "")).lower()
+    support_priority = "monitor"
+    if support_status == "mobilise":
+        _bump_severity(5)
+        support_priority = "immediate"
+        _add_driver("Support coordination recommends immediate mobilisation across teams.")
+    elif support_status == "reinforce":
+        _bump_severity(3)
+        support_priority = "next_shift"
+        _add_driver("Support coordination calls for reinforcement tasks across teams.")
+    for action in support.get("recommended_actions", []):
+        _add_directive(support_priority, action, source="Support priorities")
+    for entry in support.get("priorities", []):
+        if not isinstance(entry, dict):
+            continue
+        reason = str(entry.get("reason", "")).strip()
+        if not reason:
+            continue
+        urgency = entry.get("urgency")
+        team = entry.get("team")
+        _add_team(team)
+        _register_window(entry.get("support_window_hours"))
+        _add_directive(urgency, reason, source="Support priorities", context=str(team or ""), window=entry.get("support_window_hours"))
+    for team in support.get("teams", []):
+        _add_team(team)
+
+    confidence_level = str(confidence.get("level", "")).lower()
+    confidence_priority = "monitor"
+    if confidence_level == "low":
+        _bump_severity(3)
+        confidence_priority = "immediate"
+        _add_driver("Intelligence confidence is low and demands validation work.")
+    elif confidence_level == "guarded":
+        _bump_severity(1)
+        confidence_priority = "next_shift"
+        _add_driver("Intelligence confidence is guarded and should be monitored.")
+    for action in confidence.get("recommended_actions", []):
+        _add_directive(confidence_priority, action, source="Intelligence confidence")
+
+    risk_level = str(health.get("risk_level", "")).lower()
+    health_priority = "monitor"
+    if risk_level in {"severe", "critical"}:
+        _bump_severity(5)
+        health_priority = "immediate"
+        _add_driver("Health assessment reports severe risk conditions.")
+    elif risk_level == "high":
+        _bump_severity(4)
+        health_priority = "immediate"
+        _add_driver("Health assessment reports high operational risk.")
+    elif risk_level == "elevated":
+        _bump_severity(2)
+        health_priority = "next_shift"
+        _add_driver("Health assessment remains elevated and needs oversight.")
+    for action in health.get("recommended_actions", []):
+        _add_directive(health_priority, action, source="Health assessment")
+
+    critical_gaps = 0
+    major_gaps = 0
+    for gap in gaps if isinstance(gaps, list) else []:
+        if not isinstance(gap, dict):
+            continue
+        severity_label = str(gap.get("severity", "")).lower()
+        action = gap.get("recommended_action")
+        detail = str(gap.get("detail", ""))
+        if severity_label == "critical":
+            critical_gaps += 1
+            _bump_severity(4)
+            _add_directive("immediate", action or detail, source="Intelligence gaps", context=str(gap.get("gap", "")))
+        elif severity_label == "major":
+            major_gaps += 1
+            _bump_severity(2)
+            _add_directive("next_shift", action or detail, source="Intelligence gaps", context=str(gap.get("gap", "")))
+        elif action:
+            _add_directive("monitor", action, source="Intelligence gaps", context=str(gap.get("gap", "")))
+    if critical_gaps:
+        _add_driver(f"{critical_gaps} critical intelligence gap(s) remain open.")
+    if major_gaps:
+        _add_driver(f"{major_gaps} major intelligence gap(s) require follow-up.")
+
+    if not directives and recommendations:
+        default_priority = "monitor"
+        if severity >= 12:
+            default_priority = "immediate"
+        elif severity >= 6:
+            default_priority = "next_shift"
+        for action in recommendations:
+            _add_directive(default_priority, action, source="Brief summary")
+
+    drivers = list(dict.fromkeys(drivers))
+    focus_areas = list(dict.fromkeys(focus_areas))
+    coordination_teams = sorted({team for team in coordination_teams if team})
+    directives.sort(key=lambda item: (priority_order.get(item.get("priority", "monitor"), 2), item.get("action", "")))
+
+    severity = max(0, min(severity, 30))
+    if severity >= 20:
+        status = "escalate"
+    elif severity >= 12:
+        status = "accelerate"
+    elif severity >= 6:
+        status = "focus"
+    else:
+        status = "monitor"
+
+    planning_window: Optional[float] = None
+    positive_windows = [window for window in window_candidates if window and window > 0]
+    if positive_windows:
+        planning_window = round(min(positive_windows), 2)
+
+    directive_counts = {
+        label: sum(1 for entry in directives if entry.get("priority") == label)
+        for label in priority_order
+    }
+    directive_counts = {key: value for key, value in directive_counts.items() if value}
+
+    payload: Dict[str, Any] = {
+        "status": status,
+        "severity": severity,
+    }
+    if planning_window is not None:
+        payload["planning_window_hours"] = planning_window
+    if directives:
+        payload["directives"] = directives
+    if directive_counts:
+        payload["directive_counts"] = directive_counts
+    if focus_areas:
+        payload["focus_areas"] = focus_areas
+    if drivers:
+        payload["drivers"] = drivers
+    if coordination_teams:
+        payload["coordination_teams"] = coordination_teams
+
+    return payload if payload else None
+
+
 def _summarise_freshness(
     *,
     generated_at: datetime,
@@ -1971,6 +2255,20 @@ def gather_intelligence_brief(
         brief["recommendations"] = [
             "Continue routine monitoring; no immediate anomalies detected in the selected window."
         ]
+
+    directives = _derive_command_directives(brief)
+    if directives:
+        brief["command_directives"] = directives
+        counts = directives.get("directive_counts", {})
+        insight: Dict[str, Any] = {
+            "status": directives.get("status"),
+            "severity": directives.get("severity"),
+            "immediate": counts.get("immediate", 0),
+            "next_shift": counts.get("next_shift", 0),
+        }
+        if directives.get("planning_window_hours") is not None:
+            insight["planning_window_hours"] = directives["planning_window_hours"]
+        brief.setdefault("insights", {})["command_directives"] = insight
 
     return brief
 

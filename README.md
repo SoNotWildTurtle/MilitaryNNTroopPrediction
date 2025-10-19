@@ -206,6 +206,17 @@ with focus areas, drivers, and action prompts, while the API surfaces the
 summary in `insights.operational_outlook` so dashboards can trend the outlook
 alongside tempo, readiness, and gap metrics.
 
+To move from assessment to decisive action, the brief now assembles a
+**command directives** queue. The synthesiser blends the operational outlook,
+posture, readiness, pressure, support priorities, confidence index, health
+assessment, and gap telemetry to rank directives as immediate, next-shift, or
+monitor items. It publishes the fused status (`monitor`, `focus`, `accelerate`,
+`escalate`), the tightest planning window, directive counts, and coordination
+teams so leadership can see which groups to mobilise. The CLI renders the
+directive table with sources, contexts, and support windows, while the API
+exposes the detailed payload under `command_directives` and a compact summary
+in `insights.command_directives` for dashboards and battle rhythms.
+
 To keep teams focused on the most pressing blind spots, the brief highlights an
 **intelligence gaps** table. It inspects the existing tempo, freshness, and
 meta-analysis blocks to flag when prediction coverage collapses, telemetry
