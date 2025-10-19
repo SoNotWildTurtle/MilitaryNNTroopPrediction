@@ -289,6 +289,17 @@ dependency window table, while the API surfaces the structured payload under
 `mission_assurance` with a summarised insight so dashboards can track
 mission-level risk alongside posture, readiness, and alignment trends.
 
+Layered on top of assurance is an **operational resilience** pulse that scans
+assurance, readiness, sustainment, risk, contingency, communications, alignment,
+analyst pressure, support priorities, telemetry freshness, intelligence
+confidence, gap severity, and the operational outlook to score how well teams
+can absorb continued disruptions. The payload calls out reinforcing factors,
+weak spots, shared drivers, stability windows, and deduplicated follow-up
+actions so planners know which levers strengthen resilience versus drain it.
+CLI operators get a dedicated table with status, scores, and highlight lists,
+and the API exposes the structured payload under `operational_resilience` with a
+matching insight block for dashboards and shift briefs.
+
 To keep teams focused on the most pressing blind spots, the brief highlights an
 **intelligence gaps** table. It inspects the existing tempo, freshness, and
 meta-analysis blocks to flag when prediction coverage collapses, telemetry

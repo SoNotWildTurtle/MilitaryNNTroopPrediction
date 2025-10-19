@@ -700,6 +700,58 @@ def _render_mission_assurance(assurance: Optional[Dict[str, Any]]) -> None:
             console.print(f"- {action}")
 
 
+def _render_operational_resilience(resilience: Optional[Dict[str, Any]]) -> None:
+    if not resilience:
+        return
+
+    console.print(_t("Operational resilience"), style="bold")
+
+    table = Table(show_header=False)
+    table.add_column(_t("Metric"))
+    table.add_column(_t("Value"))
+
+    status = str(resilience.get("status", _t("unknown"))).replace("_", " ").title()
+    table.add_row(_t("Status"), status)
+
+    score = resilience.get("resilience_score")
+    if isinstance(score, (int, float)):
+        table.add_row(_t("Resilience score"), str(int(round(float(score)))))
+
+    window = resilience.get("stability_window_hours")
+    if isinstance(window, (float, int)):
+        table.add_row(_t("Stability window"), f"{float(window):.2f}h")
+
+    reinforcements = resilience.get("reinforcing_factors")
+    if isinstance(reinforcements, list) and reinforcements:
+        table.add_row(_t("Reinforcements"), str(len(reinforcements)))
+
+    weak = resilience.get("weak_spots")
+    if isinstance(weak, list) and weak:
+        table.add_row(_t("Weak spots"), str(len(weak)))
+
+    console.print(table)
+
+    if isinstance(reinforcements, list) and reinforcements:
+        console.print(_t("Reinforcing factors:"), style="bold")
+        for item in reinforcements:
+            console.print(f"- {item}")
+
+    if isinstance(weak, list) and weak:
+        console.print(_t("Weak spots:"), style="bold red")
+        for item in weak:
+            console.print(f"- {item}", style="red")
+
+    if resilience.get("drivers"):
+        console.print(_t("Drivers:"), style="bold")
+        for driver in resilience["drivers"]:
+            console.print(f"- {driver}")
+
+    if resilience.get("recommended_actions"):
+        console.print(_t("Resilience actions:"), style="bold")
+        for action in resilience["recommended_actions"]:
+            console.print(f"- {action}")
+
+
 def _render_contingency_plans(plan: Optional[Dict[str, Any]]) -> None:
     if not plan:
         return
@@ -965,6 +1017,8 @@ def main(area: Optional[str], hours: int, limit: int, raw: bool) -> None:
         _render_command_alignment(brief["command_alignment"])
     if brief.get("mission_assurance"):
         _render_mission_assurance(brief["mission_assurance"])
+    if brief.get("operational_resilience"):
+        _render_operational_resilience(brief["operational_resilience"])
     if brief.get("contingency_plans"):
         _render_contingency_plans(brief["contingency_plans"])
     if brief.get("communication_plan"):

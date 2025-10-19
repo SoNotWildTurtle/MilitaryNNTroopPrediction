@@ -302,6 +302,17 @@ def test_gather_intelligence_brief_with_area_and_clusters(monkeypatch):
             action in brief.get("recommendations", []) for action in assurance["recommended_actions"]
         )
 
+    resilience = brief.get("operational_resilience")
+    assert resilience is not None
+    assert resilience.get("status") in {"resilient", "steady", "vulnerable", "critical"}
+    assert isinstance(resilience.get("resilience_score"), int)
+    assert "operational_resilience" in brief.get("insights", {})
+    if resilience.get("recommended_actions"):
+        assert any(
+            action in brief.get("recommendations", [])
+            for action in resilience.get("recommended_actions", [])
+        )
+
 
 @pytest.mark.parametrize(
     "params",
@@ -1162,6 +1173,173 @@ def test_mission_assurance_compiles_blockers_and_actions():
     assert assurance.get("next_checkpoint_hours") is not None
     assert assurance.get("recommended_actions")
     assert any("telemetry" in focus.lower() for focus in assurance.get("focus_areas", []))
+
+
+def test_operational_resilience_penalises_stale_feeds_and_pressure():
+    brief: Dict[str, Any] = {
+        "mission_assurance": {
+            "status": "at_risk",
+            "recommended_actions": ["Stabilise assurance drivers."],
+            "next_checkpoint_hours": 1.25,
+        },
+        "response_readiness": {
+            "level": "critical",
+            "priority_actions": ["Surge rapid response analysts."],
+            "support_window_hours": 1.5,
+            "drivers": ["Telemetry outage"],
+        },
+        "resource_sustainment": {
+            "status": "surge",
+            "resupply_window_hours": 2.0,
+            "recommended_actions": ["Deploy reserve sustainment crews."],
+            "resource_needs": ["Fuel pods"],
+        },
+        "operational_risks": {
+            "severity_score": 18,
+            "recommended_actions": ["Escalate operational risk review."],
+            "focus_areas": ["Telemetry"],
+        },
+        "contingency_plans": {
+            "status": "activate",
+            "activation_window_hours": 4.0,
+            "scenarios": [{"name": "Telemetry fallback"}],
+            "recommended_actions": ["Activate telemetry fallback controllers."],
+        },
+        "communication_plan": {
+            "status": "crisis",
+            "recommended_actions": ["Issue crisis broadcast."],
+            "key_messages": ["Telemetry offline"],
+            "audiences": [{"focus": "Command"}],
+        },
+        "command_alignment": {
+            "status": "misaligned",
+            "recommended_actions": ["Run emergency alignment stand-up."],
+            "drivers": ["Telemetry ownership"],
+            "focus_areas": ["Telemetry"],
+            "next_sync_hours": 1.0,
+            "coordination_gaps": ["Telemetry ownership unclear"],
+        },
+        "response_pressure": {
+            "status": "critical_backlog",
+            "estimated_clearance_hours": 2.5,
+            "recommended_actions": ["Clear analyst backlog immediately."],
+        },
+        "support_priorities": {
+            "status": "mobilise",
+            "recommended_actions": ["Mobilise telemetry support teams."],
+            "priorities": [
+                {"team": "Telemetry Ops", "support_window_hours": 1.25},
+            ],
+        },
+        "data_freshness": {"feeds": {"detections": {"status": "stale"}}},
+        "intelligence_confidence": {
+            "level": "low",
+            "recommended_actions": ["Validate degraded telemetry inputs."],
+            "drivers": ["Telemetry outage"],
+        },
+        "intelligence_gaps": [
+            {"gap": "telemetry", "severity": "critical", "detail": "Telemetry offline"}
+        ],
+        "operational_outlook": {
+            "status": "rapid_response",
+            "recommended_actions": ["Trigger rapid response cells."],
+            "drivers": ["Telemetry outage"],
+            "planning_horizon_hours": 6.0,
+        },
+    }
+
+    resilience = intel_brief._derive_operational_resilience(brief)
+    assert resilience is not None
+    assert resilience.get("status") in {"vulnerable", "critical"}
+    assert resilience.get("resilience_score", 100) < 70
+    assert any("stale" in spot.lower() for spot in resilience.get("weak_spots", []))
+    assert any("telemetry" in driver.lower() for driver in resilience.get("drivers", []))
+    actions = resilience.get("recommended_actions") or []
+    assert any("validate" in action.lower() for action in actions)
+    assert resilience.get("stability_window_hours") == pytest.approx(1.0)
+
+
+def test_operational_resilience_highlights_reinforcing_signals():
+    brief: Dict[str, Any] = {
+        "mission_assurance": {
+            "status": "assured",
+            "recommended_actions": ["Maintain assurance cadence."],
+            "drivers": ["Coordinated leadership"],
+            "focus_areas": ["Joint operations"],
+            "next_checkpoint_hours": 4.0,
+        },
+        "response_readiness": {
+            "level": "steady",
+            "priority_actions": ["Rotate on-call analysts."],
+            "support_window_hours": 6.0,
+            "drivers": ["Balanced staffing"],
+        },
+        "resource_sustainment": {
+            "status": "monitor",
+            "recommended_actions": ["Maintain sustainment posture."],
+            "resupply_window_hours": 8.0,
+        },
+        "operational_risks": {
+            "severity_score": 2,
+            "recommended_actions": ["Track low-risk watchlist."],
+            "focus_areas": ["Training"],
+            "next_review_hours": 10.0,
+        },
+        "contingency_plans": {
+            "status": "watch",
+            "scenarios": [{"name": "Weather fallback"}],
+            "recommended_actions": ["Review weather fallback owners."],
+        },
+        "communication_plan": {
+            "status": "routine",
+            "recommended_actions": ["Share weekly alignment brief."],
+            "audiences": [{"focus": "Command"}],
+        },
+        "command_alignment": {
+            "status": "aligned",
+            "recommended_actions": ["Sustain cross-team sync cadence."],
+            "drivers": ["Shared metrics"],
+            "focus_areas": ["Joint operations"],
+            "next_sync_hours": 12.0,
+        },
+        "response_pressure": {
+            "status": "balanced",
+            "recommended_actions": ["Maintain throughput pacing."],
+            "estimated_clearance_hours": 5.0,
+        },
+        "support_priorities": {
+            "status": "monitor",
+            "recommended_actions": ["Monitor support queue."],
+            "priorities": [
+                {"team": "Support", "support_window_hours": 7.0},
+            ],
+        },
+        "data_freshness": {"feeds": {"detections": {"status": "fresh"}}},
+        "intelligence_confidence": {
+            "level": "high",
+            "recommended_actions": ["Celebrate telemetry wins."],
+            "drivers": ["Accurate feedback"],
+        },
+        "operational_outlook": {
+            "status": "stabilise",
+            "recommended_actions": ["Hold stabilisation posture."],
+            "drivers": ["Balanced indicators"],
+            "planning_horizon_hours": 24.0,
+        },
+    }
+
+    resilience = intel_brief._derive_operational_resilience(brief)
+    assert resilience is not None
+    assert resilience.get("status") in {"resilient", "steady"}
+    assert resilience.get("resilience_score", 0) >= 70
+    reinforcing = resilience.get("reinforcing_factors") or []
+    assert any("assurance" in factor.lower() for factor in reinforcing)
+    assert not resilience.get("weak_spots")
+    assert resilience.get("stability_window_hours") == pytest.approx(4.0)
+    assert any(
+        action in resilience.get("recommended_actions", [])
+        for action in ["Maintain assurance cadence.", "Rotate on-call analysts."]
+    )
 
 
 def test_gather_intelligence_brief_builds_communication_plan(monkeypatch):
