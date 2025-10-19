@@ -599,6 +599,52 @@ def _render_command_directives(directives: Optional[Dict[str, Any]]) -> None:
         console.print(table)
 
 
+def _render_communication_plan(plan: Optional[Dict[str, Any]]) -> None:
+    if not plan:
+        return
+
+    console.print(_t("Communication plan"), style="bold")
+
+    status = str(plan.get("status", "routine"))
+    cadence = plan.get("update_cadence_minutes")
+    status_line = f"{_t('Status')}: {status.replace('_', ' ').title()}"
+    if isinstance(cadence, (int, float)):
+        status_line += f" ({_t('Cadence')}: {int(cadence)} {_t('minutes')})"
+    console.print(status_line)
+
+    audiences = plan.get("audiences", []) if isinstance(plan, dict) else []
+    if audiences:
+        table = Table(title=_t("Audience cadence"))
+        table.add_column(_t("Audience"))
+        table.add_column(_t("Cadence (min)"), justify="right")
+        table.add_column(_t("Focus"))
+        table.add_column(_t("Channel"))
+        for entry in audiences:
+            cadence_value = entry.get("cadence_minutes")
+            table.add_row(
+                str(entry.get("audience", "-")),
+                str(int(cadence_value)) if isinstance(cadence_value, (int, float)) else "-",
+                str(entry.get("focus", "-")),
+                str(entry.get("channel", "-")) if entry.get("channel") else "-",
+            )
+        console.print(table)
+
+    if plan.get("key_messages"):
+        console.print(_t("Key messages:"), style="bold")
+        for msg in plan["key_messages"]:
+            console.print(f"- {msg}")
+
+    if plan.get("drivers"):
+        console.print(_t("Drivers:"), style="bold")
+        for driver in plan["drivers"]:
+            console.print(f"- {driver}")
+
+    if plan.get("recommended_actions"):
+        console.print(_t("Communication actions:"), style="bold")
+        for action in plan["recommended_actions"]:
+            console.print(f"- {action}")
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=_t("Generate an intelligence brief"))
     parser.add_argument("--area", type=str, help=_t("Optional area filter"))
@@ -656,6 +702,8 @@ def main(area: Optional[str], hours: int, limit: int, raw: bool) -> None:
         _render_operational_outlook(brief["operational_outlook"])
     if brief.get("command_directives"):
         _render_command_directives(brief["command_directives"])
+    if brief.get("communication_plan"):
+        _render_communication_plan(brief["communication_plan"])
     if brief.get("intelligence_gaps"):
         _render_intelligence_gaps(brief["intelligence_gaps"])
     if brief.get("insights"):

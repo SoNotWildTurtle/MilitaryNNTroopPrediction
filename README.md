@@ -217,6 +217,17 @@ directive table with sources, contexts, and support windows, while the API
 exposes the detailed payload under `command_directives` and a compact summary
 in `insights.command_directives` for dashboards and battle rhythms.
 
+To keep commanders, analysts, and support teams aligned on messaging cadence,
+the brief now emits a **communication plan**. The planner inspects directives,
+outlook, posture, readiness, analyst pressure, telemetry freshness, confidence,
+gap severity, and threat cues to assign update cadences for each audience,
+highlight key talking points, and suggest communication follow-ups. The CLI
+prints the audience cadence table, drivers, and communication-specific actions,
+while the API exposes the full payload under `communication_plan` and
+summarises the status, audience count, and cadence within
+`insights.communication_plan` so dashboards can schedule syncs alongside other
+operational analytics.
+
 To keep teams focused on the most pressing blind spots, the brief highlights an
 **intelligence gaps** table. It inspects the existing tempo, freshness, and
 meta-analysis blocks to flag when prediction coverage collapses, telemetry

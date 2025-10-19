@@ -682,6 +682,144 @@ def test_command_directives_prioritise_immediate_actions():
     assert "Telemetry Operations" in teams and "Analysis Cell" in teams
 
 
+def test_communication_plan_escalates_for_crisis():
+    brief: Dict[str, Any] = {
+        "command_directives": {
+            "severity": 24,
+            "status": "escalate",
+            "drivers": ["Multiple crisis directives require leadership steering."],
+            "focus_areas": ["Telemetry recovery", "Backlog relief"],
+            "planning_window_hours": 1.5,
+        },
+        "operational_posture": {"status": "recover"},
+        "response_readiness": {"level": "critical"},
+        "response_pressure": {"severity": 2, "status": "critical_backlog"},
+        "support_priorities": {"status": "mobilise"},
+        "intelligence_confidence": {"level": "low"},
+        "health": {"risk_level": "severe"},
+        "data_freshness": {
+            "feeds": {
+                "detections": {"status": "stale"},
+                "predictions": {"status": "warning"},
+            }
+        },
+        "intelligence_gaps": [{"severity": "critical"}],
+        "cluster_threats": [
+            {
+                "threat_level": "critical",
+                "threat_score": 18.5,
+                "nearest_site": "rail hub",
+            }
+        ],
+        "recommendations": ["Notify command staff immediately."],
+        "errors": ["Threat scoring experienced a brief outage."],
+    }
+
+    plan = intel_brief._derive_communication_plan(brief)
+    assert plan is not None
+    assert plan.get("status") == "escalated"
+    cadence = plan.get("update_cadence_minutes")
+    assert isinstance(cadence, int) and cadence <= 45
+    audiences = plan.get("audiences", [])
+    assert any(entry.get("audience") == "Command Leadership" for entry in audiences)
+    assert any("telemetry" in message.lower() for message in plan.get("key_messages", []))
+    assert any("situation report" in action.lower() for action in plan.get("recommended_actions", []))
+
+
+def test_gather_intelligence_brief_builds_communication_plan(monkeypatch):
+    now = datetime(2024, 9, 10, 8, tzinfo=UTC)
+    monkeypatch.setattr(intel_brief, "_utcnow", lambda: now)
+
+    monkeypatch.setattr(intel_brief, "meta_analysis", lambda hours: {"detections": {"troop": {"count": 5, "avg_conf": 0.82}}})
+    monkeypatch.setattr(intel_brief, "_recent_documents", lambda *args, **kwargs: [])
+    monkeypatch.setattr(intel_brief, "_recent_clusters", lambda *args, **kwargs: [])
+    monkeypatch.setattr(intel_brief, "score_clusters", lambda clusters: [])
+
+    monkeypatch.setattr(
+        intel_brief,
+        "_summarise_freshness",
+        lambda **kwargs: {
+            "feeds": {
+                "detections": {"status": "warning"},
+                "predictions": {"status": "stale"},
+            }
+        },
+    )
+    monkeypatch.setattr(
+        intel_brief,
+        "_derive_brief_health",
+        lambda brief: {"risk_level": "high"},
+    )
+    monkeypatch.setattr(
+        intel_brief,
+        "_derive_operational_posture",
+        lambda brief: {"status": "recover", "focus": "Restore telemetry", "horizon_hours": 2.0},
+    )
+    monkeypatch.setattr(
+        intel_brief,
+        "_derive_response_readiness",
+        lambda brief: {
+            "level": "critical",
+            "support_window_hours": 1.5,
+            "priority_actions": ["Stage rapid response teams."],
+        },
+    )
+    monkeypatch.setattr(
+        intel_brief,
+        "_derive_response_pressure",
+        lambda brief: {
+            "severity": 2,
+            "status": "critical_backlog",
+            "recommended_actions": ["Deploy surge analysts."],
+        },
+    )
+    monkeypatch.setattr(
+        intel_brief,
+        "_derive_support_priorities",
+        lambda brief: {"status": "mobilise", "priorities": []},
+    )
+    monkeypatch.setattr(
+        intel_brief,
+        "_derive_intelligence_confidence",
+        lambda brief: {"level": "low"},
+    )
+    monkeypatch.setattr(
+        intel_brief,
+        "_derive_intelligence_gaps",
+        lambda brief: [{"gap": "predictions", "severity": "major"}],
+    )
+    monkeypatch.setattr(
+        intel_brief,
+        "_derive_operational_outlook",
+        lambda brief: {
+            "status": "rapid_response",
+            "severity_score": 10,
+            "focus_areas": ["Telemetry recovery"],
+        },
+    )
+    monkeypatch.setattr(
+        intel_brief,
+        "_derive_command_directives",
+        lambda brief: {
+            "severity": 14,
+            "status": "accelerate",
+            "drivers": ["Telemetry feeds require leadership direction."],
+            "focus_areas": ["Telemetry recovery"],
+            "planning_window_hours": 1.0,
+        },
+    )
+
+    brief = intel_brief.gather_intelligence_brief(hours=6, activity_limit=5)
+
+    plan = brief.get("communication_plan")
+    assert plan is not None
+    assert plan.get("status") in {"heightened", "focused", "escalated"}
+    assert brief.get("insights", {}).get("communication_plan", {}).get("audience_count") == len(
+        plan.get("audiences", [])
+    )
+    assert any("leadership" in rec.lower() for rec in brief.get("recommendations", []))
+    assert any(entry.get("audience") for entry in plan.get("audiences", []))
+
 def test_detection_quality_highlights_low_confidence(monkeypatch):
     now = datetime(2024, 7, 10, 6, tzinfo=UTC)
     monkeypatch.setattr(intel_brief, "_utcnow", lambda: now)

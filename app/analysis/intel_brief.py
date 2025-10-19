@@ -1490,6 +1490,333 @@ def _derive_command_directives(brief: Dict[str, Any]) -> Optional[Dict[str, Any]
     return payload if payload else None
 
 
+def _derive_communication_plan(brief: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Produce a communications cadence and key messaging plan."""
+
+    directives = brief.get("command_directives") or {}
+    outlook = brief.get("operational_outlook") or {}
+    posture = brief.get("operational_posture") or {}
+    readiness = brief.get("response_readiness") or {}
+    pressure = brief.get("response_pressure") or {}
+    support = brief.get("support_priorities") or {}
+    confidence = brief.get("intelligence_confidence") or {}
+    health = brief.get("health") or {}
+    freshness = brief.get("data_freshness") or {}
+    gaps = brief.get("intelligence_gaps") or []
+    cluster_threats = brief.get("cluster_threats") or []
+    recommendations = brief.get("recommendations") or []
+    errors = brief.get("errors") or []
+
+    if not any(
+        [
+            directives,
+            outlook,
+            posture,
+            readiness,
+            pressure,
+            support,
+            confidence,
+            health,
+            freshness,
+            gaps,
+            cluster_threats,
+            recommendations,
+            errors,
+        ]
+    ):
+        return None
+
+    severity = 0
+    drivers: List[str] = []
+    key_messages: List[str] = []
+    actions: List[str] = []
+    audience_map: Dict[str, Dict[str, Any]] = {}
+
+    def _add_driver(message: str) -> None:
+        if message:
+            drivers.append(message)
+
+    def _add_message(message: str) -> None:
+        if message:
+            key_messages.append(message)
+
+    def _add_action(message: str) -> None:
+        if message:
+            actions.append(message)
+
+    def _add_audience(
+        name: Optional[str],
+        cadence_minutes: Optional[float],
+        focus: Optional[str],
+        *,
+        channel: Optional[str] = None,
+    ) -> None:
+        if not name or not focus:
+            return
+        entry = audience_map.setdefault(
+            str(name),
+            {"audience": str(name), "focus": []},
+        )
+        focus_list = entry.setdefault("focus", [])
+        if focus not in focus_list:
+            focus_list.append(focus)
+        if isinstance(cadence_minutes, (float, int)) and cadence_minutes > 0:
+            cadence_value = max(15, int(round(float(cadence_minutes))))
+            existing = entry.get("cadence_minutes")
+            if not isinstance(existing, int) or cadence_value < existing:
+                entry["cadence_minutes"] = cadence_value
+        if channel:
+            entry["channel"] = channel
+
+    directive_severity = directives.get("severity")
+    if isinstance(directive_severity, (int, float)):
+        severity_score = float(directive_severity)
+        if severity_score >= 20:
+            severity += 5
+            _add_driver("Command directives severity is in the crisis band.")
+        elif severity_score >= 12:
+            severity += 3
+            _add_driver("Command directives highlight accelerated leadership actions.")
+        elif severity_score >= 6:
+            severity += 2
+            _add_driver("Command directives emphasise focused follow-up tasks.")
+        elif severity_score > 0:
+            severity += 1
+
+    directive_status = str(directives.get("status", "")).lower()
+    if directive_status in {"escalate", "accelerate"}:
+        severity += 3
+        _add_driver("Directive posture requires frequent leadership synchronisation.")
+    elif directive_status == "focus":
+        severity += 1
+
+    for driver in directives.get("drivers", []) or []:
+        _add_message(driver)
+    for area in directives.get("focus_areas", []) or []:
+        _add_message(f"Focus: {area}")
+
+    posture_status = str(posture.get("status", "")).lower()
+    if posture_status == "recover":
+        severity += 3
+        _add_driver("Operational posture is in recovery mode and needs tight comms loops.")
+    elif posture_status == "stabilise":
+        severity += 2
+        _add_driver("Operational posture emphasises stabilisation work across teams.")
+    elif posture_status == "reinforce":
+        severity += 1
+
+    readiness_level = str(readiness.get("level", "")).lower()
+    if readiness_level == "critical":
+        severity += 3
+        _add_driver("Response readiness is critical; leadership updates should be rapid.")
+    elif readiness_level == "strained":
+        severity += 2
+        _add_driver("Response readiness is strained and requires reinforcement updates.")
+
+    pressure_severity = pressure.get("severity")
+    if isinstance(pressure_severity, (int, float)):
+        if int(pressure_severity) >= 2:
+            severity += 2
+            _add_driver("Analyst response pressure is critical, signalling fast-changing queues.")
+        elif int(pressure_severity) >= 1:
+            severity += 1
+            _add_driver("Analyst response pressure is mounting and should be monitored.")
+
+    pressure_status = str(pressure.get("status", "")).lower()
+    if pressure_status in {"critical_backlog", "prediction_gap"}:
+        _add_message("Analyst backlog requires immediate triage updates.")
+    elif pressure_status in {"backlog", "feedback_strain"}:
+        _add_message("Analyst workload is trending high; coordinate relief messaging.")
+
+    support_status = str(support.get("status", "")).lower()
+    if support_status == "mobilise":
+        severity += 2
+        _add_driver("Support coordination is mobilising multiple teams.")
+    elif support_status == "reinforce":
+        severity += 1
+
+    confidence_level = str(confidence.get("level", "")).lower()
+    if confidence_level == "low":
+        severity += 2
+        _add_driver("Intelligence confidence is low and needs validation messaging.")
+        _add_message("Telemetry confidence is degraded; set expectations on data reliability.")
+    elif confidence_level == "guarded":
+        severity += 1
+
+    risk_level = str(health.get("risk_level", "")).lower()
+    if risk_level in {"severe", "critical"}:
+        severity += 3
+        _add_driver("Health assessment flags severe operational risk.")
+    elif risk_level == "high":
+        severity += 2
+    elif risk_level == "elevated":
+        severity += 1
+
+    feeds = freshness.get("feeds") if isinstance(freshness, dict) else {}
+    stale_feeds: List[str] = []
+    warn_feeds: List[str] = []
+    for name, info in (feeds or {}).items():
+        status = str(info.get("status", "")).lower()
+        if status == "stale":
+            stale_feeds.append(str(name))
+        elif status == "warning":
+            warn_feeds.append(str(name))
+    if stale_feeds:
+        severity += 2
+        names = ", ".join(sorted(set(stale_feeds)))
+        _add_driver(f"Stale telemetry feeds detected: {names}.")
+        _add_message(f"Telemetry recovery required for: {names}.")
+    elif warn_feeds:
+        severity += 1
+        names = ", ".join(sorted(set(warn_feeds)))
+        _add_message(f"Telemetry freshness warnings for: {names}.")
+
+    highest_threat_level: Optional[str] = None
+    highest_threat_site: Optional[str] = None
+    if cluster_threats:
+        highest = max(
+            [cluster for cluster in cluster_threats if isinstance(cluster, dict)],
+            key=lambda cluster: (
+                _threat_level_rank(cluster.get("threat_level")),
+                cluster.get("threat_score", 0),
+            ),
+        )
+        highest_threat_level = highest.get("threat_level")
+        highest_threat_site = highest.get("nearest_site")
+        threat_rank = _threat_level_rank(highest_threat_level)
+        if threat_rank >= 3:
+            severity += 3
+            detail = "Critical threat cluster activity demands field alerts."
+            if highest_threat_site:
+                detail = f"Critical threat cluster converging near {highest_threat_site}."
+            _add_driver(detail)
+        elif threat_rank == 2:
+            severity += 2
+            if highest_threat_site:
+                _add_driver(f"High-risk cluster tracking toward {highest_threat_site}.")
+
+    critical_gaps = sum(1 for gap in gaps if isinstance(gap, dict) and str(gap.get("severity", "")).lower() == "critical")
+    major_gaps = sum(1 for gap in gaps if isinstance(gap, dict) and str(gap.get("severity", "")).lower() == "major")
+    if critical_gaps:
+        severity += min(3, critical_gaps * 2)
+        _add_driver(f"{critical_gaps} critical intelligence gap(s) remain open.")
+    elif major_gaps:
+        severity += 1
+
+    outlook_status = str(outlook.get("status", "")).lower()
+    if outlook_status in {"escalation_imminent", "rapid_response"}:
+        severity += 3
+    elif outlook_status in {"heightened_watch", "stabilise"}:
+        severity += 1
+
+    outlook_focus = outlook.get("focus_areas")
+    if isinstance(outlook_focus, list):
+        for focus in outlook_focus:
+            _add_message(f"Outlook focus: {focus}")
+
+    for rec in recommendations:
+        _add_message(str(rec))
+
+    if errors:
+        _add_driver("Brief contains system warnings that should be communicated.")
+        _add_message("Include telemetry warnings when briefing stakeholders.")
+
+    if highest_threat_level:
+        focus_text = "Monitor high-risk cluster routes"
+        if highest_threat_site:
+            focus_text = f"Monitor movements near {highest_threat_site}"
+        _add_audience("Field Liaison", 90 if _threat_level_rank(highest_threat_level) >= 2 else 120, focus_text)
+
+    analyst_focus = "Coordinate analyst relief and backlog updates."
+    if pressure_status in {"critical_backlog", "backlog", "prediction_gap"}:
+        _add_audience("Intelligence Cell Leads", 60, analyst_focus)
+
+    if support_status in {"mobilise", "reinforce"}:
+        _add_audience(
+            "Support Coordination",
+            90 if support_status == "mobilise" else 120,
+            "Synchronise cross-team mobilisation tasks.",
+        )
+
+    # Base operations centre audience always present.
+    _add_audience(
+        "Operations Center",
+        60 if severity >= 4 else 180,
+        "Maintain situational awareness across posture, readiness, and telemetry.",
+    )
+
+    if severity >= 7:
+        _add_audience(
+            "Command Leadership",
+            30 if severity >= 11 else 60,
+            "Deliver concise status, directives, and readiness posture updates.",
+            channel="Secure briefing",
+        )
+        _add_action("Publish a leadership situation report summarising directives within the next hour.")
+    elif severity >= 4:
+        _add_audience(
+            "Duty Leadership",
+            90,
+            "Provide posture, readiness, and key risk updates for the upcoming shift.",
+        )
+        _add_action("Schedule a duty leadership sync covering posture and readiness drivers.")
+    else:
+        _add_action("Distribute a routine summary to duty teams during the next scheduled check-in.")
+
+    if stale_feeds:
+        _add_action("Include telemetry recovery status in all outbound updates until feeds stabilise.")
+    if confidence_level == "low":
+        _add_action("Add validation caveats to intelligence products until confidence improves.")
+    if critical_gaps:
+        _add_action("Track closure owners for critical intelligence gaps in each briefing.")
+
+    base_cadence = 240
+    if severity >= 11:
+        status = "escalated"
+        base_cadence = 30
+    elif severity >= 7:
+        status = "heightened"
+        base_cadence = 60
+    elif severity >= 4:
+        status = "focused"
+        base_cadence = 120
+    else:
+        status = "routine"
+
+    if readiness_level == "critical" and base_cadence > 45:
+        base_cadence = 45
+    planning_window = directives.get("planning_window_hours")
+    if isinstance(planning_window, (float, int)) and planning_window > 0:
+        base_cadence = min(base_cadence, max(30, int(round(float(planning_window) * 60))))
+
+    drivers = list(dict.fromkeys(drivers))
+    key_messages = list(dict.fromkeys(key_messages))
+    actions = list(dict.fromkeys(actions))
+
+    audiences: List[Dict[str, Any]] = []
+    for entry in audience_map.values():
+        focus_field = entry.get("focus")
+        if isinstance(focus_field, list):
+            entry["focus"] = "; ".join(dict.fromkeys(focus_field))
+        audiences.append(entry)
+    audiences.sort(key=lambda item: item.get("cadence_minutes", 999))
+
+    payload: Dict[str, Any] = {
+        "status": status,
+        "update_cadence_minutes": int(base_cadence),
+    }
+    if audiences:
+        payload["audiences"] = audiences
+    if key_messages:
+        payload["key_messages"] = key_messages
+    if drivers:
+        payload["drivers"] = drivers
+    if actions:
+        payload["recommended_actions"] = actions
+
+    return payload if payload else None
+
+
 def _summarise_freshness(
     *,
     generated_at: datetime,
@@ -2269,6 +2596,21 @@ def gather_intelligence_brief(
         if directives.get("planning_window_hours") is not None:
             insight["planning_window_hours"] = directives["planning_window_hours"]
         brief.setdefault("insights", {})["command_directives"] = insight
+
+    comms_plan = _derive_communication_plan(brief)
+    if comms_plan:
+        brief["communication_plan"] = comms_plan
+        insight: Dict[str, Any] = {
+            "status": comms_plan.get("status"),
+            "audience_count": len(comms_plan.get("audiences", [])),
+            "update_cadence_minutes": comms_plan.get("update_cadence_minutes"),
+        }
+        key_messages = comms_plan.get("key_messages")
+        if isinstance(key_messages, list) and key_messages:
+            insight["key_messages"] = key_messages[:2]
+        brief.setdefault("insights", {})["communication_plan"] = insight
+        for action in comms_plan.get("recommended_actions", []) or []:
+            _append_recommendation(brief, action)
 
     return brief
 
