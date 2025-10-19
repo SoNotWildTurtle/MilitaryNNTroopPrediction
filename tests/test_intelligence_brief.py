@@ -398,6 +398,16 @@ def test_gather_intelligence_brief_activity_summary(monkeypatch):
         for entry in directives.get("directives", [])
     )
 
+    alignment = brief.get("command_alignment")
+    assert alignment is not None
+    assert alignment.get("status") in {"aligned", "watch", "at_risk", "misaligned"}
+    assert isinstance(alignment.get("alignment_score"), int)
+    assert alignment["alignment_score"] <= 100
+    assert "command_alignment" in brief.get("insights", {})
+    if alignment.get("coordination_gaps"):
+        insight = brief["insights"]["command_alignment"]
+        assert insight.get("coordination_gaps") == len(alignment["coordination_gaps"])
+
 
 def test_gather_intelligence_brief_marks_stale_feeds(monkeypatch):
     now = datetime(2024, 5, 1, 12, tzinfo=UTC)
@@ -945,6 +955,93 @@ def test_operational_risk_register_escalates_compound_signals():
     assert register.get("recommended_actions")
     assert register.get("drivers")
     assert register.get("next_review_hours") is not None
+
+
+def test_command_alignment_flags_alignment_gaps():
+    brief: Dict[str, Any] = {
+        "command_directives": {
+            "severity": 22,
+            "status": "escalate",
+            "focus_areas": ["Telemetry restoration"],
+            "coordination_teams": ["Telemetry Ops", "Command"],
+            "recommended_actions": ["Hold a crisis stand-up for telemetry recovery."],
+            "planning_window_hours": 2.0,
+        },
+        "communication_plan": {
+            "status": "escalated",
+            "update_cadence_minutes": 30,
+            "recommended_actions": ["Issue hourly updates to command stakeholders."],
+            "audiences": [
+                {"audience": "Command", "focus": "Telemetry recovery", "cadence_minutes": 30}
+            ],
+        },
+        "resource_sustainment": {
+            "status": "surge",
+            "resupply_window_hours": 1.5,
+            "resource_needs": ["Surge staffing"],
+            "recommended_actions": ["Mobilise logistics support for surge coverage."],
+        },
+        "operational_risks": {
+            "status": "critical",
+            "severity_score": 22,
+            "focus_areas": ["Telemetry"],
+            "recommended_actions": ["Escalate critical telemetry risk to leadership."],
+            "risks": [{"name": "Telemetry outage", "severity": 4}],
+            "next_review_hours": 2.5,
+        },
+        "response_readiness": {
+            "level": "critical",
+            "support_window_hours": 1.0,
+            "priority_actions": ["Mobilise reserve analysts to stabilise readiness."],
+        },
+        "response_pressure": {
+            "status": "critical_backlog",
+            "estimated_clearance_hours": 2.0,
+            "recommended_actions": ["Clear the prediction backlog with surge analysts."],
+        },
+        "support_priorities": {
+            "status": "mobilise",
+            "recommended_actions": ["Mobilise support squads to cover telemetry tasks."],
+            "priorities": [
+                {"team": "Telemetry Ops", "reason": "Restore sensors", "support_window_hours": 1.25}
+            ],
+        },
+        "operational_outlook": {
+            "severity_score": 10,
+            "focus_areas": ["Telemetry remediation"],
+            "recommended_actions": ["Align all teams on the telemetry remediation horizon."],
+            "planning_horizon_hours": 6.0,
+        },
+        "operational_posture": {"status": "recover", "focus": "Telemetry", "horizon_hours": 4.0},
+        "intelligence_confidence": {
+            "level": "guarded",
+            "recommended_actions": ["Validate telemetry sources with engineering teams."],
+        },
+        "health": {
+            "risk_level": "high",
+            "drivers": ["Telemetry risk"],
+            "recommended_actions": ["Coordinate leadership mitigation for telemetry risk."],
+        },
+        "contingency_plans": {
+            "status": "activate",
+            "activation_window_hours": 3.0,
+            "scenarios": [{"name": "Telemetry fallback"}],
+            "recommended_actions": ["Activate telemetry fallback scenario owners."],
+        },
+        "intelligence_gaps": [
+            {"gap": "prediction_coverage", "severity": "critical", "detail": "Coverage below 40%"}
+        ],
+    }
+
+    alignment = intel_brief._derive_command_alignment(brief)
+    assert alignment is not None
+    assert alignment.get("status") in {"at_risk", "misaligned"}
+    assert alignment.get("alignment_score", 100) < 70
+    assert alignment.get("coordination_gaps")
+    assert any("Telemetry" in area for area in alignment.get("focus_areas", []))
+    actions = " ".join(alignment.get("recommended_actions", []))
+    assert "surge" in actions.lower()
+    assert alignment.get("next_sync_hours") is not None
 
 
 def test_gather_intelligence_brief_builds_communication_plan(monkeypatch):

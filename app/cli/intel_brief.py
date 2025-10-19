@@ -599,6 +599,46 @@ def _render_command_directives(directives: Optional[Dict[str, Any]]) -> None:
         console.print(table)
 
 
+def _render_command_alignment(alignment: Optional[Dict[str, Any]]) -> None:
+    if not alignment:
+        return
+
+    console.print(_t("Command alignment"), style="bold")
+
+    status = str(alignment.get("status", "aligned"))
+    score = alignment.get("alignment_score")
+    status_line = f"{_t('Status')}: {status.replace('_', ' ').title()}"
+    if isinstance(score, (int, float)):
+        status_line += f" ({_t('Score')}: {int(round(float(score)))})"
+    console.print(status_line)
+
+    next_sync = alignment.get("next_sync_hours")
+    if isinstance(next_sync, (int, float)):
+        console.print(
+            f"{_t('Next sync window')}: {round(float(next_sync), 2)} {_t('hours')}"
+        )
+
+    if alignment.get("coordination_gaps"):
+        console.print(_t("Coordination gaps:"), style="bold red")
+        for gap in alignment["coordination_gaps"]:
+            console.print(f"- {gap}")
+
+    if alignment.get("focus_areas"):
+        console.print(_t("Focus areas:"), style="bold")
+        for area in alignment["focus_areas"]:
+            console.print(f"- {area}")
+
+    if alignment.get("drivers"):
+        console.print(_t("Drivers:"), style="bold")
+        for driver in alignment["drivers"]:
+            console.print(f"- {driver}")
+
+    if alignment.get("recommended_actions"):
+        console.print(_t("Alignment actions:"), style="bold")
+        for action in alignment["recommended_actions"]:
+            console.print(f"- {action}")
+
+
 def _render_contingency_plans(plan: Optional[Dict[str, Any]]) -> None:
     if not plan:
         return
@@ -860,6 +900,8 @@ def main(area: Optional[str], hours: int, limit: int, raw: bool) -> None:
         _render_operational_outlook(brief["operational_outlook"])
     if brief.get("command_directives"):
         _render_command_directives(brief["command_directives"])
+    if brief.get("command_alignment"):
+        _render_command_alignment(brief["command_alignment"])
     if brief.get("contingency_plans"):
         _render_contingency_plans(brief["contingency_plans"])
     if brief.get("communication_plan"):

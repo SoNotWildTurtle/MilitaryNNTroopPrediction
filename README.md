@@ -263,6 +263,19 @@ associated driver list, while the API exposes the detailed payload under
 `operational_risks` with a condensed snapshot inside
 `insights.operational_risks` for dashboards and shift hand-off briefs.
 
+When leadership, support, and sustainment plans start to drift, the new
+**command alignment** dashboard steps in. It fuses the directive queue,
+communication cadence, sustainment posture, risk register, readiness, analyst
+pressure, support priorities, outlook, posture, and contingency analytics to
+calculate an alignment score, list coordination gaps, highlight shared focus
+areas, and suggest the next cross-team sync window. Alignment drivers and
+aggregated follow-up actions help command staff spot the single-threaded issues
+holding teams back. The Rich CLI renders the alignment summary with gaps,
+drivers, and actions, while the API publishes the payload at
+`command_alignment` and mirrors a compact view inside
+`insights.command_alignment` for dashboards that coordinate leadership touch
+points.
+
 To keep teams focused on the most pressing blind spots, the brief highlights an
 **intelligence gaps** table. It inspects the existing tempo, freshness, and
 meta-analysis blocks to flag when prediction coverage collapses, telemetry

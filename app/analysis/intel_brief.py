@@ -3643,6 +3643,304 @@ def _derive_operational_risk_register(brief: Dict[str, Any]) -> Optional[Dict[st
     return payload
 
 
+def _derive_command_alignment(brief: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Evaluate whether leadership, support, and sustainment plans stay aligned."""
+
+    directives = brief.get("command_directives") or {}
+    communication = brief.get("communication_plan") or {}
+    contingency = brief.get("contingency_plans") or {}
+    sustainment = brief.get("resource_sustainment") or {}
+    risk_register = brief.get("operational_risks") or {}
+    readiness = brief.get("response_readiness") or {}
+    pressure = brief.get("response_pressure") or {}
+    support = brief.get("support_priorities") or {}
+    outlook = brief.get("operational_outlook") or {}
+    posture = brief.get("operational_posture") or {}
+    confidence = brief.get("intelligence_confidence") or {}
+    health = brief.get("health") or {}
+    gaps = brief.get("intelligence_gaps") or []
+
+    if not any(
+        [
+            directives,
+            communication,
+            contingency,
+            sustainment,
+            risk_register,
+            readiness,
+            pressure,
+            support,
+            outlook,
+            posture,
+            confidence,
+            health,
+            gaps,
+        ]
+    ):
+        return None
+
+    score = 100.0
+    drivers: List[str] = []
+    focus: List[str] = []
+    gaps_list: List[str] = []
+    actions: List[str] = []
+    sync_windows: List[float] = []
+
+    def _penalise(amount: float, reason: Optional[str] = None) -> None:
+        nonlocal score
+        if amount <= 0:
+            return
+        score = max(0.0, score - float(amount))
+        if reason:
+            drivers.append(reason)
+
+    def _add_focus(values: Iterable[Any]) -> None:
+        for value in values:
+            if value:
+                focus.append(str(value))
+
+    def _add_gap(message: Optional[str]) -> None:
+        if message:
+            gaps_list.append(str(message))
+
+    def _add_actions(values: Optional[Iterable[Any]]) -> None:
+        for value in values or []:
+            if value:
+                actions.append(str(value))
+
+    def _register_window(value: Optional[float]) -> None:
+        if isinstance(value, (float, int)) and value > 0:
+            sync_windows.append(float(value))
+
+    def _register_minutes(minutes: Optional[float]) -> None:
+        if isinstance(minutes, (float, int)) and minutes > 0:
+            sync_windows.append(float(minutes) / 60.0)
+
+    directive_severity = directives.get("severity")
+    if isinstance(directive_severity, (float, int)):
+        if directive_severity >= 18:
+            _penalise(25, "Command directives severity is signalling crisis coordination.")
+        elif directive_severity >= 12:
+            _penalise(18, "Command directives require accelerated leadership focus.")
+        elif directive_severity >= 6:
+            _penalise(10, "Command directives emphasise focused follow-up work.")
+    directive_status = str(directives.get("status", "")).lower()
+    if directive_status == "escalate":
+        _penalise(15, "Directive status is escalate and requires tight alignment.")
+        _add_gap("Leadership directives are in escalation and need synchronised support.")
+    elif directive_status == "accelerate":
+        _penalise(8, "Directive status is accelerate and needs rapid execution support.")
+    elif directive_status == "focus":
+        _penalise(4, "Directive status is focus and should be monitored for alignment drift.")
+    _add_actions(directives.get("recommended_actions"))
+    _add_focus(directives.get("focus_areas", []))
+    _register_window(directives.get("planning_window_hours"))
+    for team in directives.get("coordination_teams", []) or []:
+        if team:
+            focus.append(f"Team: {team}")
+
+    comm_status = str(communication.get("status", "")).lower()
+    if comm_status == "escalated":
+        _penalise(12, "Communication cadence is escalated and taxing coordination loops.")
+        _add_gap("Communication plan is escalated; ensure messaging owners stay aligned.")
+    elif comm_status == "heightened":
+        _penalise(7, "Communication cadence is heightened and requires deliberate syncs.")
+    elif comm_status == "focused":
+        _penalise(3, "Communication cadence is focused and should stay on script.")
+    _add_actions(communication.get("recommended_actions"))
+    _add_focus(
+        [entry.get("focus") for entry in communication.get("audiences", []) if isinstance(entry, dict)]
+    )
+    _register_minutes(communication.get("update_cadence_minutes"))
+
+    sustainment_status = str(sustainment.get("status", "")).lower()
+    if sustainment_status == "surge":
+        _penalise(12, "Resource sustainment is surging and at risk of misalignment.")
+        _add_gap("Sustainment plan requires surge resourcing and command confirmation.")
+    elif sustainment_status == "accelerate":
+        _penalise(8, "Resource sustainment needs accelerated support to stay aligned.")
+    elif sustainment_status == "reinforce":
+        _penalise(5, "Resource sustainment recommends reinforcement across teams.")
+    elif sustainment_status == "watch":
+        _penalise(2)
+    _add_actions(sustainment.get("recommended_actions"))
+    _add_focus(sustainment.get("resource_needs", []))
+    _register_window(sustainment.get("resupply_window_hours"))
+
+    risk_score = risk_register.get("severity_score")
+    if isinstance(risk_score, (float, int)):
+        if risk_score >= 18:
+            _penalise(20, "Operational risk register is critical and dominating planning.")
+            _add_gap("Operational risk register contains critical items needing ownership.")
+        elif risk_score >= 12:
+            _penalise(15, "Operational risk register is escalated and requires follow-through.")
+        elif risk_score >= 6:
+            _penalise(8, "Operational risk register is elevated and should inform alignment.")
+    risk_status = str(risk_register.get("status", "")).lower()
+    if risk_status == "critical":
+        _add_gap("Critical risks require leadership and support teams to stay locked in.")
+    _add_actions(risk_register.get("recommended_actions"))
+    _add_focus(risk_register.get("focus_areas", []))
+    _add_focus([
+        entry.get("name")
+        for entry in risk_register.get("risks", [])
+        if isinstance(entry, dict) and entry.get("severity", 0) >= 4
+    ])
+    _register_window(risk_register.get("next_review_hours"))
+
+    readiness_level = str(readiness.get("level", "")).lower()
+    if readiness_level == "critical":
+        _penalise(20, "Response readiness is critical and alignment is under strain.")
+        _add_gap("Readiness is critical; ensure staffing and directives align.")
+    elif readiness_level == "strained":
+        _penalise(12, "Response readiness is strained and needs reinforcement alignment.")
+    elif readiness_level == "steady":
+        _penalise(2)
+    _add_actions(readiness.get("priority_actions"))
+    _register_window(readiness.get("support_window_hours"))
+
+    pressure_status = str(pressure.get("status", "")).lower()
+    if pressure_status in {"critical_backlog", "prediction_gap"}:
+        _penalise(16, "Analyst pressure is severe and desynchronising execution.")
+        _add_gap("Analyst pressure is critical; align staffing and modelling owners.")
+    elif pressure_status in {"backlog", "feedback_strain", "quality_watch"}:
+        _penalise(9, "Analyst pressure is building and needs coordination.")
+    elif pressure_status in {"prediction_gap_watch"}:
+        _penalise(5)
+    _add_actions(pressure.get("recommended_actions"))
+    _register_window(pressure.get("estimated_clearance_hours"))
+
+    support_status = str(support.get("status", "")).lower()
+    if support_status == "mobilise":
+        _penalise(10, "Support teams are mobilising and must stay synchronised.")
+        _add_gap("Support mobilisation requires alignment with directives and sustainment.")
+    elif support_status == "reinforce":
+        _penalise(6, "Support teams are reinforcing existing plans.")
+    elif support_status == "monitor":
+        _penalise(2)
+    _add_actions(support.get("recommended_actions"))
+    _add_focus(
+        [
+            entry.get("reason")
+            for entry in support.get("priorities", [])
+            if isinstance(entry, dict) and entry.get("reason")
+        ]
+    )
+    _add_focus(
+        [
+            entry.get("team")
+            for entry in support.get("priorities", [])
+            if isinstance(entry, dict) and entry.get("team")
+        ]
+    )
+
+    outlook_severity = outlook.get("severity_score")
+    if isinstance(outlook_severity, (float, int)):
+        if outlook_severity >= 12:
+            _penalise(10, "Operational outlook is severe and guiding near-term focus.")
+        elif outlook_severity >= 6:
+            _penalise(6, "Operational outlook is elevated and shaping coordination.")
+    _add_actions(outlook.get("recommended_actions"))
+    _add_focus(outlook.get("focus_areas", []))
+    _register_window(outlook.get("planning_horizon_hours"))
+
+    posture_status = str(posture.get("status", "")).lower()
+    if posture_status == "recover":
+        _penalise(8, "Operational posture is in recovery and alignment risk is high.")
+    elif posture_status == "stabilise":
+        _penalise(5, "Operational posture emphasises stabilisation across teams.")
+    elif posture_status == "reinforce":
+        _penalise(3)
+    posture_focus = posture.get("focus")
+    if posture_focus:
+        focus.append(str(posture_focus))
+    _register_window(posture.get("horizon_hours"))
+
+    confidence_level = str(confidence.get("level", "")).lower()
+    if confidence_level == "low":
+        _penalise(12, "Intelligence confidence is low and eroding alignment trust.")
+        _add_gap("Low intelligence confidence requires validation owners and clear comms.")
+    elif confidence_level == "guarded":
+        _penalise(6, "Intelligence confidence is guarded and should be reinforced.")
+    _add_actions(confidence.get("recommended_actions"))
+
+    risk_level = str(health.get("risk_level", "")).lower()
+    if risk_level in {"critical", "severe"}:
+        _penalise(14, "Overall risk posture is severe and alignment must be command-led.")
+        _add_gap("Operational risk posture is severe and needs coordinated mitigation.")
+    elif risk_level == "high":
+        _penalise(10, "Operational risk posture is high and requires structured follow-up.")
+    elif risk_level == "elevated":
+        _penalise(5)
+    _add_actions(health.get("recommended_actions"))
+    _add_focus(health.get("drivers", []))
+
+    for gap in gaps if isinstance(gaps, list) else []:
+        if not isinstance(gap, dict):
+            continue
+        severity = str(gap.get("severity", "")).lower()
+        detail = str(gap.get("detail", "")).strip() or gap.get("gap")
+        if severity == "critical":
+            _penalise(12)
+            _add_gap(f"Critical intelligence gap: {detail}.")
+        elif severity == "major":
+            _penalise(7)
+            _add_gap(f"Major intelligence gap: {detail}.")
+        elif severity:
+            _penalise(3)
+
+    for entry in contingency.get("scenarios", []) if isinstance(contingency, dict) else []:
+        if isinstance(entry, dict) and entry.get("name"):
+            focus.append(str(entry["name"]))
+    contingency_status = str(contingency.get("status", "")).lower()
+    if contingency_status == "activate":
+        _penalise(10, "Contingency plans are primed for activation and need orchestration.")
+        _add_gap("Contingency activation requires aligned ownership across teams.")
+    elif contingency_status == "ready":
+        _penalise(6, "Contingency plans are ready and need rehearsal alignment.")
+    elif contingency_status == "watch":
+        _penalise(2)
+    _add_actions(contingency.get("recommended_actions"))
+    _register_window(contingency.get("activation_window_hours"))
+
+    positive_sync = [value for value in sync_windows if value and value > 0]
+    next_sync: Optional[float] = None
+    if positive_sync:
+        next_sync = round(min(positive_sync), 2)
+
+    drivers = list(dict.fromkeys(drivers))
+    focus = list(dict.fromkeys([item for item in focus if item]))
+    gaps_list = list(dict.fromkeys(gaps_list))
+    actions = list(dict.fromkeys(actions))
+
+    alignment_score = int(round(score))
+    if alignment_score >= 80:
+        status = "aligned"
+    elif alignment_score >= 60:
+        status = "watch"
+    elif alignment_score >= 40:
+        status = "at_risk"
+    else:
+        status = "misaligned"
+
+    payload: Dict[str, Any] = {
+        "status": status,
+        "alignment_score": alignment_score,
+    }
+    if drivers:
+        payload["drivers"] = drivers
+    if focus:
+        payload["focus_areas"] = focus
+    if gaps_list:
+        payload["coordination_gaps"] = gaps_list
+    if actions:
+        payload["recommended_actions"] = actions
+    if next_sync is not None:
+        payload["next_sync_hours"] = next_sync
+
+    return payload if payload else None
+
+
 def gather_intelligence_brief(
     *,
     area: Optional[str] = None,
@@ -4001,6 +4299,24 @@ def gather_intelligence_brief(
             insight["next_review_hours"] = risk_register["next_review_hours"]
         brief.setdefault("insights", {})["operational_risks"] = insight
         for action in risk_register.get("recommended_actions", []) or []:
+            _append_recommendation(brief, action)
+
+    alignment = _derive_command_alignment(brief)
+    if alignment:
+        brief["command_alignment"] = alignment
+        insight: Dict[str, Any] = {
+            "status": alignment.get("status"),
+            "alignment_score": alignment.get("alignment_score"),
+        }
+        if alignment.get("coordination_gaps"):
+            insight["coordination_gaps"] = len(alignment.get("coordination_gaps", []))
+        focus = alignment.get("focus_areas")
+        if isinstance(focus, list) and focus:
+            insight["focus_areas"] = focus[:3]
+        if alignment.get("next_sync_hours") is not None:
+            insight["next_sync_hours"] = alignment["next_sync_hours"]
+        brief.setdefault("insights", {})["command_alignment"] = insight
+        for action in alignment.get("recommended_actions", []) or []:
             _append_recommendation(brief, action)
 
     return brief
