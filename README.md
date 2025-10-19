@@ -276,6 +276,19 @@ drivers, and actions, while the API publishes the payload at
 `insights.command_alignment` for dashboards that coordinate leadership touch
 points.
 
+To give leadership a single, end-to-end checkpoint, the brief now publishes a
+**mission assurance** scoreboard. It blends readiness, alignment, sustainment,
+risk, contingency, communication, directives, outlook, posture, analyst
+pressure, support priorities, intelligence confidence, health, telemetry
+freshness, and open gaps into an assurance score and status band. The payload
+lists blockers driving assurance down, highlights focus areas, aggregates
+dependency windows (readiness coverage, resupply and sync checkpoints), and
+deduplicates recommended actions that must close before the mission is secure.
+The Rich CLI renders the new section with blockers, drivers, focus areas, and a
+dependency window table, while the API surfaces the structured payload under
+`mission_assurance` with a summarised insight so dashboards can track
+mission-level risk alongside posture, readiness, and alignment trends.
+
 To keep teams focused on the most pressing blind spots, the brief highlights an
 **intelligence gaps** table. It inspects the existing tempo, freshness, and
 meta-analysis blocks to flag when prediction coverage collapses, telemetry

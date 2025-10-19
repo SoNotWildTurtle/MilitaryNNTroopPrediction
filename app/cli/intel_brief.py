@@ -639,6 +639,67 @@ def _render_command_alignment(alignment: Optional[Dict[str, Any]]) -> None:
             console.print(f"- {action}")
 
 
+def _render_mission_assurance(assurance: Optional[Dict[str, Any]]) -> None:
+    if not assurance:
+        return
+
+    console.print(_t("Mission assurance"), style="bold")
+
+    table = Table(show_header=False)
+    table.add_column(_t("Metric"))
+    table.add_column(_t("Value"))
+
+    table.add_row(_t("Status"), str(assurance.get("status", _t("unknown"))).replace("_", " ").title())
+    score = assurance.get("assurance_score")
+    if isinstance(score, (int, float)):
+        table.add_row(_t("Assurance score"), str(int(round(float(score)))))
+    checkpoint = assurance.get("next_checkpoint_hours")
+    if isinstance(checkpoint, (float, int)):
+        table.add_row(_t("Next checkpoint"), f"{float(checkpoint):.2f}h")
+    blockers = assurance.get("blockers")
+    if isinstance(blockers, list) and blockers:
+        table.add_row(_t("Blockers"), str(len(blockers)))
+
+    console.print(table)
+
+    if blockers:
+        console.print(_t("Blockers:"), style="bold red")
+        for blocker in blockers:
+            console.print(f"- {blocker}", style="red")
+
+    focus = assurance.get("focus_areas")
+    if isinstance(focus, list) and focus:
+        console.print(_t("Focus areas:"), style="bold")
+        for area in focus:
+            console.print(f"- {area}")
+
+    if assurance.get("drivers"):
+        console.print(_t("Drivers:"), style="bold")
+        for driver in assurance["drivers"]:
+            console.print(f"- {driver}")
+
+    deps = assurance.get("dependency_windows")
+    if isinstance(deps, list) and deps:
+        dep_table = Table(title=_t("Dependency windows"))
+        dep_table.add_column(_t("Dependency"))
+        dep_table.add_column(_t("Window (h)"), justify="right")
+        for entry in deps:
+            if not isinstance(entry, dict):
+                continue
+            name = str(entry.get("name", "-"))
+            window = entry.get("window_hours")
+            dep_table.add_row(
+                name,
+                f"{float(window):.2f}" if isinstance(window, (float, int)) else "-",
+            )
+        console.print(dep_table)
+
+    if assurance.get("recommended_actions"):
+        console.print(_t("Assurance actions:"), style="bold")
+        for action in assurance["recommended_actions"]:
+            console.print(f"- {action}")
+
+
 def _render_contingency_plans(plan: Optional[Dict[str, Any]]) -> None:
     if not plan:
         return
@@ -902,6 +963,8 @@ def main(area: Optional[str], hours: int, limit: int, raw: bool) -> None:
         _render_command_directives(brief["command_directives"])
     if brief.get("command_alignment"):
         _render_command_alignment(brief["command_alignment"])
+    if brief.get("mission_assurance"):
+        _render_mission_assurance(brief["mission_assurance"])
     if brief.get("contingency_plans"):
         _render_contingency_plans(brief["contingency_plans"])
     if brief.get("communication_plan"):

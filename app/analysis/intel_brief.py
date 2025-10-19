@@ -3941,6 +3941,358 @@ def _derive_command_alignment(brief: Dict[str, Any]) -> Optional[Dict[str, Any]]
     return payload if payload else None
 
 
+def _derive_mission_assurance(brief: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Fuse operational telemetry into a mission assurance scoreboard."""
+
+    readiness = brief.get("response_readiness") or {}
+    alignment = brief.get("command_alignment") or {}
+    sustainment = brief.get("resource_sustainment") or {}
+    risk_register = brief.get("operational_risks") or {}
+    contingency = brief.get("contingency_plans") or {}
+    communication = brief.get("communication_plan") or {}
+    directives = brief.get("command_directives") or {}
+    outlook = brief.get("operational_outlook") or {}
+    posture = brief.get("operational_posture") or {}
+    pressure = brief.get("response_pressure") or {}
+    support = brief.get("support_priorities") or {}
+    confidence = brief.get("intelligence_confidence") or {}
+    health = brief.get("health") or {}
+    gaps = brief.get("intelligence_gaps") or []
+    freshness = brief.get("data_freshness") or {}
+
+    if not any(
+        [
+            readiness,
+            alignment,
+            sustainment,
+            risk_register,
+            contingency,
+            communication,
+            directives,
+            outlook,
+            posture,
+            pressure,
+            support,
+            confidence,
+            health,
+            gaps,
+            freshness,
+        ]
+    ):
+        return None
+
+    score = 100.0
+    drivers: List[str] = []
+    focus: List[str] = []
+    blockers: List[str] = []
+    actions: List[str] = []
+    dependencies: List[Dict[str, Any]] = []
+    checkpoint_windows: List[float] = []
+
+    def _penalise(amount: float, reason: Optional[str] = None) -> None:
+        nonlocal score
+        if amount <= 0:
+            return
+        score = max(0.0, score - float(amount))
+        if reason:
+            drivers.append(reason)
+
+    def _add_actions(values: Optional[Iterable[Any]]) -> None:
+        for value in values or []:
+            if value:
+                actions.append(str(value))
+
+    def _add_focus(values: Optional[Iterable[Any]]) -> None:
+        for value in values or []:
+            if value:
+                focus.append(str(value))
+
+    def _add_blocker(message: Optional[str]) -> None:
+        if message:
+            blockers.append(str(message))
+
+    def _add_drivers(values: Optional[Iterable[Any]]) -> None:
+        for value in values or []:
+            if value:
+                drivers.append(str(value))
+
+    def _register_dependency(name: str, hours: Optional[float]) -> None:
+        if not isinstance(hours, (float, int)) or hours <= 0:
+            return
+        window = round(float(hours), 2)
+        dependencies.append({"name": name, "window_hours": window})
+        checkpoint_windows.append(window)
+
+    readiness_level = str(readiness.get("level", "")).lower()
+    if readiness_level == "critical":
+        _penalise(25, "Response readiness is critical and jeopardises mission assurance.")
+        _add_blocker("Response readiness is critical; surge coverage is required.")
+    elif readiness_level == "strained":
+        _penalise(16, "Response readiness is strained and needs reinforcement.")
+    elif readiness_level == "steady":
+        _penalise(4)
+    _add_actions(readiness.get("priority_actions"))
+    _add_drivers(readiness.get("drivers"))
+    _register_dependency("Readiness support window", readiness.get("support_window_hours"))
+
+    alignment_status = str(alignment.get("status", "")).lower()
+    if alignment_status == "misaligned":
+        _penalise(22, "Command alignment is misaligned across teams.")
+        _add_blocker("Command directives, comms, and sustainment are misaligned.")
+    elif alignment_status == "at_risk":
+        _penalise(14, "Command alignment is at risk and needs coordination.")
+    elif alignment_status == "watch":
+        _penalise(8)
+    _add_drivers(alignment.get("drivers"))
+    _add_focus(alignment.get("focus_areas"))
+    for gap in alignment.get("coordination_gaps", []) or []:
+        _add_blocker(f"Alignment gap: {gap}")
+    _add_actions(alignment.get("recommended_actions"))
+    _register_dependency("Next alignment sync", alignment.get("next_sync_hours"))
+
+    sustainment_status = str(sustainment.get("status", "")).lower()
+    if sustainment_status == "surge":
+        _penalise(15, "Resource sustainment is in surge mode.")
+        _add_blocker("Sustainment plan requires surge resources to stay afloat.")
+    elif sustainment_status == "accelerate":
+        _penalise(10, "Resource sustainment needs acceleration.")
+    elif sustainment_status == "reinforce":
+        _penalise(6)
+    elif sustainment_status == "watch":
+        _penalise(3)
+    _add_focus(sustainment.get("resource_needs"))
+    _add_actions(sustainment.get("recommended_actions"))
+    _register_dependency("Resupply window", sustainment.get("resupply_window_hours"))
+
+    risk_score = risk_register.get("severity_score")
+    if isinstance(risk_score, (float, int)):
+        if risk_score >= 18:
+            _penalise(18, "Operational risk register is critical.")
+            _add_blocker("Operational risk register contains critical items.")
+        elif risk_score >= 12:
+            _penalise(12, "Operational risk register is escalated.")
+        elif risk_score >= 6:
+            _penalise(7)
+    _add_focus(risk_register.get("focus_areas"))
+    _add_actions(risk_register.get("recommended_actions"))
+    _register_dependency("Risk review", risk_register.get("next_review_hours"))
+
+    contingency_status = str(contingency.get("status", "")).lower()
+    if contingency_status == "activate":
+        _penalise(12, "Contingency plans are primed for activation.")
+        _add_blocker("Contingency playbooks are standing by for activation.")
+    elif contingency_status == "ready":
+        _penalise(7)
+    elif contingency_status == "watch":
+        _penalise(3)
+    _add_focus([entry.get("name") for entry in contingency.get("scenarios", []) if isinstance(entry, dict)])
+    _add_actions(contingency.get("recommended_actions"))
+    _register_dependency("Contingency activation", contingency.get("activation_window_hours"))
+    _add_drivers(contingency.get("drivers"))
+
+    comm_status = str(communication.get("status", "")).lower()
+    if comm_status == "escalated":
+        _penalise(10, "Communication cadence is escalated.")
+    elif comm_status == "heightened":
+        _penalise(6)
+    elif comm_status == "focused":
+        _penalise(3)
+    _add_actions(communication.get("recommended_actions"))
+    _add_focus(
+        [
+            entry.get("focus")
+            for entry in communication.get("audiences", [])
+            if isinstance(entry, dict) and entry.get("focus")
+        ]
+    )
+    cadence = communication.get("update_cadence_minutes")
+    if isinstance(cadence, (float, int)) and cadence > 0:
+        hours = float(cadence) / 60.0
+        _register_dependency("Comms cadence", hours)
+
+    directive_status = str(directives.get("status", "")).lower()
+    if directive_status == "escalate":
+        _penalise(14, "Command directives are in escalation.")
+    elif directive_status == "accelerate":
+        _penalise(9)
+    elif directive_status == "focus":
+        _penalise(5)
+    directive_severity = directives.get("severity")
+    if isinstance(directive_severity, (float, int)) and directive_severity >= 18:
+        _penalise(6)
+    _add_focus(directives.get("focus_areas"))
+    _add_actions(directives.get("recommended_actions"))
+    _register_dependency("Directive planning window", directives.get("planning_window_hours"))
+    _add_focus(directives.get("coordination_teams"))
+
+    outlook_severity = outlook.get("severity_score")
+    if isinstance(outlook_severity, (float, int)):
+        if outlook_severity >= 12:
+            _penalise(10, "Operational outlook is severe.")
+        elif outlook_severity >= 6:
+            _penalise(6)
+    _add_focus(outlook.get("focus_areas"))
+    _add_actions(outlook.get("recommended_actions"))
+    _register_dependency("Outlook horizon", outlook.get("planning_horizon_hours"))
+    _add_drivers(outlook.get("drivers"))
+
+    posture_status = str(posture.get("status", "")).lower()
+    if posture_status == "recover":
+        _penalise(9, "Operational posture is in recovery mode.")
+    elif posture_status == "stabilise":
+        _penalise(6)
+    elif posture_status == "reinforce":
+        _penalise(4)
+    focus_field = posture.get("focus")
+    if focus_field:
+        focus.append(str(focus_field))
+    _register_dependency("Posture horizon", posture.get("horizon_hours"))
+
+    pressure_status = str(pressure.get("status", "")).lower()
+    if pressure_status in {"critical_backlog", "prediction_gap"}:
+        _penalise(14, "Analyst pressure is severe.")
+        _add_blocker("Analyst response pressure is severe and needs relief.")
+    elif pressure_status in {"backlog", "feedback_strain", "quality_watch"}:
+        _penalise(9)
+    elif pressure_status in {"prediction_gap_watch"}:
+        _penalise(5)
+    _add_actions(pressure.get("recommended_actions"))
+    _register_dependency("Pressure clearance", pressure.get("estimated_clearance_hours"))
+    _add_drivers(pressure.get("drivers"))
+
+    support_status = str(support.get("status", "")).lower()
+    if support_status == "mobilise":
+        _penalise(9, "Support priorities are mobilising.")
+    elif support_status == "reinforce":
+        _penalise(6)
+    elif support_status == "monitor":
+        _penalise(3)
+    _add_actions(support.get("recommended_actions"))
+    _add_focus(
+        [
+            entry.get("team")
+            for entry in support.get("priorities", [])
+            if isinstance(entry, dict) and entry.get("team")
+        ]
+    )
+    _add_focus(
+        [
+            entry.get("reason")
+            for entry in support.get("priorities", [])
+            if isinstance(entry, dict) and entry.get("reason")
+        ]
+    )
+    _register_dependency(
+        "Support window",
+        min(
+            (
+                float(entry.get("support_window_hours"))
+                for entry in support.get("priorities", [])
+                if isinstance(entry, dict)
+                and isinstance(entry.get("support_window_hours"), (float, int))
+                and float(entry["support_window_hours"]) > 0
+            ),
+            default=None,
+        ),
+    )
+
+    confidence_level = str(confidence.get("level", "")).lower()
+    if confidence_level == "low":
+        _penalise(12, "Intelligence confidence is low.")
+        _add_blocker("Low intelligence confidence is undermining assurance.")
+    elif confidence_level == "guarded":
+        _penalise(7)
+    _add_actions(confidence.get("recommended_actions"))
+    _add_drivers(confidence.get("drivers"))
+
+    risk_level = str(health.get("risk_level", "")).lower()
+    if risk_level in {"critical", "severe"}:
+        _penalise(12, "Health risk posture is severe.")
+        _add_blocker("Health risk posture is severe and requires leadership focus.")
+    elif risk_level == "high":
+        _penalise(9)
+    elif risk_level == "elevated":
+        _penalise(5)
+    _add_actions(health.get("recommended_actions"))
+    _add_drivers(health.get("drivers"))
+
+    feeds = freshness.get("feeds") if isinstance(freshness, dict) else {}
+    for feed_name, feed_info in (feeds or {}).items():
+        if not isinstance(feed_info, dict):
+            continue
+        status = str(feed_info.get("status", "")).lower()
+        message_prefix = f"{str(feed_name).capitalize()} feed"
+        if status == "stale":
+            _penalise(10, f"{message_prefix} is stale.")
+            _add_blocker(f"{message_prefix} is stale and blocking decision confidence.")
+        elif status == "warning":
+            _penalise(6, f"{message_prefix} is drifting toward stale thresholds.")
+
+    for gap in gaps if isinstance(gaps, list) else []:
+        if not isinstance(gap, dict):
+            continue
+        severity = str(gap.get("severity", "")).lower()
+        detail = str(gap.get("detail", "")).strip() or gap.get("gap")
+        if severity == "critical":
+            _penalise(12)
+            _add_blocker(f"Critical intelligence gap: {detail}.")
+        elif severity == "major":
+            _penalise(8)
+            _add_blocker(f"Major intelligence gap: {detail}.")
+        elif severity:
+            _penalise(4)
+
+    drivers = list(dict.fromkeys(drivers))
+    focus = list(dict.fromkeys([item for item in focus if item]))
+    blockers = list(dict.fromkeys(blockers))
+    actions = list(dict.fromkeys(actions))
+    deduped_dependencies: List[Dict[str, Any]] = []
+    seen_dependencies: set[Tuple[Any, Any]] = set()
+    for dep in dependencies:
+        name = dep.get("name") if isinstance(dep, dict) else None
+        window = dep.get("window_hours") if isinstance(dep, dict) else None
+        key = (name, window)
+        if key in seen_dependencies:
+            continue
+        seen_dependencies.add(key)
+        deduped_dependencies.append(dep)
+    dependencies = deduped_dependencies
+
+    assurance_score = int(round(score))
+    if assurance_score >= 85:
+        status = "assured"
+    elif assurance_score >= 70:
+        status = "watch"
+    elif assurance_score >= 55:
+        status = "at_risk"
+    else:
+        status = "critical"
+
+    if blockers and status == "assured":
+        status = "watch"
+    if any("critical" in blocker.lower() for blocker in blockers) and status != "critical":
+        status = "at_risk" if assurance_score >= 55 else "critical"
+
+    payload: Dict[str, Any] = {
+        "status": status,
+        "assurance_score": assurance_score,
+    }
+    if drivers:
+        payload["drivers"] = drivers
+    if focus:
+        payload["focus_areas"] = focus
+    if blockers:
+        payload["blockers"] = blockers
+    if actions:
+        payload["recommended_actions"] = actions
+    if dependencies:
+        payload["dependency_windows"] = dependencies
+    if checkpoint_windows:
+        payload["next_checkpoint_hours"] = round(min(checkpoint_windows), 2)
+
+    return payload
+
+
 def gather_intelligence_brief(
     *,
     area: Optional[str] = None,
@@ -4317,6 +4669,26 @@ def gather_intelligence_brief(
             insight["next_sync_hours"] = alignment["next_sync_hours"]
         brief.setdefault("insights", {})["command_alignment"] = insight
         for action in alignment.get("recommended_actions", []) or []:
+            _append_recommendation(brief, action)
+
+    assurance = _derive_mission_assurance(brief)
+    if assurance:
+        brief["mission_assurance"] = assurance
+        insight: Dict[str, Any] = {
+            "status": assurance.get("status"),
+            "assurance_score": assurance.get("assurance_score"),
+        }
+        blockers = assurance.get("blockers")
+        if isinstance(blockers, list) and blockers:
+            insight["blocker_count"] = len(blockers)
+        checkpoint = assurance.get("next_checkpoint_hours")
+        if checkpoint is not None:
+            insight["next_checkpoint_hours"] = checkpoint
+        focus = assurance.get("focus_areas")
+        if isinstance(focus, list) and focus:
+            insight["focus_areas"] = focus[:3]
+        brief.setdefault("insights", {})["mission_assurance"] = insight
+        for action in assurance.get("recommended_actions", []) or []:
             _append_recommendation(brief, action)
 
     return brief
