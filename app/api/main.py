@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, validator
 
@@ -16,6 +16,7 @@ from ..alerts import (
     send_test,
     update_rule,
 )
+from ..analysis.intel_brief import gather_intelligence_brief
 from ..movement_history import recent_detections, recent_predictions
 from ..pipeline import realtime
 
@@ -153,3 +154,17 @@ def test_alert(rule_id: str) -> Dict[str, Any]:
     except KeyError as exc:  # pragma: no cover - runtime path
         raise HTTPException(status_code=404, detail="Alert not found") from exc
     return {"status": "sent", "rule": rule}
+
+
+@app.get("/intel/brief")
+def get_intelligence_brief(
+    area: Optional[str] = Query(default=None, description="Optional area filter"),
+    hours: int = Query(default=24, ge=1, le=168, description="Lookback window in hours"),
+    limit: int = Query(default=20, ge=1, le=200, description="Maximum records per section"),
+) -> Dict[str, Any]:
+    """Return the consolidated intelligence brief used by analysts."""
+
+    try:
+        return gather_intelligence_brief(area=area, hours=hours, activity_limit=limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
