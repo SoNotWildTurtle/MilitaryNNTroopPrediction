@@ -312,6 +312,21 @@ watch items for quick hand-off reviews, while the API surfaces the payload at
 `insights.operational_continuity` so dashboards can track how close the mission
 is to bumping into critical constraints.
 
+Because leadership still needs to know how fast to escalate when those
+constraints wobble, the brief now calculates an **escalation readiness matrix**.
+It blends command directives, continuity posture, resilience, mission
+assurance, readiness, analyst pressure, support priorities, contingency and
+communication cadences, sustainment, operational risk, intelligence gaps,
+telemetry freshness, confidence, outlook, and alignment to score escalation
+readiness. The payload surfaces pathway queues with priorities and triggers,
+lists destabilising signals versus stabilising factors, aggregates shared
+drivers and watch items, and captures the next review window alongside a
+deduplicated action list. The CLI prints a dedicated escalation table with the
+pathways, signals, and actions so shift leads can brief leadership in minutes,
+and the API exposes the matrix at `escalation_readiness` plus a summarised
+insight under `insights.escalation_readiness` for dashboards tracking when to
+spin up executive decision cells.
+
 To keep teams focused on the most pressing blind spots, the brief highlights an
 **intelligence gaps** table. It inspects the existing tempo, freshness, and
 meta-analysis blocks to flag when prediction coverage collapses, telemetry

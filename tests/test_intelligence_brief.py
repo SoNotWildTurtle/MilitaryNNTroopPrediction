@@ -324,6 +324,20 @@ def test_gather_intelligence_brief_with_area_and_clusters(monkeypatch):
             for action in continuity.get("recommended_actions", [])
         )
 
+    escalation = brief.get("escalation_readiness")
+    assert escalation is not None
+    assert escalation.get("status") in {"standby", "monitor", "prepare", "escalate"}
+    assert isinstance(escalation.get("readiness_score"), int)
+    assert "escalation_readiness" in brief.get("insights", {})
+    pathways = escalation.get("escalation_pathways")
+    if pathways:
+        assert isinstance(pathways, list)
+    if escalation.get("recommended_actions"):
+        assert any(
+            action in brief.get("recommendations", [])
+            for action in escalation.get("recommended_actions", [])
+        )
+
 
 @pytest.mark.parametrize(
     "params",
@@ -1556,6 +1570,159 @@ def test_operational_continuity_highlights_stability_and_horizon():
     assert any("weather" in item.lower() for item in watch_items)
     drivers = continuity.get("drivers", [])
     assert any("objectives" in driver.lower() for driver in drivers)
+
+
+def test_escalation_matrix_flags_critical_conditions():
+    brief = {
+        "command_directives": {
+            "severity": 24,
+            "directives": [
+                {"action": "Launch crisis cell", "priority": "immediate", "context": "Ops"}
+            ],
+        },
+        "operational_continuity": {
+            "status": "critical",
+            "recommended_actions": ["Restore power redundancy"],
+            "drivers": ["Power grid"],
+            "primary_constraints": ["Generator capacity"],
+            "continuity_horizon_hours": 1.5,
+        },
+        "operational_resilience": {
+            "status": "critical",
+            "recommended_actions": ["Request allied support"],
+            "drivers": ["Field logistics"],
+            "stability_window_hours": 0.5,
+        },
+        "mission_assurance": {
+            "status": "critical",
+            "blockers": ["Signal unit offline"],
+            "focus_areas": ["Command alignment"],
+            "recommended_actions": ["Escalate command recovery"],
+        },
+        "response_readiness": {
+            "level": "critical",
+            "priority_actions": ["Recall reserve analysts"],
+            "drivers": ["Staff shortage"],
+            "support_window_hours": 2,
+        },
+        "response_pressure": {
+            "status": "critical_backlog",
+            "recommended_actions": ["Activate surge roster"],
+            "estimated_clearance_hours": 6,
+        },
+        "support_priorities": {
+            "status": "mobilise",
+            "recommended_actions": ["Deploy field tech teams"],
+            "priorities": [{"reason": "Rewire comms", "support_window_hours": 3}],
+        },
+        "contingency_plans": {
+            "status": "activate",
+            "recommended_actions": ["Stand up continuity site"],
+            "watch_items": ["Storm front"],
+            "activation_window_hours": 4,
+        },
+        "communication_plan": {
+            "status": "escalated",
+            "recommended_actions": ["Issue crisis bulletin"],
+            "key_messages": ["Critical outage"],
+        },
+        "resource_sustainment": {
+            "status": "surge",
+            "recommended_actions": ["Fly spare parts"],
+            "resupply_window_hours": 5,
+            "allocation_plan": [{"team": "Logistics"}],
+        },
+        "operational_risks": {
+            "severity_score": 20,
+            "recommended_actions": ["Coordinate joint response"],
+            "risks": [{"detail": "Ops centre inaccessible"}],
+            "next_review_hours": 7,
+        },
+        "intelligence_gaps": [
+            {
+                "severity": "critical",
+                "detail": "Prediction coverage loss",
+                "recommended_action": "Retrain local model",
+            }
+        ],
+        "data_freshness": {"feeds": {"detections": {"status": "stale"}}},
+        "intelligence_confidence": {
+            "level": "low",
+            "recommended_actions": ["Audit telemetry"],
+            "drivers": ["Feedback variance"],
+        },
+        "operational_outlook": {
+            "status": "escalation_imminent",
+            "recommended_actions": ["Notify theatre command"],
+            "focus_areas": ["Northern corridor"],
+            "planning_horizon_hours": 3,
+        },
+        "command_alignment": {
+            "status": "misaligned",
+            "recommended_actions": ["Schedule joint brief"],
+            "coordination_gaps": ["Ops vs comms"],
+            "next_sync_hours": 4,
+        },
+    }
+
+    matrix = intel_brief._derive_escalation_matrix(brief)
+
+    assert matrix is not None
+    assert matrix.get("status") == "escalate"
+    assert matrix.get("readiness_score", 100) < 50
+    assert any(
+        "critical intelligence gap" in signal.lower()
+        for signal in matrix.get("escalation_signals", [])
+    )
+    assert any("crisis" in action.lower() for action in matrix.get("recommended_actions", []))
+
+
+def test_escalation_matrix_recognises_stable_conditions():
+    brief = {
+        "command_directives": {
+            "severity": 4,
+            "directives": [
+                {"action": "Maintain situational overview", "priority": "monitor"}
+            ],
+        },
+        "operational_continuity": {
+            "status": "sustained",
+            "continuity_horizon_hours": 12,
+            "drivers": ["Balanced logistics"],
+        },
+        "operational_resilience": {
+            "status": "resilient",
+            "stability_window_hours": 8,
+            "drivers": ["Support readiness"],
+        },
+        "mission_assurance": {"status": "assured"},
+        "response_readiness": {
+            "level": "steady",
+            "support_window_hours": 6,
+        },
+        "response_pressure": {"status": "balanced"},
+        "support_priorities": {"status": "monitor"},
+        "communication_plan": {"status": "routine"},
+        "resource_sustainment": {"status": "monitor"},
+        "operational_risks": {"severity_score": 2},
+        "intelligence_gaps": [],
+        "data_freshness": {"feeds": {"detections": {"status": "fresh"}}},
+        "intelligence_confidence": {"level": "high"},
+        "operational_outlook": {
+            "status": "steady_watch",
+            "planning_horizon_hours": 10,
+            "focus_areas": ["Northern corridor"],
+        },
+        "command_alignment": {"status": "aligned"},
+    }
+
+    matrix = intel_brief._derive_escalation_matrix(brief)
+
+    assert matrix is not None
+    assert matrix.get("status") in {"standby", "monitor"}
+    assert matrix.get("readiness_score", 0) >= 70
+    assert matrix.get("stability_factors")
+    assert matrix.get("escalation_pathways")
 
 
 def test_gather_intelligence_brief_builds_communication_plan(monkeypatch):

@@ -829,6 +829,90 @@ def _render_operational_continuity(continuity: Optional[Dict[str, Any]]) -> None
             console.print(f"- {action}")
 
 
+def _render_escalation_readiness(matrix: Optional[Dict[str, Any]]) -> None:
+    if not matrix:
+        return
+
+    console.print(_t("Escalation readiness"), style="bold")
+
+    table = Table(show_header=False)
+    table.add_column(_t("Metric"))
+    table.add_column(_t("Value"))
+
+    status = str(matrix.get("status", _t("unknown"))).replace("_", " ").title()
+    table.add_row(_t("Status"), status)
+
+    score = matrix.get("readiness_score")
+    if isinstance(score, (int, float)):
+        table.add_row(_t("Readiness score"), str(int(round(float(score)))))
+
+    review = matrix.get("next_review_hours")
+    if isinstance(review, (int, float)):
+        table.add_row(_t("Next review"), f"{float(review):.2f}h")
+
+    pathways = matrix.get("escalation_pathways")
+    if isinstance(pathways, list) and pathways:
+        table.add_row(_t("Pathways"), str(len(pathways)))
+
+    signals = matrix.get("escalation_signals")
+    if isinstance(signals, list) and signals:
+        table.add_row(_t("Signals"), str(len(signals)))
+
+    stability = matrix.get("stability_factors")
+    if isinstance(stability, list) and stability:
+        table.add_row(_t("Stability factors"), str(len(stability)))
+
+    console.print(table)
+
+    if isinstance(pathways, list) and pathways:
+        pathway_table = Table(title=_t("Escalation pathways"))
+        pathway_table.add_column(_t("Name"))
+        pathway_table.add_column(_t("Priority"))
+        pathway_table.add_column(_t("Triggers"))
+        pathway_table.add_column(_t("Actions"))
+        for entry in pathways:
+            if not isinstance(entry, dict):
+                continue
+            triggers = "; ".join(entry.get("triggers", [])) if entry.get("triggers") else "-"
+            actions = "; ".join(entry.get("actions", [])) if entry.get("actions") else "-"
+            priority = str(entry.get("priority", "monitor")).replace("_", " ").title()
+            pathway_table.add_row(
+                str(entry.get("name", "-")),
+                priority,
+                triggers,
+                actions,
+            )
+        console.print(pathway_table)
+
+    if isinstance(signals, list) and signals:
+        console.print(_t("Escalation signals:"), style="bold red")
+        for signal in signals:
+            console.print(f"- {signal}", style="red")
+
+    if isinstance(stability, list) and stability:
+        console.print(_t("Stability factors:"), style="bold")
+        for factor in stability:
+            console.print(f"- {factor}")
+
+    drivers = matrix.get("drivers")
+    if isinstance(drivers, list) and drivers:
+        console.print(_t("Drivers:"), style="bold")
+        for driver in drivers:
+            console.print(f"- {driver}")
+
+    watch_items = matrix.get("watch_items")
+    if isinstance(watch_items, list) and watch_items:
+        console.print(_t("Watch items:"), style="bold yellow")
+        for item in watch_items:
+            console.print(f"- {item}", style="yellow")
+
+    actions = matrix.get("recommended_actions")
+    if isinstance(actions, list) and actions:
+        console.print(_t("Escalation actions:"), style="bold")
+        for action in actions:
+            console.print(f"- {action}")
+
+
 def _render_contingency_plans(plan: Optional[Dict[str, Any]]) -> None:
     if not plan:
         return
@@ -1098,6 +1182,8 @@ def main(area: Optional[str], hours: int, limit: int, raw: bool) -> None:
         _render_operational_resilience(brief["operational_resilience"])
     if brief.get("operational_continuity"):
         _render_operational_continuity(brief["operational_continuity"])
+    if brief.get("escalation_readiness"):
+        _render_escalation_readiness(brief["escalation_readiness"])
     if brief.get("contingency_plans"):
         _render_contingency_plans(brief["contingency_plans"])
     if brief.get("communication_plan"):

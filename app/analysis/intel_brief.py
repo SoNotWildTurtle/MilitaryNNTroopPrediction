@@ -5117,6 +5117,637 @@ def _derive_operational_continuity(brief: Dict[str, Any]) -> Optional[Dict[str, 
     return payload
 
 
+def _derive_escalation_matrix(brief: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Fuse mission telemetry into an escalation readiness matrix for leadership."""
+
+    directives = brief.get("command_directives") or {}
+    continuity = brief.get("operational_continuity") or {}
+    resilience = brief.get("operational_resilience") or {}
+    assurance = brief.get("mission_assurance") or {}
+    readiness = brief.get("response_readiness") or {}
+    pressure = brief.get("response_pressure") or {}
+    support = brief.get("support_priorities") or {}
+    contingency = brief.get("contingency_plans") or {}
+    communication = brief.get("communication_plan") or {}
+    sustainment = brief.get("resource_sustainment") or {}
+    risk_register = brief.get("operational_risks") or {}
+    gaps = brief.get("intelligence_gaps") or []
+    freshness = brief.get("data_freshness") or {}
+    confidence = brief.get("intelligence_confidence") or {}
+    outlook = brief.get("operational_outlook") or {}
+    alignment = brief.get("command_alignment") or {}
+
+    if not any(
+        [
+            directives,
+            continuity,
+            resilience,
+            assurance,
+            readiness,
+            pressure,
+            support,
+            contingency,
+            communication,
+            sustainment,
+            risk_register,
+            gaps,
+            freshness,
+            confidence,
+            outlook,
+            alignment,
+        ]
+    ):
+        return None
+
+    score = 100.0
+    signals: List[str] = []
+    stability: List[str] = []
+    drivers: List[str] = []
+    actions: List[str] = []
+    watch_items: List[str] = []
+    review_windows: List[float] = []
+    pathway_index: Dict[Tuple[str, str], Dict[str, Any]] = {}
+
+    priority_order = {
+        "immediate": 0,
+        "prepare": 1,
+        "next_shift": 2,
+        "monitor": 3,
+        "standby": 4,
+    }
+
+    def _normalise_priority(value: Any) -> str:
+        key = str(value or "").lower()
+        mapping = {
+            "escalate": "immediate",
+            "accelerate": "immediate",
+            "focus": "prepare",
+            "reinforce": "prepare",
+            "watch": "monitor",
+            "observe": "monitor",
+            "standby": "standby",
+        }
+        if key in priority_order:
+            return key
+        return mapping.get(key, "monitor")
+
+    def _add_pathway(
+        name: Optional[str],
+        priority: Any,
+        *,
+        trigger: Optional[str] = None,
+        action: Optional[str] = None,
+    ) -> None:
+        label = str(name or "").strip()
+        if not label:
+            return
+        normalised = _normalise_priority(priority)
+        key = (label, normalised)
+        entry = pathway_index.setdefault(key, {"name": label, "priority": normalised})
+        if trigger:
+            triggers = entry.setdefault("triggers", [])
+            if trigger not in triggers:
+                triggers.append(trigger)
+        if action:
+            actions_list = entry.setdefault("actions", [])
+            if action not in actions_list:
+                actions_list.append(action)
+
+    def _penalise(
+        amount: float,
+        message: Optional[str] = None,
+        *,
+        source: Optional[str] = None,
+        priority: Any = None,
+        trigger: Optional[str] = None,
+        action: Optional[str] = None,
+    ) -> None:
+        nonlocal score
+        if amount > 0:
+            score = max(0.0, score - float(amount))
+        text = str(message or "").strip()
+        if text:
+            signals.append(text)
+        if source or trigger or action:
+            _add_pathway(source or "Escalation", priority or "monitor", trigger=trigger or text, action=action)
+
+    def _reinforce(message: Optional[str]) -> None:
+        if message:
+            stability.append(str(message))
+
+    def _collect_actions(values: Optional[Iterable[Any]]) -> None:
+        for value in values or []:
+            if not value:
+                continue
+            text = str(value)
+            if text not in actions:
+                actions.append(text)
+
+    def _collect_drivers(values: Optional[Iterable[Any]]) -> None:
+        for value in values or []:
+            if not value:
+                continue
+            text = str(value)
+            if text not in drivers:
+                drivers.append(text)
+
+    def _collect_watch(values: Optional[Iterable[Any]]) -> None:
+        for value in values or []:
+            if not value:
+                continue
+            text = str(value)
+            if text not in watch_items:
+                watch_items.append(text)
+
+    def _register_window(value: Optional[float]) -> None:
+        if isinstance(value, (float, int)) and value > 0:
+            review_windows.append(round(float(value), 2))
+
+    directive_severity = directives.get("severity")
+    if isinstance(directive_severity, (int, float)):
+        if directive_severity >= 20:
+            _penalise(
+                22,
+                "Command directives require immediate leadership escalation.",
+                source="Command directives",
+                priority="immediate",
+                trigger="Directive severity critical",
+            )
+        elif directive_severity >= 12:
+            _penalise(
+                15,
+                "Command directives highlight accelerated escalation tracks.",
+                source="Command directives",
+                priority="prepare",
+                trigger="Directive severity elevated",
+            )
+        elif directive_severity >= 6:
+            _penalise(
+                8,
+                "Command directives recommend near-term escalation planning.",
+                source="Command directives",
+                priority="next_shift",
+                trigger="Directive severity raised",
+            )
+        else:
+            _reinforce("Command directives remain within routine thresholds.")
+    _register_window(directives.get("planning_window_hours"))
+    _collect_drivers(directives.get("drivers"))
+    _collect_actions(
+        entry.get("action")
+        for entry in directives.get("directives", [])
+        if isinstance(entry, dict)
+    )
+    for entry in directives.get("directives", []) if isinstance(directives.get("directives"), list) else []:
+        if not isinstance(entry, dict):
+            continue
+        priority = entry.get("priority")
+        trigger = entry.get("context") or entry.get("source")
+        _add_pathway("Command directives", priority, trigger=trigger, action=entry.get("action"))
+
+    continuity_status = str(continuity.get("status", "")).lower()
+    if continuity_status == "critical":
+        _penalise(
+            24,
+            "Operational continuity is critical and requires escalated oversight.",
+            source="Operational continuity",
+            priority="immediate",
+            trigger="Continuity status critical",
+        )
+    elif continuity_status == "strained":
+        _penalise(
+            16,
+            "Operational continuity is strained across key dependencies.",
+            source="Operational continuity",
+            priority="prepare",
+            trigger="Continuity status strained",
+        )
+    elif continuity_status == "watch":
+        _penalise(
+            9,
+            "Operational continuity is under watch and may escalate if constraints persist.",
+            source="Operational continuity",
+            priority="next_shift",
+            trigger="Continuity status watch",
+        )
+    elif continuity_status == "sustained":
+        _reinforce("Operational continuity is sustained with manageable constraints.")
+    _collect_drivers(continuity.get("drivers"))
+    _collect_watch(continuity.get("primary_constraints"))
+    _collect_watch(continuity.get("watch_items"))
+    _register_window(continuity.get("continuity_horizon_hours"))
+    _collect_actions(continuity.get("recommended_actions"))
+
+    resilience_status = str(resilience.get("status", "")).lower()
+    if resilience_status == "critical":
+        _penalise(
+            18,
+            "Operational resilience is critical and limits escalation capacity.",
+            source="Operational resilience",
+            priority="immediate",
+        )
+    elif resilience_status == "vulnerable":
+        _penalise(
+            12,
+            "Operational resilience is vulnerable and requires reinforcement before escalation.",
+            source="Operational resilience",
+            priority="prepare",
+        )
+    elif resilience_status == "steady":
+        _reinforce("Operational resilience is steady and can absorb escalations.")
+    elif resilience_status == "resilient":
+        _reinforce("Operational resilience is strong across key dimensions.")
+    _collect_drivers(resilience.get("drivers"))
+    _collect_actions(resilience.get("recommended_actions"))
+    _register_window(resilience.get("stability_window_hours"))
+
+    assurance_status = str(assurance.get("status", "")).lower()
+    if assurance_status == "critical":
+        _penalise(
+            16,
+            "Mission assurance is critical and blocks escalation pathways.",
+            source="Mission assurance",
+            priority="immediate",
+            trigger="Mission assurance blockers",
+        )
+    elif assurance_status == "at_risk":
+        _penalise(
+            10,
+            "Mission assurance is at risk and constrains escalation.",
+            source="Mission assurance",
+            priority="prepare",
+        )
+    elif assurance_status == "watch":
+        _penalise(
+            6,
+            "Mission assurance is in watch posture for dependencies.",
+            source="Mission assurance",
+            priority="next_shift",
+        )
+    elif assurance_status == "assured":
+        _reinforce("Mission assurance remains stable for escalation planning.")
+    _collect_watch(assurance.get("blockers"))
+    _collect_drivers(assurance.get("focus_areas"))
+    _collect_actions(assurance.get("recommended_actions"))
+    _register_window(assurance.get("next_checkpoint_hours"))
+
+    readiness_level = str(readiness.get("level", "")).lower()
+    if readiness_level == "critical":
+        _penalise(
+            18,
+            "Response readiness is critical and needs emergency escalation support.",
+            source="Response readiness",
+            priority="immediate",
+            trigger="Readiness level critical",
+            action=(readiness.get("priority_actions") or [None])[0],
+        )
+    elif readiness_level == "strained":
+        _penalise(
+            12,
+            "Response readiness is strained and requires reinforcement before escalation.",
+            source="Response readiness",
+            priority="prepare",
+            trigger="Readiness level strained",
+        )
+    elif readiness_level == "steady":
+        _reinforce("Response readiness is steady across shifts.")
+    _collect_actions(readiness.get("priority_actions"))
+    _collect_drivers(readiness.get("drivers"))
+    _register_window(readiness.get("support_window_hours"))
+
+    pressure_status = str(pressure.get("status", "")).lower()
+    if pressure_status in {"critical_backlog", "prediction_gap"}:
+        _penalise(
+            16,
+            "Analyst pressure is critical and will force escalation.",
+            source="Response pressure",
+            priority="immediate",
+            trigger=f"Pressure status: {pressure_status}",
+        )
+    elif pressure_status in {"backlog", "feedback_strain", "quality_watch", "prediction_gap_watch"}:
+        _penalise(
+            9,
+            "Analyst pressure indicates pending escalation triggers.",
+            source="Response pressure",
+            priority="prepare",
+            trigger=f"Pressure status: {pressure_status}",
+        )
+    elif pressure_status == "balanced":
+        _reinforce("Analyst pressure is balanced for escalation support.")
+    _collect_actions(pressure.get("recommended_actions"))
+    _register_window(pressure.get("estimated_clearance_hours"))
+
+    support_status = str(support.get("status", "")).lower()
+    if support_status == "mobilise":
+        _penalise(
+            12,
+            "Support teams are mobilising to cover escalation pathways.",
+            source="Support priorities",
+            priority="immediate",
+        )
+    elif support_status == "reinforce":
+        _penalise(
+            8,
+            "Support teams are reinforcing operations ahead of escalation.",
+            source="Support priorities",
+            priority="prepare",
+        )
+    elif support_status == "monitor":
+        _reinforce("Support teams remain on monitor posture.")
+    _collect_actions(support.get("recommended_actions"))
+    for entry in support.get("priorities", []) if isinstance(support.get("priorities"), list) else []:
+        if not isinstance(entry, dict):
+            continue
+        reason = str(entry.get("reason", "")).strip()
+        if reason:
+            _collect_watch([reason])
+        _register_window(entry.get("support_window_hours"))
+
+    contingency_status = str(contingency.get("status", "")).lower()
+    if contingency_status == "activate":
+        _penalise(
+            14,
+            "Contingency plans are primed for activation.",
+            source="Contingency planning",
+            priority="immediate",
+        )
+    elif contingency_status == "ready":
+        _penalise(
+            10,
+            "Contingency plans are ready and require leadership awareness.",
+            source="Contingency planning",
+            priority="prepare",
+        )
+    elif contingency_status == "watch":
+        _penalise(
+            6,
+            "Contingency plans are on watch status.",
+            source="Contingency planning",
+            priority="next_shift",
+        )
+    else:
+        _reinforce("Contingency planning remains in observe posture.")
+    _collect_watch(contingency.get("watch_items"))
+    _collect_actions(contingency.get("recommended_actions"))
+    _register_window(contingency.get("activation_window_hours"))
+
+    comm_status = str(communication.get("status", "")).lower()
+    if comm_status in {"escalated", "crisis"}:
+        _penalise(
+            12,
+            "Communication cadence is escalated for crisis messaging.",
+            source="Communication plan",
+            priority="immediate",
+        )
+    elif comm_status in {"reinforce", "accelerate"}:
+        _penalise(
+            8,
+            "Communication cadence is accelerating to support escalation.",
+            source="Communication plan",
+            priority="prepare",
+        )
+    elif comm_status in {"steady", "routine"}:
+        _reinforce("Communication cadence remains steady for escalation messaging.")
+    _collect_actions(communication.get("recommended_actions"))
+    _collect_drivers(communication.get("key_messages"))
+
+    sustainment_status = str(sustainment.get("status", "")).lower()
+    if sustainment_status in {"surge", "accelerate"}:
+        _penalise(
+            10,
+            "Resource sustainment is in surge to cover escalation demand.",
+            source="Resource sustainment",
+            priority="immediate",
+        )
+    elif sustainment_status in {"reinforce", "stabilise"}:
+        _penalise(
+            6,
+            "Resource sustainment is reinforcing for future escalation.",
+            source="Resource sustainment",
+            priority="prepare",
+        )
+    elif sustainment_status == "monitor":
+        _reinforce("Resource sustainment remains on monitor posture.")
+    _collect_actions(sustainment.get("recommended_actions"))
+    _register_window(sustainment.get("resupply_window_hours"))
+    _collect_drivers(
+        entry.get("team")
+        for entry in sustainment.get("allocation_plan", [])
+        if isinstance(entry, dict)
+    )
+
+    risk_score = risk_register.get("severity_score")
+    if isinstance(risk_score, (int, float)):
+        if risk_score >= 18:
+            _penalise(
+                14,
+                "Operational risk register is severe and drives escalation governance.",
+                source="Operational risks",
+                priority="immediate",
+            )
+        elif risk_score >= 12:
+            _penalise(
+                9,
+                "Operational risk register remains elevated.",
+                source="Operational risks",
+                priority="prepare",
+            )
+        elif risk_score >= 6:
+            _penalise(
+                5,
+                "Operational risk register is trending upward.",
+                source="Operational risks",
+                priority="next_shift",
+            )
+        else:
+            _reinforce("Operational risk register remains contained.")
+    _collect_actions(risk_register.get("recommended_actions"))
+    _collect_watch(
+        entry.get("detail")
+        for entry in risk_register.get("risks", [])
+        if isinstance(entry, dict)
+    )
+    _register_window(risk_register.get("next_review_hours"))
+
+    for gap in gaps if isinstance(gaps, list) else []:
+        if not isinstance(gap, dict):
+            continue
+        severity = str(gap.get("severity", "")).lower()
+        detail = str(gap.get("detail", "") or gap.get("gap", "")).strip()
+        trigger = f"Gap: {detail}" if detail else "Open intelligence gap"
+        if severity == "critical":
+            _penalise(
+                12,
+                f"Critical intelligence gap: {detail}.",
+                source="Intelligence gaps",
+                priority="immediate",
+                trigger=trigger,
+                action=gap.get("recommended_action"),
+            )
+        elif severity == "major":
+            _penalise(
+                8,
+                f"Major intelligence gap: {detail}.",
+                source="Intelligence gaps",
+                priority="prepare",
+                trigger=trigger,
+                action=gap.get("recommended_action"),
+            )
+        else:
+            _penalise(
+                4,
+                f"Open intelligence gap: {detail}.",
+                source="Intelligence gaps",
+                priority="next_shift",
+                trigger=trigger,
+                action=gap.get("recommended_action"),
+            )
+        if detail:
+            _collect_watch([detail])
+
+    feeds = freshness.get("feeds") if isinstance(freshness, dict) else {}
+    for feed_name, feed_info in (feeds or {}).items():
+        if not isinstance(feed_info, dict):
+            continue
+        status = str(feed_info.get("status", "")).lower()
+        label = f"{str(feed_name).capitalize()} feed"
+        if status == "stale":
+            _penalise(
+                10,
+                f"{label} is stale and will trigger escalation incident response.",
+                source="Data freshness",
+                priority="immediate",
+                trigger=f"{label} stale",
+            )
+        elif status == "warning":
+            _penalise(
+                6,
+                f"{label} is nearing stale thresholds.",
+                source="Data freshness",
+                priority="prepare",
+                trigger=f"{label} warning",
+            )
+        elif status == "fresh":
+            _reinforce(f"{label} remains fresh for escalation decisions.")
+
+    confidence_level = str(confidence.get("level", "")).lower()
+    if confidence_level == "low":
+        _penalise(
+            11,
+            "Intelligence confidence is low and undermines escalation decisions.",
+            source="Intelligence confidence",
+            priority="immediate",
+        )
+    elif confidence_level == "guarded":
+        _penalise(
+            7,
+            "Intelligence confidence is guarded and requires validation before escalation.",
+            source="Intelligence confidence",
+            priority="prepare",
+        )
+    elif confidence_level == "high":
+        _reinforce("Intelligence confidence is high for escalation choices.")
+    _collect_actions(confidence.get("recommended_actions"))
+    _collect_drivers(confidence.get("drivers"))
+
+    outlook_status = str(outlook.get("status", "")).lower()
+    if outlook_status == "escalation_imminent":
+        _penalise(
+            14,
+            "Operational outlook reports escalation is imminent.",
+            source="Operational outlook",
+            priority="immediate",
+        )
+    elif outlook_status == "rapid_response":
+        _penalise(
+            10,
+            "Operational outlook is in rapid response posture.",
+            source="Operational outlook",
+            priority="prepare",
+        )
+    elif outlook_status in {"heightened_watch", "stabilise"}:
+        _penalise(
+            6,
+            "Operational outlook demands heightened monitoring.",
+            source="Operational outlook",
+            priority="next_shift",
+        )
+    elif outlook_status:
+        _reinforce("Operational outlook indicates steady posture.")
+    _collect_actions(outlook.get("recommended_actions"))
+    _collect_drivers(outlook.get("focus_areas"))
+    _register_window(outlook.get("planning_horizon_hours"))
+
+    alignment_status = str(alignment.get("status", "")).lower()
+    if alignment_status == "misaligned":
+        _penalise(
+            12,
+            "Command alignment is misaligned and complicates escalation.",
+            source="Command alignment",
+            priority="immediate",
+        )
+    elif alignment_status == "at_risk":
+        _penalise(
+            8,
+            "Command alignment is at risk and needs synchronisation before escalation.",
+            source="Command alignment",
+            priority="prepare",
+        )
+    elif alignment_status == "watch":
+        _penalise(
+            5,
+            "Command alignment watch items remain open.",
+            source="Command alignment",
+            priority="next_shift",
+        )
+    elif alignment_status == "aligned":
+        _reinforce("Command alignment is intact for escalation decisions.")
+    _collect_actions(alignment.get("recommended_actions"))
+    _collect_watch(alignment.get("coordination_gaps"))
+    _register_window(alignment.get("next_sync_hours"))
+
+    signals = [item for item in dict.fromkeys(signals) if item]
+    stability = [item for item in dict.fromkeys(stability) if item]
+    drivers = [item for item in dict.fromkeys(drivers) if item]
+    actions = [item for item in dict.fromkeys(actions) if item]
+    watch_items = [item for item in dict.fromkeys(watch_items) if item]
+    review_windows = [value for value in review_windows if isinstance(value, (float, int)) and value > 0]
+
+    pathways = list(pathway_index.values())
+    pathways.sort(key=lambda item: (priority_order.get(item.get("priority", "monitor"), 99), item.get("name", "")))
+
+    readiness_score = int(round(score))
+    if readiness_score >= 82:
+        status = "standby"
+    elif readiness_score >= 66:
+        status = "monitor"
+    elif readiness_score >= 48:
+        status = "prepare"
+    else:
+        status = "escalate"
+
+    payload: Dict[str, Any] = {
+        "status": status,
+        "readiness_score": readiness_score,
+    }
+    if pathways:
+        payload["escalation_pathways"] = pathways
+    if signals:
+        payload["escalation_signals"] = signals
+    if stability:
+        payload["stability_factors"] = stability
+    if drivers:
+        payload["drivers"] = drivers
+    if actions:
+        payload["recommended_actions"] = actions
+    if watch_items:
+        payload["watch_items"] = watch_items
+    if review_windows:
+        payload["next_review_hours"] = min(review_windows)
+
+    return payload if payload else None
+
+
 def gather_intelligence_brief(
     *,
     area: Optional[str] = None,
@@ -5550,6 +6181,25 @@ def gather_intelligence_brief(
             insight["constraints"] = constraints[:2]
         brief.setdefault("insights", {})["operational_continuity"] = insight
         for action in continuity.get("recommended_actions", []) or []:
+            _append_recommendation(brief, action)
+
+    escalation = _derive_escalation_matrix(brief)
+    if escalation:
+        brief["escalation_readiness"] = escalation
+        insight: Dict[str, Any] = {
+            "status": escalation.get("status"),
+            "score": escalation.get("readiness_score"),
+        }
+        pathways = escalation.get("escalation_pathways")
+        if isinstance(pathways, list) and pathways:
+            first = pathways[0]
+            if isinstance(first, dict) and first.get("priority"):
+                insight["primary_priority"] = first["priority"]
+        review = escalation.get("next_review_hours")
+        if isinstance(review, (float, int)):
+            insight["next_review_hours"] = review
+        brief.setdefault("insights", {})["escalation_readiness"] = insight
+        for action in escalation.get("recommended_actions", []) or []:
             _append_recommendation(brief, action)
 
     return brief
