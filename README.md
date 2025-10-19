@@ -300,6 +300,18 @@ CLI operators get a dedicated table with status, scores, and highlight lists,
 and the API exposes the structured payload under `operational_resilience` with a
 matching insight block for dashboards and shift briefs.
 
+To project whether those gains actually carry through the next planning
+window, the brief layers in an **operational continuity** synthesiser. It fuses
+assurance, resilience, sustainment, risk, contingency, directives, alignment,
+support, readiness, analyst pressure, telemetry freshness, confidence, and the
+outlook into a continuity score with status, constraint list, risk table,
+stability factors, horizon estimate, and a deduplicated action queue. The Rich
+CLI renders the new continuity section with constraint and risk tables plus
+watch items for quick hand-off reviews, while the API surfaces the payload at
+`operational_continuity` and mirrors a compact snapshot inside
+`insights.operational_continuity` so dashboards can track how close the mission
+is to bumping into critical constraints.
+
 To keep teams focused on the most pressing blind spots, the brief highlights an
 **intelligence gaps** table. It inspects the existing tempo, freshness, and
 meta-analysis blocks to flag when prediction coverage collapses, telemetry

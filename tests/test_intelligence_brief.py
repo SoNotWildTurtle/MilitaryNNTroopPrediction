@@ -313,6 +313,17 @@ def test_gather_intelligence_brief_with_area_and_clusters(monkeypatch):
             for action in resilience.get("recommended_actions", [])
         )
 
+    continuity = brief.get("operational_continuity")
+    assert continuity is not None
+    assert continuity.get("status") in {"sustained", "watch", "strained", "critical"}
+    assert isinstance(continuity.get("continuity_score"), int)
+    assert "operational_continuity" in brief.get("insights", {})
+    if continuity.get("recommended_actions"):
+        assert any(
+            action in brief.get("recommendations", [])
+            for action in continuity.get("recommended_actions", [])
+        )
+
 
 @pytest.mark.parametrize(
     "params",
@@ -1340,6 +1351,211 @@ def test_operational_resilience_highlights_reinforcing_signals():
         action in resilience.get("recommended_actions", [])
         for action in ["Maintain assurance cadence.", "Rotate on-call analysts."]
     )
+
+
+def test_operational_continuity_penalises_compounded_degradation():
+    brief: Dict[str, Any] = {
+        "mission_assurance": {
+            "status": "critical",
+            "recommended_actions": ["Stabilise mission dependencies."],
+            "drivers": ["Telemetry outage"],
+            "focus_areas": ["Telemetry"],
+            "blockers": ["Telemetry offline"],
+            "next_checkpoint_hours": 2.5,
+        },
+        "operational_resilience": {
+            "status": "vulnerable",
+            "recommended_actions": ["Rebuild resilience posture."],
+            "drivers": ["Telemetry"],
+            "weak_spots": ["Telemetry intake offline"],
+            "reinforcing_factors": ["Command focus"],
+            "stability_window_hours": 1.5,
+        },
+        "resource_sustainment": {
+            "status": "surge",
+            "resource_needs": ["Fuel pods"],
+            "recommended_actions": ["Deploy reserve logistics teams."],
+            "resupply_window_hours": 3.0,
+        },
+        "operational_risks": {
+            "severity_score": 18,
+            "recommended_actions": ["Escalate operational risk review."],
+            "focus_areas": ["Telemetry"],
+            "next_review_hours": 4.0,
+        },
+        "contingency_plans": {
+            "status": "activate",
+            "watch_items": ["Fallback sensors"],
+            "recommended_actions": ["Activate telemetry fallback."],
+            "activation_window_hours": 2.0,
+            "scenarios": [{"name": "Telemetry fallback"}],
+        },
+        "communication_plan": {
+            "status": "crisis",
+            "recommended_actions": ["Issue crisis broadcast."],
+            "key_messages": ["Telemetry offline"],
+            "audiences": [{"focus": "Command"}],
+            "update_cadence_minutes": 45,
+        },
+        "command_directives": {
+            "status": "escalate",
+            "severity": 20,
+            "focus_areas": ["Telemetry recovery"],
+            "coordination_teams": ["Command"],
+            "recommended_actions": ["Deploy crisis command cell."],
+            "planning_window_hours": 3.0,
+        },
+        "command_alignment": {
+            "status": "misaligned",
+            "recommended_actions": ["Run emergency alignment huddle."],
+            "drivers": ["Telemetry ownership"],
+            "focus_areas": ["Telemetry"],
+            "coordination_gaps": ["Telemetry owner unclear"],
+            "next_sync_hours": 1.5,
+        },
+        "support_priorities": {
+            "status": "mobilise",
+            "recommended_actions": ["Mobilise telemetry support teams."],
+            "priorities": [
+                {
+                    "team": "Telemetry Ops",
+                    "reason": "Restore sensors",
+                    "support_window_hours": 2.0,
+                }
+            ],
+        },
+        "response_readiness": {
+            "level": "critical",
+            "priority_actions": ["Surge rapid response analysts."],
+            "support_window_hours": 1.0,
+            "drivers": ["Telemetry outage"],
+        },
+        "response_pressure": {
+            "status": "critical_backlog",
+            "estimated_clearance_hours": 2.5,
+            "recommended_actions": ["Clear telemetry review backlog."],
+            "drivers": ["Telemetry review backlog"],
+        },
+        "intelligence_confidence": {
+            "level": "low",
+            "recommended_actions": ["Validate degraded telemetry inputs."],
+            "drivers": ["Telemetry signal loss"],
+        },
+        "data_freshness": {"feeds": {"detections": {"status": "stale"}}},
+        "operational_outlook": {
+            "status": "escalation_imminent",
+            "recommended_actions": ["Prepare escalation contingency."],
+            "drivers": ["Telemetry outage"],
+            "planning_horizon_hours": 6.0,
+        },
+    }
+
+    continuity = intel_brief._derive_operational_continuity(brief)
+    assert continuity is not None
+    assert continuity.get("status") == "critical"
+    assert continuity.get("continuity_score", 100) < 60
+    constraints = continuity.get("primary_constraints", [])
+    assert any("restore" in item.lower() for item in constraints)
+    watch_items = continuity.get("watch_items", [])
+    assert any("telemetry intake" in item.lower() for item in watch_items)
+    actions = continuity.get("recommended_actions", [])
+    assert any("stabilise" in action.lower() for action in actions)
+
+
+def test_operational_continuity_highlights_stability_and_horizon():
+    brief: Dict[str, Any] = {
+        "mission_assurance": {
+            "status": "assured",
+            "recommended_actions": ["Maintain mission cadence."],
+            "drivers": ["Coordinated response"],
+            "focus_areas": ["Logistics"],
+            "next_checkpoint_hours": 6.0,
+        },
+        "operational_resilience": {
+            "status": "resilient",
+            "recommended_actions": ["Document resilience best practices."],
+            "drivers": ["Redundant telemetry"],
+            "reinforcing_factors": ["Redundant telemetry"],
+            "stability_window_hours": 12.0,
+        },
+        "resource_sustainment": {
+            "status": "monitor",
+            "recommended_actions": ["Continue sustainment monitoring."],
+            "resupply_window_hours": 10.0,
+        },
+        "operational_risks": {
+            "severity_score": 2,
+            "recommended_actions": ["Maintain low-risk watch."],
+            "focus_areas": ["Training"],
+            "next_review_hours": 24.0,
+        },
+        "contingency_plans": {
+            "status": "watch",
+            "recommended_actions": ["Review contingency watchlist."],
+            "watch_items": ["Weather backup"],
+            "scenarios": [{"name": "Weather backup"}],
+        },
+        "communication_plan": {
+            "status": "routine",
+            "recommended_actions": ["Send weekly alignment digest."],
+            "audiences": [{"focus": "Command"}],
+            "update_cadence_minutes": 120,
+        },
+        "command_directives": {
+            "status": "monitor",
+            "recommended_actions": ["Monitor directive queue."],
+            "planning_window_hours": 8.0,
+        },
+        "command_alignment": {
+            "status": "aligned",
+            "recommended_actions": ["Sustain alignment cadence."],
+            "drivers": ["Shared objectives"],
+            "focus_areas": ["Logistics"],
+            "next_sync_hours": 12.0,
+        },
+        "support_priorities": {
+            "status": "monitor",
+            "recommended_actions": ["Maintain support monitoring."],
+            "priorities": [
+                {"team": "Logistics", "reason": "Standing watch", "support_window_hours": 9.0}
+            ],
+        },
+        "response_readiness": {
+            "level": "steady",
+            "priority_actions": ["Rotate analysts."],
+            "support_window_hours": 6.0,
+            "drivers": ["Balanced staffing"],
+        },
+        "response_pressure": {
+            "status": "balanced",
+            "recommended_actions": ["Maintain throughput."],
+            "estimated_clearance_hours": 4.0,
+        },
+        "intelligence_confidence": {
+            "level": "high",
+            "recommended_actions": ["Share telemetry confidence summary."],
+            "drivers": ["Accurate feedback"],
+        },
+        "data_freshness": {"feeds": {"detections": {"status": "fresh"}}},
+        "operational_outlook": {
+            "status": "steady_watch",
+            "recommended_actions": ["Maintain outlook watch."],
+            "drivers": ["Stable environment"],
+            "planning_horizon_hours": 16.0,
+        },
+    }
+
+    continuity = intel_brief._derive_operational_continuity(brief)
+    assert continuity is not None
+    assert continuity.get("status") in {"sustained", "watch"}
+    assert continuity.get("continuity_score", 0) >= 80
+    assert continuity.get("continuity_horizon_hours") == pytest.approx(2.0)
+    stability = continuity.get("stability_factors", [])
+    assert any("steady" in item.lower() for item in stability)
+    watch_items = continuity.get("watch_items", [])
+    assert any("weather" in item.lower() for item in watch_items)
+    drivers = continuity.get("drivers", [])
+    assert any("objectives" in driver.lower() for driver in drivers)
 
 
 def test_gather_intelligence_brief_builds_communication_plan(monkeypatch):

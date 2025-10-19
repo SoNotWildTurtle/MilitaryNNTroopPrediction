@@ -4575,6 +4575,548 @@ def _derive_operational_resilience(brief: Dict[str, Any]) -> Optional[Dict[str, 
     return payload
 
 
+def _derive_operational_continuity(brief: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Synthesize continuity posture from mission, resilience, and support telemetry."""
+
+    assurance = brief.get("mission_assurance") or {}
+    resilience = brief.get("operational_resilience") or {}
+    sustainment = brief.get("resource_sustainment") or {}
+    risk_register = brief.get("operational_risks") or {}
+    contingency = brief.get("contingency_plans") or {}
+    communication = brief.get("communication_plan") or {}
+    directives = brief.get("command_directives") or {}
+    alignment = brief.get("command_alignment") or {}
+    support = brief.get("support_priorities") or {}
+    readiness = brief.get("response_readiness") or {}
+    pressure = brief.get("response_pressure") or {}
+    confidence = brief.get("intelligence_confidence") or {}
+    freshness = brief.get("data_freshness") or {}
+    outlook = brief.get("operational_outlook") or {}
+
+    if not any(
+        [
+            assurance,
+            resilience,
+            sustainment,
+            risk_register,
+            contingency,
+            communication,
+            directives,
+            alignment,
+            support,
+            readiness,
+            pressure,
+            confidence,
+            freshness,
+            outlook,
+        ]
+    ):
+        return None
+
+    score = 100.0
+    constraints: List[str] = []
+    stability: List[str] = []
+    actions: List[str] = []
+    drivers: List[str] = []
+    risks: List[Dict[str, Any]] = []
+    horizons: List[float] = []
+    watch_items: List[str] = []
+
+    def _penalise(
+        amount: float,
+        *,
+        name: Optional[str] = None,
+        severity: Optional[str] = None,
+        detail: Optional[str] = None,
+        constraint: Optional[str] = None,
+    ) -> None:
+        nonlocal score
+        if amount <= 0:
+            return
+        score = max(0.0, score - float(amount))
+        if constraint:
+            constraints.append(str(constraint))
+        risk: Dict[str, Any] = {}
+        if name:
+            risk["name"] = str(name)
+        if severity:
+            risk["severity"] = str(severity)
+        if detail:
+            risk["detail"] = str(detail)
+        if risk:
+            risks.append(risk)
+
+    def _record_constraint(message: Optional[str]) -> None:
+        if message:
+            constraints.append(str(message))
+
+    def _reward(message: Optional[str]) -> None:
+        if message:
+            stability.append(str(message))
+
+    def _collect_actions(values: Optional[Iterable[Any]]) -> None:
+        for value in values or []:
+            if value:
+                actions.append(str(value))
+
+    def _collect_drivers(values: Optional[Iterable[Any]]) -> None:
+        for value in values or []:
+            if value:
+                drivers.append(str(value))
+
+    def _register_horizon(value: Optional[float]) -> None:
+        if not isinstance(value, (float, int)) or value <= 0:
+            return
+        horizons.append(round(float(value), 2))
+
+    def _collect_watch(values: Optional[Iterable[Any]]) -> None:
+        for value in values or []:
+            if value:
+                watch_items.append(str(value))
+
+    assurance_status = str(assurance.get("status", "")).lower()
+    if assurance_status == "critical":
+        _penalise(
+            24,
+            name="Mission assurance",
+            severity="critical",
+            detail="Mission assurance is critical",
+            constraint="Mission assurance blockers threaten continuity.",
+        )
+    elif assurance_status == "at_risk":
+        _penalise(
+            16,
+            name="Mission assurance",
+            severity="major",
+            detail="Mission assurance is at risk",
+            constraint="Mission assurance requires shoring up dependencies.",
+        )
+    elif assurance_status == "watch":
+        _penalise(
+            8,
+            name="Mission assurance",
+            severity="moderate",
+            detail="Mission assurance under watch",
+        )
+    elif assurance_status == "assured":
+        _reward("Mission assurance baseline is steady.")
+    _collect_actions(assurance.get("recommended_actions"))
+    _collect_drivers(assurance.get("drivers"))
+    _collect_drivers(assurance.get("focus_areas"))
+    _register_horizon(assurance.get("next_checkpoint_hours"))
+    _collect_watch(assurance.get("blockers"))
+
+    resilience_status = str(resilience.get("status", "")).lower()
+    if resilience_status == "critical":
+        _penalise(
+            20,
+            name="Operational resilience",
+            severity="critical",
+            detail="Resilience posture is critical",
+            constraint="Resilience weak spots limit extended operations.",
+        )
+    elif resilience_status == "vulnerable":
+        _penalise(
+            14,
+            name="Operational resilience",
+            severity="major",
+            detail="Resilience posture is vulnerable",
+        )
+    elif resilience_status == "steady":
+        _reward("Operational resilience remains steady.")
+    elif resilience_status == "resilient":
+        _reward("Operational resilience is reinforcing continuity.")
+    _collect_actions(resilience.get("recommended_actions"))
+    _collect_drivers(resilience.get("drivers"))
+    _collect_watch(resilience.get("weak_spots"))
+    _collect_watch(resilience.get("reinforcing_factors"))
+    _register_horizon(resilience.get("stability_window_hours"))
+
+    sustain_status = str(sustainment.get("status", "")).lower()
+    if sustain_status == "surge":
+        _penalise(
+            12,
+            name="Resource sustainment",
+            severity="major",
+            detail="Sustainment is in surge mode",
+            constraint="Sustainment surge is draining reserves.",
+        )
+    elif sustain_status == "accelerate":
+        _penalise(
+            8,
+            name="Resource sustainment",
+            severity="moderate",
+            detail="Sustainment requires acceleration",
+        )
+    elif sustain_status == "reinforce":
+        _penalise(5, name="Resource sustainment", severity="moderate", detail="Sustainment requires reinforcement")
+    elif sustain_status == "monitor":
+        _reward("Sustainment posture is holding steady.")
+    _collect_actions(sustainment.get("recommended_actions"))
+    _collect_drivers(sustainment.get("resource_needs"))
+    _collect_watch(sustainment.get("resource_needs"))
+    _register_horizon(sustainment.get("resupply_window_hours"))
+
+    risk_score = risk_register.get("severity_score")
+    if isinstance(risk_score, (float, int)):
+        if risk_score >= 18:
+            _penalise(
+                14,
+                name="Operational risk register",
+                severity="critical",
+                detail="Risk register contains critical threats",
+            )
+        elif risk_score >= 12:
+            _penalise(
+                10,
+                name="Operational risk register",
+                severity="major",
+                detail="Risk register is elevated",
+            )
+        elif risk_score >= 6:
+            _penalise(
+                6,
+                name="Operational risk register",
+                severity="moderate",
+                detail="Risk register trending upward",
+            )
+        elif risk_score <= 3:
+            _reward("Operational risk register remains contained.")
+    _collect_actions(risk_register.get("recommended_actions"))
+    _collect_drivers(risk_register.get("focus_areas"))
+    _register_horizon(risk_register.get("next_review_hours"))
+
+    contingency_status = str(contingency.get("status", "")).lower()
+    if contingency_status == "activate":
+        _penalise(
+            10,
+            name="Contingency planning",
+            severity="major",
+            detail="Contingency plans near activation",
+            constraint="Contingency teams are on standby and draining capacity.",
+        )
+    elif contingency_status == "ready":
+        _penalise(
+            7,
+            name="Contingency planning",
+            severity="moderate",
+            detail="Contingency plans ready to launch",
+        )
+    elif contingency_status == "watch":
+        _reward("Contingency planning remains on watch.")
+    _collect_actions(contingency.get("recommended_actions"))
+    _collect_drivers(
+        entry.get("name")
+        for entry in contingency.get("scenarios", [])
+        if isinstance(entry, dict) and entry.get("name")
+    )
+    _collect_watch(contingency.get("watch_items"))
+    _register_horizon(contingency.get("activation_window_hours"))
+
+    communication_status = str(communication.get("status", "")).lower()
+    if communication_status in {"crisis", "escalated"}:
+        _penalise(
+            8,
+            name="Communication cadence",
+            severity="major",
+            detail="Communication cadence escalated",
+        )
+    elif communication_status in {"reinforce", "heightened"}:
+        _penalise(
+            5,
+            name="Communication cadence",
+            severity="moderate",
+            detail="Communication cadence heightened",
+        )
+    elif communication_status in {"steady", "routine", "focused"}:
+        _reward("Communication cadence is supporting continuity.")
+    _collect_actions(communication.get("recommended_actions"))
+    _collect_drivers(communication.get("key_messages"))
+    audiences = communication.get("audiences")
+    if isinstance(audiences, list):
+        _collect_drivers(
+            entry.get("focus") for entry in audiences if isinstance(entry, dict) and entry.get("focus")
+        )
+    cadence = communication.get("update_cadence_minutes")
+    if isinstance(cadence, (float, int)) and cadence > 0:
+        _register_horizon(float(cadence) / 60.0)
+
+    directive_status = str(directives.get("status", "")).lower()
+    if directive_status == "escalate":
+        _penalise(
+            9,
+            name="Command directives",
+            severity="major",
+            detail="Command directives escalated",
+            constraint="Directive escalation requires rapid coordination.",
+        )
+    elif directive_status == "accelerate":
+        _penalise(
+            6,
+            name="Command directives",
+            severity="moderate",
+            detail="Command directives accelerating",
+        )
+    elif directive_status == "focus":
+        _penalise(
+            4,
+            name="Command directives",
+            severity="moderate",
+            detail="Command directives focused",
+        )
+    elif directive_status == "monitor":
+        _reward("Command directives remain on monitor posture.")
+    directive_severity = directives.get("severity")
+    if isinstance(directive_severity, (float, int)) and directive_severity >= 18:
+        _penalise(
+            6,
+            name="Command directives",
+            severity="critical",
+            detail="Directive severity flagged as high",
+        )
+    _collect_actions(directives.get("recommended_actions"))
+    _collect_drivers(directives.get("focus_areas"))
+    _collect_drivers(directives.get("coordination_teams"))
+    _register_horizon(directives.get("planning_window_hours"))
+
+    alignment_status = str(alignment.get("status", "")).lower()
+    if alignment_status == "misaligned":
+        _penalise(
+            12,
+            name="Command alignment",
+            severity="major",
+            detail="Command alignment misaligned",
+            constraint="Alignment gaps require immediate coordination.",
+        )
+    elif alignment_status == "at_risk":
+        _penalise(
+            8,
+            name="Command alignment",
+            severity="moderate",
+            detail="Command alignment at risk",
+        )
+    elif alignment_status == "watch":
+        _penalise(
+            5,
+            name="Command alignment",
+            severity="moderate",
+            detail="Command alignment under watch",
+        )
+    elif alignment_status == "aligned":
+        _reward("Command alignment is supporting continuity.")
+    _collect_actions(alignment.get("recommended_actions"))
+    _collect_drivers(alignment.get("drivers"))
+    _collect_drivers(alignment.get("focus_areas"))
+    _register_horizon(alignment.get("next_sync_hours"))
+    _collect_watch(alignment.get("coordination_gaps"))
+
+    support_status = str(support.get("status", "")).lower()
+    if support_status == "mobilise":
+        _penalise(
+            8,
+            name="Support priorities",
+            severity="major",
+            detail="Support teams mobilising",
+        )
+    elif support_status == "reinforce":
+        _penalise(
+            6,
+            name="Support priorities",
+            severity="moderate",
+            detail="Support teams reinforcing",
+        )
+    elif support_status == "monitor":
+        _reward("Support priorities remain in monitor posture.")
+    _collect_actions(support.get("recommended_actions"))
+    for entry in support.get("priorities", []) if isinstance(support.get("priorities"), list) else []:
+        if not isinstance(entry, dict):
+            continue
+        reason = entry.get("reason")
+        team = entry.get("team")
+        if reason:
+            _record_constraint(str(reason))
+        if team:
+            _collect_drivers([team])
+        window = entry.get("support_window_hours")
+        _register_horizon(window if isinstance(window, (float, int)) else None)
+
+    readiness_level = str(readiness.get("level", "")).lower()
+    if readiness_level == "critical":
+        _penalise(
+            12,
+            name="Response readiness",
+            severity="critical",
+            detail="Response readiness critical",
+            constraint="Critical readiness level limits sustained ops.",
+        )
+    elif readiness_level == "strained":
+        _penalise(
+            8,
+            name="Response readiness",
+            severity="major",
+            detail="Response readiness strained",
+        )
+    elif readiness_level == "steady":
+        _reward("Response readiness providing stable coverage.")
+    elif readiness_level == "reinforced":  # defensive: allow optional future value
+        _reward("Response readiness reinforced for extended ops.")
+    _collect_actions(readiness.get("priority_actions"))
+    _collect_drivers(readiness.get("drivers"))
+    _register_horizon(readiness.get("support_window_hours"))
+
+    pressure_status = str(pressure.get("status", "")).lower()
+    if pressure_status in {"critical_backlog", "prediction_gap"}:
+        _penalise(
+            10,
+            name="Response pressure",
+            severity="major",
+            detail="Analyst response pressure critical",
+            constraint="Analyst backlog threatens continuity horizon.",
+        )
+    elif pressure_status in {"backlog", "feedback_strain", "quality_watch"}:
+        _penalise(
+            6,
+            name="Response pressure",
+            severity="moderate",
+            detail="Analyst response pressure elevated",
+        )
+    elif pressure_status == "balanced":
+        _reward("Analyst pressure balanced for sustained throughput.")
+    _collect_actions(pressure.get("recommended_actions"))
+    _collect_drivers(pressure.get("drivers"))
+    _register_horizon(pressure.get("estimated_clearance_hours"))
+
+    confidence_level = str(confidence.get("level", "")).lower()
+    if confidence_level == "low":
+        _penalise(
+            9,
+            name="Intelligence confidence",
+            severity="major",
+            detail="Intelligence confidence low",
+            constraint="Low intelligence confidence slows decision cadence.",
+        )
+    elif confidence_level == "guarded":
+        _penalise(
+            6,
+            name="Intelligence confidence",
+            severity="moderate",
+            detail="Intelligence confidence guarded",
+        )
+    elif confidence_level == "high":
+        _reward("Intelligence confidence supports continuity decisions.")
+    _collect_actions(confidence.get("recommended_actions"))
+    _collect_drivers(confidence.get("drivers"))
+
+    feeds = freshness.get("feeds") if isinstance(freshness, dict) else {}
+    for feed_name, feed_info in (feeds or {}).items():
+        if not isinstance(feed_info, dict):
+            continue
+        status = str(feed_info.get("status", "")).lower()
+        label = f"{str(feed_name).capitalize()} feed"
+        if status == "stale":
+            _penalise(
+                9,
+                name=f"{label} freshness",
+                severity="major",
+                detail=f"{label} is stale",
+                constraint=f"{label} requires recovery to sustain ops.",
+            )
+        elif status == "warning":
+            _penalise(
+                5,
+                name=f"{label} freshness",
+                severity="moderate",
+                detail=f"{label} nearing stale threshold",
+            )
+
+    outlook_status = str(outlook.get("status", "")).lower()
+    if outlook_status == "escalation_imminent":
+        _penalise(
+            8,
+            name="Operational outlook",
+            severity="critical",
+            detail="Operational outlook predicts escalation",
+        )
+    elif outlook_status == "rapid_response":
+        _penalise(
+            6,
+            name="Operational outlook",
+            severity="major",
+            detail="Operational outlook driving rapid response",
+        )
+    elif outlook_status in {"heightened_watch"}:
+        _penalise(
+            4,
+            name="Operational outlook",
+            severity="moderate",
+            detail="Operational outlook on heightened watch",
+        )
+    elif outlook_status in {"stabilise", "steady_watch"}:
+        _reward("Operational outlook steady for continuity planning.")
+    _collect_actions(outlook.get("recommended_actions"))
+    _collect_drivers(outlook.get("drivers"))
+    _collect_drivers(outlook.get("focus_areas"))
+    _register_horizon(outlook.get("planning_horizon_hours"))
+
+    constraints = list(dict.fromkeys(filter(None, constraints)))
+    stability = list(dict.fromkeys(filter(None, stability)))
+    actions = list(dict.fromkeys(filter(None, actions)))
+    drivers = list(dict.fromkeys(filter(None, drivers)))
+    watch_items = list(dict.fromkeys(filter(None, watch_items)))
+
+    deduped_risks: List[Dict[str, Any]] = []
+    seen_risks: set[Tuple[Any, Any, Any]] = set()
+    for entry in risks:
+        if not isinstance(entry, dict):
+            continue
+        name = entry.get("name")
+        severity = entry.get("severity")
+        detail = entry.get("detail")
+        key = (name, severity, detail)
+        if key in seen_risks:
+            continue
+        seen_risks.add(key)
+        deduped_risks.append({k: v for k, v in entry.items() if v})
+    risks = deduped_risks
+
+    horizons = [value for value in horizons if isinstance(value, (float, int)) and value > 0]
+
+    continuity_score = int(round(score))
+    if continuity_score >= 82:
+        status = "sustained"
+    elif continuity_score >= 68:
+        status = "watch"
+    elif continuity_score >= 52:
+        status = "strained"
+    else:
+        status = "critical"
+
+    if any(str(risk.get("severity", "")).lower() == "critical" for risk in risks):
+        status = "critical"
+    elif status == "watch":
+        major_risks = sum(1 for risk in risks if str(risk.get("severity", "")).lower() in {"major", "critical"})
+        if major_risks >= 2:
+            status = "strained"
+
+    payload: Dict[str, Any] = {"status": status, "continuity_score": continuity_score}
+    if constraints:
+        payload["primary_constraints"] = constraints
+    if stability:
+        payload["stability_factors"] = stability
+    if actions:
+        payload["recommended_actions"] = actions
+    if drivers:
+        payload["drivers"] = drivers
+    if risks:
+        payload["continuity_risks"] = risks
+    if watch_items:
+        payload["watch_items"] = watch_items
+    if horizons:
+        payload["continuity_horizon_hours"] = min(horizons)
+
+    return payload
+
+
 def gather_intelligence_brief(
     *,
     area: Optional[str] = None,
@@ -4991,6 +5533,23 @@ def gather_intelligence_brief(
             insight["stability_window_hours"] = window
         brief.setdefault("insights", {})["operational_resilience"] = insight
         for action in resilience.get("recommended_actions", []) or []:
+            _append_recommendation(brief, action)
+
+    continuity = _derive_operational_continuity(brief)
+    if continuity:
+        brief["operational_continuity"] = continuity
+        insight: Dict[str, Any] = {
+            "status": continuity.get("status"),
+            "score": continuity.get("continuity_score"),
+        }
+        horizon = continuity.get("continuity_horizon_hours")
+        if isinstance(horizon, (float, int)):
+            insight["horizon_hours"] = horizon
+        constraints = continuity.get("primary_constraints")
+        if isinstance(constraints, list) and constraints:
+            insight["constraints"] = constraints[:2]
+        brief.setdefault("insights", {})["operational_continuity"] = insight
+        for action in continuity.get("recommended_actions", []) or []:
             _append_recommendation(brief, action)
 
     return brief

@@ -752,6 +752,83 @@ def _render_operational_resilience(resilience: Optional[Dict[str, Any]]) -> None
             console.print(f"- {action}")
 
 
+def _render_operational_continuity(continuity: Optional[Dict[str, Any]]) -> None:
+    if not continuity:
+        return
+
+    console.print(_t("Operational continuity"), style="bold")
+
+    table = Table(show_header=False)
+    table.add_column(_t("Metric"))
+    table.add_column(_t("Value"))
+
+    status = str(continuity.get("status", _t("unknown"))).replace("_", " ").title()
+    table.add_row(_t("Status"), status)
+
+    score = continuity.get("continuity_score")
+    if isinstance(score, (int, float)):
+        table.add_row(_t("Continuity score"), str(int(round(float(score)))))
+
+    horizon = continuity.get("continuity_horizon_hours")
+    if isinstance(horizon, (float, int)):
+        table.add_row(_t("Continuity horizon"), f"{float(horizon):.2f}h")
+
+    constraints = continuity.get("primary_constraints")
+    if isinstance(constraints, list) and constraints:
+        table.add_row(_t("Primary constraints"), str(len(constraints)))
+
+    risks = continuity.get("continuity_risks")
+    if isinstance(risks, list) and risks:
+        table.add_row(_t("Continuity risks"), str(len(risks)))
+
+    stability = continuity.get("stability_factors")
+    if isinstance(stability, list) and stability:
+        table.add_row(_t("Stability factors"), str(len(stability)))
+
+    console.print(table)
+
+    if isinstance(constraints, list) and constraints:
+        console.print(_t("Constraints:"), style="bold red")
+        for item in constraints:
+            console.print(f"- {item}", style="red")
+
+    if isinstance(risks, list) and risks:
+        risk_table = Table(title=_t("Continuity risks"))
+        risk_table.add_column(_t("Name"))
+        risk_table.add_column(_t("Severity"))
+        risk_table.add_column(_t("Detail"))
+        for entry in risks:
+            if not isinstance(entry, dict):
+                continue
+            risk_table.add_row(
+                str(entry.get("name", "-")),
+                str(entry.get("severity", _t("unknown"))).title(),
+                str(entry.get("detail", "")),
+            )
+        console.print(risk_table)
+
+    if isinstance(stability, list) and stability:
+        console.print(_t("Stability factors:"), style="bold")
+        for item in stability:
+            console.print(f"- {item}")
+
+    if continuity.get("drivers"):
+        console.print(_t("Drivers:"), style="bold")
+        for driver in continuity["drivers"]:
+            console.print(f"- {driver}")
+
+    watch_items = continuity.get("watch_items")
+    if isinstance(watch_items, list) and watch_items:
+        console.print(_t("Watch items:"), style="bold yellow")
+        for item in watch_items:
+            console.print(f"- {item}", style="yellow")
+
+    if continuity.get("recommended_actions"):
+        console.print(_t("Continuity actions:"), style="bold")
+        for action in continuity["recommended_actions"]:
+            console.print(f"- {action}")
+
+
 def _render_contingency_plans(plan: Optional[Dict[str, Any]]) -> None:
     if not plan:
         return
@@ -1019,6 +1096,8 @@ def main(area: Optional[str], hours: int, limit: int, raw: bool) -> None:
         _render_mission_assurance(brief["mission_assurance"])
     if brief.get("operational_resilience"):
         _render_operational_resilience(brief["operational_resilience"])
+    if brief.get("operational_continuity"):
+        _render_operational_continuity(brief["operational_continuity"])
     if brief.get("contingency_plans"):
         _render_contingency_plans(brief["contingency_plans"])
     if brief.get("communication_plan"):
