@@ -196,6 +196,16 @@ Drivers and recommended actions cascade into the global recommendations list
 and render in the CLI, helping teams prioritise telemetry recovery, calibration
 cycles, or incident coordination before decision quality erodes.
 
+To steer the next shift hand-off, the brief also emits an **operational
+outlook**. The synthesiser fuses posture, readiness, analyst pressure,
+freshness, intelligence confidence, and threat telemetry into a severity score,
+planning horizon, and focus areas. Analysts can immediately see whether the
+environment is in steady watch, stabilisation, heightened watch, rapid
+response, or escalation-imminent states and why. The CLI renders the new block
+with focus areas, drivers, and action prompts, while the API surfaces the
+summary in `insights.operational_outlook` so dashboards can trend the outlook
+alongside tempo, readiness, and gap metrics.
+
 To keep teams focused on the most pressing blind spots, the brief highlights an
 **intelligence gaps** table. It inspects the existing tempo, freshness, and
 meta-analysis blocks to flag when prediction coverage collapses, telemetry

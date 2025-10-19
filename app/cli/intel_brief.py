@@ -443,6 +443,65 @@ def _render_intelligence_confidence(confidence: Optional[Dict[str, Any]]) -> Non
             console.print(f"- {action}")
 
 
+def _render_operational_outlook(outlook: Optional[Dict[str, Any]]) -> None:
+    if not outlook:
+        return
+
+    console.print(_t("Operational outlook"), style="bold")
+
+    table = Table(show_header=False)
+    table.add_column(_t("Metric"))
+    table.add_column(_t("Value"))
+
+    table.add_row(_t("Status"), str(outlook.get("status", _t("unknown"))))
+    severity = outlook.get("severity_score")
+    if isinstance(severity, (int, float)):
+        table.add_row(_t("Severity score"), str(int(severity)))
+    horizon = outlook.get("planning_horizon_hours")
+    if isinstance(horizon, (float, int)):
+        table.add_row(_t("Planning horizon"), f"{float(horizon):.1f}h")
+    confidence_level = outlook.get("intelligence_confidence")
+    if confidence_level:
+        table.add_row(_t("Intelligence confidence"), str(confidence_level))
+    dominant = outlook.get("dominant_threat_level")
+    if dominant:
+        table.add_row(_t("Dominant threat"), str(dominant))
+    gap_summary = outlook.get("gap_summary")
+    if isinstance(gap_summary, dict) and gap_summary:
+        table.add_row(
+            _t("Critical gaps"),
+            str(gap_summary.get("critical", 0)),
+        )
+        table.add_row(
+            _t("Major gaps"),
+            str(gap_summary.get("major", 0)),
+        )
+    pending = outlook.get("pending_predictions")
+    if isinstance(pending, (int, float)):
+        table.add_row(_t("Pending predictions"), str(int(pending)))
+    unmatched = outlook.get("unmatched_detections")
+    if isinstance(unmatched, (int, float)):
+        table.add_row(_t("Unmatched detections"), str(int(unmatched)))
+
+    console.print(table)
+
+    focus_areas = outlook.get("focus_areas")
+    if isinstance(focus_areas, list) and focus_areas:
+        console.print(_t("Focus areas:"), style="bold")
+        for area in focus_areas:
+            console.print(f"- {area}")
+
+    if outlook.get("drivers"):
+        console.print(_t("Drivers:"), style="bold")
+        for driver in outlook["drivers"]:
+            console.print(f"- {driver}")
+
+    if outlook.get("recommended_actions"):
+        console.print(_t("Outlook actions:"), style="bold")
+        for action in outlook["recommended_actions"]:
+            console.print(f"- {action}")
+
+
 def _render_intelligence_gaps(gaps: Optional[List[Dict[str, Any]]]) -> None:
     if not gaps:
         return
@@ -518,6 +577,8 @@ def main(area: Optional[str], hours: int, limit: int, raw: bool) -> None:
         _render_support_priorities(brief["support_priorities"])
     if brief.get("intelligence_confidence"):
         _render_intelligence_confidence(brief["intelligence_confidence"])
+    if brief.get("operational_outlook"):
+        _render_operational_outlook(brief["operational_outlook"])
     if brief.get("intelligence_gaps"):
         _render_intelligence_gaps(brief["intelligence_gaps"])
     if brief.get("insights"):

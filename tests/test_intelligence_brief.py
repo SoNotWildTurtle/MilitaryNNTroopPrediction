@@ -274,6 +274,18 @@ def test_gather_intelligence_brief_with_area_and_clusters(monkeypatch):
     assert confidence.get("level") in {"high", "guarded", "low"}
     assert "intelligence_confidence" in brief.get("insights", {})
 
+    outlook = brief.get("operational_outlook")
+    assert outlook is not None
+    assert outlook.get("status") in {
+        "steady_watch",
+        "stabilise",
+        "heightened_watch",
+        "rapid_response",
+        "escalation_imminent",
+    }
+    assert outlook.get("severity_score") is not None
+    assert "operational_outlook" in brief.get("insights", {})
+
 
 @pytest.mark.parametrize(
     "params",
@@ -363,6 +375,12 @@ def test_gather_intelligence_brief_activity_summary(monkeypatch):
         for entry in support.get("priorities", [])
     )
 
+    outlook = brief.get("operational_outlook")
+    assert outlook is not None
+    assert outlook.get("status") in {"rapid_response", "escalation_imminent", "heightened_watch"}
+    assert outlook.get("severity_score", 0) >= 5
+    assert any("tempo" in driver.lower() for driver in outlook.get("drivers", []))
+
 
 def test_gather_intelligence_brief_marks_stale_feeds(monkeypatch):
     now = datetime(2024, 5, 1, 12, tzinfo=UTC)
@@ -398,6 +416,10 @@ def test_gather_intelligence_brief_marks_stale_feeds(monkeypatch):
     readiness = brief.get("response_readiness")
     assert readiness is not None
     assert readiness["level"] == "critical"
+    outlook = brief.get("operational_outlook")
+    assert outlook is not None
+    assert outlook.get("status") in {"stabilise", "rapid_response", "escalation_imminent"}
+    assert any("telemetry" in driver.lower() for driver in outlook.get("drivers", []))
     assert readiness["support_window_hours"] == pytest.approx(1.0)
     assert any(
         "restore" in action.lower() for action in readiness.get("priority_actions", [])
@@ -505,6 +527,53 @@ def test_response_readiness_handles_feedback_and_cluster_load(monkeypatch):
     assert accuracy_gap.get("severity") == "critical"
     cluster_gap = next((gap for gap in gaps if gap.get("gap") == "cluster_scoring"), None)
     assert cluster_gap is not None
+
+
+def test_operational_outlook_flags_escalation():
+    brief: Dict[str, Any] = {
+        "activity_summary": {"tempo": "surge", "prediction_coverage": 0.3},
+        "response_readiness": {"level": "critical", "support_window_hours": 2.0},
+        "operational_posture": {"status": "recover", "horizon_hours": 3.5},
+        "response_pressure": {
+            "status": "critical_backlog",
+            "pending_predictions": 24,
+            "unmatched_detections": 12,
+            "estimated_clearance_hours": 6.0,
+        },
+        "data_freshness": {
+            "feeds": {
+                "detections": {"status": "stale"},
+                "predictions": {"status": "warning"},
+            },
+            "worst_case_minutes": 180.0,
+        },
+        "detection_quality": {
+            "weighted_avg_confidence": 0.5,
+            "sparse_class_coverage": ["armor"],
+        },
+        "health": {"risk_level": "severe"},
+        "support_priorities": {"status": "mobilise"},
+        "intelligence_confidence": {"level": "low"},
+        "intelligence_gaps": [
+            {"gap": "prediction_coverage", "severity": "critical"}
+        ],
+        "cluster_threats": [
+            {"threat_level": "critical", "threat_score": 18.2, "nearest_site": "rail hub"}
+        ],
+    }
+
+    outlook = intel_brief._derive_operational_outlook(brief)
+    assert outlook is not None
+    assert outlook.get("status") in {"escalation_imminent", "rapid_response"}
+    assert outlook.get("severity_score", 0) >= 12
+    assert outlook.get("planning_horizon_hours") is not None
+    focus = outlook.get("focus_areas", [])
+    assert "Telemetry recovery" in focus
+    assert "Analyst throughput" in focus
+    drivers = " ".join(outlook.get("drivers", []))
+    assert "backlog" in drivers.lower() or "triage" in drivers.lower()
+    actions = " ".join(outlook.get("recommended_actions", []))
+    assert "leadership" in actions.lower() or "rapid response" in actions.lower()
 
 
 def test_detection_quality_highlights_low_confidence(monkeypatch):

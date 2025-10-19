@@ -901,6 +901,311 @@ def _derive_intelligence_confidence(brief: Dict[str, Any]) -> Optional[Dict[str,
     return confidence
 
 
+def _derive_operational_outlook(brief: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Project the near-term operational outlook from fused telemetry."""
+
+    activity_summary = brief.get("activity_summary") or {}
+    readiness = brief.get("response_readiness") or {}
+    posture = brief.get("operational_posture") or {}
+    pressure = brief.get("response_pressure") or {}
+    freshness = brief.get("data_freshness") or {}
+    detection_quality = brief.get("detection_quality") or {}
+    health = brief.get("health") or {}
+    support = brief.get("support_priorities") or {}
+    confidence = brief.get("intelligence_confidence") or {}
+    gaps = brief.get("intelligence_gaps") or []
+    threats = brief.get("cluster_threats") or []
+
+    if not any(
+        [
+            activity_summary,
+            readiness,
+            posture,
+            pressure,
+            freshness,
+            detection_quality,
+            health,
+            support,
+            confidence,
+            gaps,
+            threats,
+        ]
+    ):
+        return None
+
+    severity = 0
+    drivers: List[str] = []
+    actions: List[str] = []
+    focus_areas: List[str] = []
+    horizon_candidates: List[float] = []
+
+    def _add_driver(message: str) -> None:
+        if message:
+            drivers.append(message)
+
+    def _add_action(message: str) -> None:
+        if message:
+            actions.append(message)
+
+    def _add_focus(area: str) -> None:
+        if area:
+            focus_areas.append(area)
+
+    tempo = str(activity_summary.get("tempo", "")).lower()
+    if tempo == "surge":
+        severity += 2
+        _add_driver("Operational tempo is surging across the assessment window.")
+        _add_focus("Tempo management")
+    elif tempo == "elevated":
+        severity += 1
+        _add_driver("Operational tempo remains elevated across the assessment window.")
+        _add_focus("Tempo management")
+
+    coverage = activity_summary.get("prediction_coverage")
+    if isinstance(coverage, (float, int)):
+        ratio = float(coverage)
+        if ratio < 0.5:
+            severity += 2
+            _add_driver("Prediction coverage has fallen below 50% in the current window.")
+            _add_focus("Prediction coverage")
+        elif ratio < 0.75:
+            severity += 1
+            _add_driver("Prediction coverage is trending under 75%, signalling drift.")
+            _add_focus("Prediction coverage")
+
+    highest_threat_level: Optional[str] = None
+    if threats:
+        highest = max(
+            threats,
+            key=lambda cluster: (
+                _threat_level_rank(cluster.get("threat_level")),
+                cluster.get("threat_score", 0),
+            ),
+        )
+        highest_threat_level = highest.get("threat_level")
+        location = highest.get("nearest_site")
+        rank = _threat_level_rank(highest_threat_level)
+        if rank >= 3:
+            severity += 4
+            detail = "Critical movement clusters detected with imminent threat levels."
+            if location:
+                detail = f"Critical movement cluster activity is converging near {location}."
+            _add_driver(detail)
+            _add_focus("Critical movement clusters")
+        elif rank == 2:
+            severity += 3
+            detail = "High-risk movement clusters are active within the window."
+            if location:
+                detail = f"High-risk movement clusters are tracking toward {location}."
+            _add_driver(detail)
+            _add_focus("High-risk clusters")
+        elif rank == 1:
+            severity += 1
+            _add_driver("Moderate threat movement clusters require continued observation.")
+            _add_focus("Cluster surveillance")
+
+    risk_level = health.get("risk_level")
+    risk_rank = _risk_level_rank(risk_level)
+    if risk_rank >= 4:
+        severity += 3
+        _add_driver("Overall health assessment is severe and needs executive focus.")
+        _add_focus("Risk mitigation")
+    elif risk_rank >= 3:
+        severity += 2
+        _add_driver("Overall health risk remains high across the brief.")
+        _add_focus("Risk mitigation")
+    elif risk_rank >= 2:
+        severity += 1
+        _add_driver("Health risk is elevated and warrants stabilisation planning.")
+        _add_focus("Risk mitigation")
+
+    readiness_level = str(readiness.get("level", "")).lower()
+    support_window = readiness.get("support_window_hours")
+    if isinstance(support_window, (float, int)) and support_window > 0:
+        horizon_candidates.append(float(support_window))
+    if readiness_level == "critical":
+        severity += 3
+        _add_driver("Response readiness is critical and requires immediate reinforcement.")
+        _add_focus("Staffing reinforcement")
+        _add_action("Mobilise reserve analysts and command liaisons to restore readiness.")
+    elif readiness_level == "strained":
+        severity += 2
+        _add_driver("Response readiness is strained with limited staffing slack.")
+        _add_focus("Staffing reinforcement")
+        _add_action("Coordinate staffing adjustments to relieve strained readiness levels.")
+    elif readiness_level:
+        _add_driver(f"Response readiness is {readiness_level} for this window.")
+
+    posture_status = str(posture.get("status", "")).lower()
+    posture_horizon = posture.get("horizon_hours")
+    if isinstance(posture_horizon, (float, int)) and posture_horizon > 0:
+        horizon_candidates.append(float(posture_horizon))
+    if posture_status == "recover":
+        severity += 3
+        _add_driver("Operational posture is in recovery mode after telemetry degradations.")
+        _add_focus("Telemetry recovery")
+        _add_action("Sustain the telemetry recovery bridge until feeds stabilise.")
+    elif posture_status == "reinforce":
+        severity += 2
+        _add_driver("Operational posture calls for reinforcement across watch rotations.")
+        _add_focus("Reinforcement planning")
+    elif posture_status == "stabilise":
+        severity += 1
+        _add_driver("Operational posture prioritises stabilisation activities.")
+        _add_focus("Stabilisation planning")
+
+    pressure_status = str(pressure.get("status", "")).lower()
+    clearance = pressure.get("estimated_clearance_hours")
+    if isinstance(clearance, (float, int)) and clearance > 0:
+        horizon_candidates.append(float(clearance))
+    if pressure_status == "critical_backlog":
+        severity += 3
+        _add_driver("Analyst backlog is critical with predictions outpacing triage capacity.")
+        _add_focus("Analyst throughput")
+        _add_action("Stand up a surge triage cell to burn down the backlog.")
+    elif pressure_status in {"prediction_gap", "feedback_strain"}:
+        severity += 2
+        _add_driver("Analyst pressure highlights modelling or feedback shortfalls.")
+        _add_focus("Analyst throughput")
+    elif pressure_status in {"backlog", "quality_watch", "prediction_gap_watch"}:
+        severity += 1
+        _add_driver("Analyst workload is building and needs close monitoring.")
+
+    feeds = freshness.get("feeds") if isinstance(freshness, dict) else {}
+    stale_feeds: List[str] = []
+    warn_feeds: List[str] = []
+    if isinstance(feeds, dict) and feeds:
+        for name, feed in feeds.items():
+            status = str(feed.get("status", "")).lower()
+            if status == "stale":
+                stale_feeds.append(str(name))
+            elif status == "warning":
+                warn_feeds.append(str(name))
+        if stale_feeds:
+            severity += 3
+            names = ", ".join(sorted(stale_feeds))
+            _add_driver(f"Stale telemetry detected for feeds: {names}.")
+            _add_focus("Telemetry recovery")
+            _add_action("Restore stale telemetry pipelines to close critical blind spots.")
+        elif warn_feeds:
+            severity += 1
+            names = ", ".join(sorted(warn_feeds))
+            _add_driver(f"Telemetry freshness warnings for feeds: {names}.")
+            _add_focus("Telemetry monitoring")
+    worst_minutes = freshness.get("worst_case_minutes")
+    if isinstance(worst_minutes, (float, int)) and worst_minutes > 0:
+        horizon_candidates.append(float(worst_minutes) / 60.0)
+
+    weighted_conf = detection_quality.get("weighted_avg_confidence")
+    if isinstance(weighted_conf, (float, int)):
+        weighted = float(weighted_conf)
+        if weighted < 0.55:
+            severity += 2
+            _add_driver("Weighted detection confidence has dropped below 0.55.")
+            _add_focus("Sensor calibration")
+            _add_action("Pair analysts with sensor engineers to revalidate low-confidence detections.")
+        elif weighted < 0.7:
+            severity += 1
+            _add_driver("Weighted detection confidence is trending below 0.70.")
+            _add_focus("Sensor calibration")
+    elif detection_quality:
+        _add_driver("Detection quality telemetry is incomplete for this window.")
+
+    sparse_classes = detection_quality.get("sparse_class_coverage")
+    if isinstance(sparse_classes, list) and sparse_classes:
+        _add_focus("Collection balance")
+
+    critical_gaps = sum(1 for gap in gaps if gap.get("severity") == "critical")
+    major_gaps = sum(1 for gap in gaps if gap.get("severity") == "major")
+    if critical_gaps:
+        severity += min(4, critical_gaps * 2)
+        _add_driver(f"{critical_gaps} critical intelligence gap(s) remain unresolved.")
+        _add_focus("Intelligence gaps")
+        _add_action("Assign owners to close critical intelligence gaps before the next shift.")
+    elif major_gaps:
+        severity += 1
+        _add_driver(f"{major_gaps} major intelligence gap(s) need follow-up.")
+        _add_focus("Intelligence gaps")
+
+    support_status = str(support.get("status", "")).lower()
+    if support_status == "mobilise":
+        severity += 2
+        _add_driver("Support coordination recommends immediate mobilisation across teams.")
+        _add_focus("Cross-team coordination")
+    elif support_status == "reinforce":
+        severity += 1
+        _add_driver("Support coordination recommends reinforcement tasks across teams.")
+        _add_focus("Cross-team coordination")
+
+    confidence_level = str(confidence.get("level", "")).lower()
+    if confidence_level == "low":
+        severity += 2
+        _add_driver("Intelligence confidence is low, limiting trust in recommendations.")
+        _add_focus("Telemetry validation")
+        _add_action("Launch a telemetry validation sprint to rebuild intelligence confidence.")
+    elif confidence_level == "guarded":
+        severity += 1
+        _add_driver("Intelligence confidence is guarded and needs validation work.")
+        _add_focus("Telemetry validation")
+
+    drivers = list(dict.fromkeys(drivers))
+    actions = list(dict.fromkeys(actions))
+    focus_areas = list(dict.fromkeys(focus_areas))
+
+    if severity >= 12:
+        status = "escalation_imminent"
+    elif severity >= 8:
+        status = "rapid_response"
+    elif severity >= 5:
+        status = "heightened_watch"
+    elif severity >= 3:
+        status = "stabilise"
+    else:
+        status = "steady_watch"
+
+    if severity >= 12:
+        _add_action("Brief senior leadership on imminent escalation scenarios and activate contingency plans.")
+    elif severity >= 8:
+        _add_action("Maintain a rapid response posture and pre-stage reinforcement assets for the next few hours.")
+    elif severity >= 5:
+        _add_action("Sustain heightened watch rotations and coordinate targeted mitigations.")
+    elif severity >= 3:
+        _add_action("Execute stabilisation measures to relieve operational pressure.")
+
+    planning_horizon: Optional[float] = None
+    positive_windows = [window for window in horizon_candidates if window and window > 0]
+    if positive_windows:
+        planning_horizon = round(min(positive_windows), 2)
+
+    outlook: Dict[str, Any] = {
+        "status": status,
+        "severity_score": int(severity),
+    }
+    if planning_horizon is not None:
+        outlook["planning_horizon_hours"] = planning_horizon
+    if focus_areas:
+        outlook["focus_areas"] = focus_areas
+    if drivers:
+        outlook["drivers"] = drivers
+    if actions:
+        outlook["recommended_actions"] = actions
+    if confidence_level:
+        outlook["intelligence_confidence"] = confidence_level
+    if highest_threat_level:
+        outlook["dominant_threat_level"] = highest_threat_level
+    if critical_gaps or major_gaps:
+        outlook["gap_summary"] = {"critical": int(critical_gaps), "major": int(major_gaps)}
+
+    pending_predictions = pressure.get("pending_predictions")
+    if isinstance(pending_predictions, (int, float)):
+        outlook["pending_predictions"] = int(pending_predictions)
+    unmatched = pressure.get("unmatched_detections")
+    if isinstance(unmatched, (int, float)):
+        outlook["unmatched_detections"] = int(unmatched)
+
+    return outlook
+
+
 def _summarise_freshness(
     *,
     generated_at: datetime,
@@ -1649,6 +1954,17 @@ def gather_intelligence_brief(
             "status": confidence.get("status"),
         }
         for action in confidence.get("recommended_actions", []):
+            _append_recommendation(brief, action)
+
+    outlook = _derive_operational_outlook(brief)
+    if outlook:
+        brief["operational_outlook"] = outlook
+        brief.setdefault("insights", {})["operational_outlook"] = {
+            "status": outlook.get("status"),
+            "severity_score": outlook.get("severity_score"),
+            "planning_horizon_hours": outlook.get("planning_horizon_hours"),
+        }
+        for action in outlook.get("recommended_actions", []):
             _append_recommendation(brief, action)
 
     if not brief.get("recommendations") and not brief.get("errors"):
