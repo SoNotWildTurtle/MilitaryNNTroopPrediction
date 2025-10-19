@@ -251,6 +251,18 @@ under `resource_sustainment` and surfaces a compact summary inside
 `insights.resource_sustainment` so scheduling tooling can stage personnel ahead
 of surge or mobilisation events.
 
+To keep the wider command picture aligned, the brief also curates an
+**operational risk register**. It aggregates the highest-severity findings from
+readiness, analyst pressure, support coordination, telemetry freshness,
+intelligence confidence, health, outlook, directives, contingency, logistics,
+communication, and gap analysers to score overall risk, capture focus areas,
+and highlight the next review window. Each risk entry records the category,
+severity, status, context drivers, and an optional follow-up action so
+leadership can immediately route owners. The CLI renders the register table and
+associated driver list, while the API exposes the detailed payload under
+`operational_risks` with a condensed snapshot inside
+`insights.operational_risks` for dashboards and shift hand-off briefs.
+
 To keep teams focused on the most pressing blind spots, the brief highlights an
 **intelligence gaps** table. It inspects the existing tempo, freshness, and
 meta-analysis blocks to flag when prediction coverage collapses, telemetry

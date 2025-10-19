@@ -3127,6 +3127,522 @@ def _derive_response_readiness(brief: Dict[str, Any]) -> Optional[Dict[str, Any]
     return readiness
 
 
+def _derive_operational_risk_register(brief: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Summarise critical risks surfaced by the fused intelligence analytics."""
+
+    readiness = brief.get("response_readiness") or {}
+    pressure = brief.get("response_pressure") or {}
+    support = brief.get("support_priorities") or {}
+    freshness = brief.get("data_freshness") or {}
+    gaps = brief.get("intelligence_gaps") or []
+    confidence = brief.get("intelligence_confidence") or {}
+    health = brief.get("health") or {}
+    outlook = brief.get("operational_outlook") or {}
+    posture = brief.get("operational_posture") or {}
+    directives = brief.get("command_directives") or {}
+    contingency = brief.get("contingency_plans") or {}
+    sustainment = brief.get("resource_sustainment") or {}
+    communication = brief.get("communication_plan") or {}
+    detection_quality = brief.get("detection_quality") or {}
+
+    if not any(
+        [
+            readiness,
+            pressure,
+            support,
+            freshness,
+            gaps,
+            confidence,
+            health,
+            outlook,
+            posture,
+            directives,
+            contingency,
+            sustainment,
+            communication,
+            detection_quality,
+        ]
+    ):
+        return None
+
+    risks: List[Dict[str, Any]] = []
+    actions: List[str] = []
+    driver_notes: List[str] = []
+    focus_names: List[str] = []
+    window_candidates: List[float] = []
+    severity_total = 0
+    highest_severity = 0
+
+    def _register_window(value: Optional[float]) -> None:
+        if isinstance(value, (float, int)) and value > 0:
+            window_candidates.append(float(value))
+
+    def _register_minutes(minutes: Optional[float]) -> None:
+        if isinstance(minutes, (float, int)) and minutes > 0:
+            window_candidates.append(float(minutes) / 60.0)
+
+    def _add_action(message: Optional[str]) -> None:
+        if message:
+            actions.append(str(message))
+
+    def _add_drivers(values: Iterable[str]) -> None:
+        for value in values:
+            if value:
+                driver_notes.append(str(value))
+
+    def _add_focus(name: str) -> None:
+        if name:
+            focus_names.append(str(name))
+
+    def _add_risk(
+        name: str,
+        *,
+        category: Optional[str] = None,
+        severity: int = 1,
+        status: Optional[str] = None,
+        detail: Optional[str] = None,
+        drivers: Optional[Iterable[str]] = None,
+        action: Optional[str] = None,
+        window: Optional[float] = None,
+    ) -> None:
+        nonlocal severity_total, highest_severity
+        if not name:
+            return
+        entry: Dict[str, Any] = {"name": str(name)}
+        if category:
+            entry["category"] = str(category)
+        severity_value = max(0, int(severity))
+        if severity_value:
+            entry["severity"] = severity_value
+            severity_total += severity_value
+            highest_severity = max(highest_severity, severity_value)
+        if status:
+            entry["status"] = str(status)
+        if detail:
+            entry["detail"] = str(detail)
+            driver_notes.append(str(detail))
+        if drivers:
+            driver_list = [str(item) for item in drivers if item]
+            if driver_list:
+                entry["drivers"] = driver_list
+                _add_drivers(driver_list)
+        if action:
+            entry["recommended_action"] = str(action)
+            _add_action(action)
+        if isinstance(window, (float, int)) and window > 0:
+            entry["review_window_hours"] = round(float(window), 2)
+            window_candidates.append(float(window))
+        risks.append(entry)
+        _add_focus(str(name))
+
+    readiness_level = str(readiness.get("level", "")).lower()
+    support_window = readiness.get("support_window_hours")
+    _register_window(support_window if isinstance(support_window, (float, int)) else None)
+    readiness_action = None
+    if isinstance(readiness.get("priority_actions"), list) and readiness["priority_actions"]:
+        readiness_action = str(readiness["priority_actions"][0])
+    if readiness_level == "critical":
+        _add_risk(
+            "Response readiness",
+            category="operations",
+            severity=5,
+            status="critical",
+            detail="Readiness level is critical and requires immediate staffing.",
+            drivers=readiness.get("drivers", []),
+            action=readiness_action,
+            window=support_window if isinstance(support_window, (float, int)) else None,
+        )
+    elif readiness_level == "strained":
+        _add_risk(
+            "Response readiness",
+            category="operations",
+            severity=3,
+            status="strained",
+            detail="Readiness is strained and needs reinforcement planning.",
+            drivers=readiness.get("drivers", []),
+            action=readiness_action,
+            window=support_window if isinstance(support_window, (float, int)) else None,
+        )
+
+    pressure_status = str(pressure.get("status", "")).lower()
+    clearance = pressure.get("estimated_clearance_hours")
+    _register_window(clearance if isinstance(clearance, (float, int)) else None)
+    pressure_action = None
+    if isinstance(pressure.get("recommended_actions"), list) and pressure["recommended_actions"]:
+        pressure_action = str(pressure["recommended_actions"][0])
+    if pressure_status == "critical_backlog":
+        _add_risk(
+            "Analyst response pressure",
+            category="workload",
+            severity=5,
+            status="critical",
+            detail="Analyst queue is critically backlogged.",
+            drivers=pressure.get("drivers", []),
+            action=pressure_action,
+            window=clearance if isinstance(clearance, (float, int)) else None,
+        )
+    elif pressure_status == "prediction_gap":
+        _add_risk(
+            "Prediction coverage",
+            category="modelling",
+            severity=4,
+            status="gap",
+            detail="Detections are outpacing predictions, signalling modelling gaps.",
+            drivers=pressure.get("drivers", []),
+            action=pressure_action,
+            window=clearance if isinstance(clearance, (float, int)) else None,
+        )
+    elif pressure_status in {"backlog", "prediction_gap_watch", "feedback_strain", "quality_watch"}:
+        _add_risk(
+            "Analyst response pressure",
+            category="workload",
+            severity=2,
+            status=pressure_status,
+            detail="Analyst workload is straining and requires monitoring.",
+            drivers=pressure.get("drivers", []),
+            action=pressure_action,
+            window=clearance if isinstance(clearance, (float, int)) else None,
+        )
+
+    confidence_level = str(confidence.get("level", "")).lower()
+    confidence_action = None
+    if isinstance(confidence.get("recommended_actions"), list) and confidence["recommended_actions"]:
+        confidence_action = str(confidence["recommended_actions"][0])
+    if confidence_level == "low":
+        _add_risk(
+            "Intelligence confidence",
+            category="telemetry",
+            severity=4,
+            status="low",
+            detail="Telemetry confidence is low and requires validation.",
+            drivers=confidence.get("drivers", []),
+            action=confidence_action,
+        )
+    elif confidence_level == "guarded":
+        _add_risk(
+            "Intelligence confidence",
+            category="telemetry",
+            severity=2,
+            status="guarded",
+            detail="Telemetry confidence is guarded and trending downward.",
+            drivers=confidence.get("drivers", []),
+            action=confidence_action,
+        )
+
+    risk_level = str(health.get("risk_level", "")).lower()
+    health_action = None
+    if isinstance(health.get("recommended_actions"), list) and health["recommended_actions"]:
+        health_action = str(health["recommended_actions"][0])
+    if risk_level in {"critical", "severe"}:
+        _add_risk(
+            "Overall risk posture",
+            category="leadership",
+            severity=5,
+            status=risk_level,
+            detail="Health assessment reports severe operational risk.",
+            drivers=health.get("drivers", []),
+            action=health_action,
+        )
+    elif risk_level == "high":
+        _add_risk(
+            "Overall risk posture",
+            category="leadership",
+            severity=4,
+            status=risk_level,
+            detail="Risk level is high and needs coordinated oversight.",
+            drivers=health.get("drivers", []),
+            action=health_action,
+        )
+    elif risk_level == "elevated":
+        _add_risk(
+            "Overall risk posture",
+            category="leadership",
+            severity=2,
+            status=risk_level,
+            detail="Risk posture is elevated and should be reviewed.",
+            drivers=health.get("drivers", []),
+            action=health_action,
+        )
+
+    support_status = str(support.get("status", "")).lower()
+    if support_status in {"mobilise", "reinforce", "monitor"}:
+        support_severity = 4 if support_status == "mobilise" else (3 if support_status == "reinforce" else 1)
+        _add_risk(
+            "Support coordination",
+            category="coordination",
+            severity=support_severity,
+            status=support_status,
+            detail="Support priorities signal cross-team coordination requirements.",
+            drivers=support.get("drivers", []),
+            action=(support.get("recommended_actions") or [None])[0]
+            if support.get("recommended_actions")
+            else None,
+        )
+    priorities = support.get("priorities") if isinstance(support, dict) else None
+    if isinstance(priorities, list):
+        for entry in priorities:
+            if not isinstance(entry, dict):
+                continue
+            window = entry.get("support_window_hours")
+            _register_window(window if isinstance(window, (float, int)) else None)
+
+    posture_status = str(posture.get("status", "")).lower()
+    posture_focus = posture.get("focus")
+    posture_window = posture.get("horizon_hours")
+    _register_window(posture_window if isinstance(posture_window, (float, int)) else None)
+    if posture_status in {"recover", "stabilise", "reinforce"}:
+        posture_severity = 4 if posture_status == "recover" else 2
+        _add_risk(
+            "Operational posture",
+            category="operations",
+            severity=posture_severity,
+            status=posture_status,
+            detail="Operational posture requires focused attention.",
+            drivers=[posture_focus] if posture_focus else [],
+        )
+
+    outlook_status = str(outlook.get("status", "")).lower()
+    outlook_severity = outlook.get("severity_score")
+    horizon = outlook.get("planning_horizon_hours")
+    _register_window(horizon if isinstance(horizon, (float, int)) else None)
+    if isinstance(outlook_severity, (float, int)) and outlook_severity > 0:
+        scaled = 3 if outlook_severity >= 12 else (2 if outlook_severity >= 6 else 1)
+        _add_risk(
+            "Operational outlook",
+            category="planning",
+            severity=scaled,
+            status=outlook_status or "focused",
+            detail="Operational outlook severity is influencing planning horizons.",
+            drivers=outlook.get("focus_areas", []),
+            action=(outlook.get("recommended_actions") or [None])[0]
+            if outlook.get("recommended_actions")
+            else None,
+            window=horizon if isinstance(horizon, (float, int)) else None,
+        )
+
+    directive_severity = directives.get("severity")
+    planning_window = directives.get("planning_window_hours")
+    _register_window(planning_window if isinstance(planning_window, (float, int)) else None)
+    if isinstance(directive_severity, (float, int)) and directive_severity > 0:
+        scaled = 4 if directive_severity >= 18 else (3 if directive_severity >= 12 else 2)
+        _add_risk(
+            "Command directives",
+            category="leadership",
+            severity=scaled,
+            status=directives.get("status"),
+            detail="Command directives volume is escalating.",
+            drivers=directives.get("drivers", []),
+            action=(directives.get("recommended_actions") or [None])[0]
+            if directives.get("recommended_actions")
+            else None,
+            window=planning_window if isinstance(planning_window, (float, int)) else None,
+        )
+
+    sustainment_status = str(sustainment.get("status", "")).lower()
+    resupply_window = sustainment.get("resupply_window_hours")
+    _register_window(resupply_window if isinstance(resupply_window, (float, int)) else None)
+    sustainment_action = None
+    if isinstance(sustainment.get("recommended_actions"), list) and sustainment["recommended_actions"]:
+        sustainment_action = str(sustainment["recommended_actions"][0])
+    if sustainment_status in {"surge", "accelerate"}:
+        _add_risk(
+            "Resource sustainment",
+            category="logistics",
+            severity=4 if sustainment_status == "surge" else 3,
+            status=sustainment_status,
+            detail="Resource sustainment plan requires accelerated execution.",
+            drivers=sustainment.get("drivers", []),
+            action=sustainment_action,
+            window=resupply_window if isinstance(resupply_window, (float, int)) else None,
+        )
+    elif sustainment_status == "reinforce":
+        _add_risk(
+            "Resource sustainment",
+            category="logistics",
+            severity=2,
+            status=sustainment_status,
+            detail="Resource sustainment recommends reinforcement activities.",
+            drivers=sustainment.get("drivers", []),
+            action=sustainment_action,
+            window=resupply_window if isinstance(resupply_window, (float, int)) else None,
+        )
+
+    contingency_status = str(contingency.get("status", "")).lower()
+    activation_window = contingency.get("activation_window_hours")
+    _register_window(activation_window if isinstance(activation_window, (float, int)) else None)
+    contingency_action = None
+    if isinstance(contingency.get("recommended_actions"), list) and contingency["recommended_actions"]:
+        contingency_action = str(contingency["recommended_actions"][0])
+    if contingency_status in {"activate", "ready"}:
+        _add_risk(
+            "Contingency planning",
+            category="planning",
+            severity=4 if contingency_status == "activate" else 2,
+            status=contingency_status,
+            detail="Contingency scenarios are primed for execution.",
+            drivers=contingency.get("drivers", []),
+            action=contingency_action,
+            window=activation_window if isinstance(activation_window, (float, int)) else None,
+        )
+
+    communication_status = str(communication.get("status", "")).lower()
+    cadence = communication.get("update_cadence_minutes")
+    _register_minutes(cadence if isinstance(cadence, (float, int)) else None)
+    communication_action = None
+    if isinstance(communication.get("recommended_actions"), list) and communication["recommended_actions"]:
+        communication_action = str(communication["recommended_actions"][0])
+    if communication_status in {"escalated", "heightened", "focused"}:
+        severity_map = {"escalated": 3, "heightened": 2, "focused": 1}
+        _add_risk(
+            "Communications cadence",
+            category="engagement",
+            severity=severity_map.get(communication_status, 1),
+            status=communication_status,
+            detail="Communications tempo is increasing and needs coordination.",
+            drivers=communication.get("drivers", []),
+            action=communication_action,
+            window=(float(cadence) / 60.0) if isinstance(cadence, (float, int)) else None,
+        )
+
+    feeds = freshness.get("feeds") if isinstance(freshness, dict) else {}
+    for feed_name, info in (feeds or {}).items():
+        if not isinstance(info, dict):
+            continue
+        status = str(info.get("status", "")).lower()
+        age_minutes = info.get("age_minutes")
+        _register_minutes(age_minutes if isinstance(age_minutes, (float, int)) else None)
+        if status == "stale":
+            _add_risk(
+                f"{feed_name.capitalize()} freshness",
+                category="telemetry",
+                severity=4,
+                status=status,
+                detail=f"{feed_name.capitalize()} feed is stale and blocking situational awareness.",
+                action=f"Restore the {feed_name} feed immediately to unblock telemetry.",
+                window=(float(age_minutes) / 60.0)
+                if isinstance(age_minutes, (float, int)) and age_minutes > 0
+                else None,
+            )
+        elif status == "warning":
+            _add_risk(
+                f"{feed_name.capitalize()} freshness",
+                category="telemetry",
+                severity=2,
+                status=status,
+                detail=f"{feed_name.capitalize()} feed freshness is degrading.",
+                action=f"Schedule checks to stabilise the {feed_name} feed before it stalls.",
+                window=(float(age_minutes) / 60.0)
+                if isinstance(age_minutes, (float, int)) and age_minutes > 0
+                else None,
+            )
+
+    for gap in gaps if isinstance(gaps, list) else []:
+        if not isinstance(gap, dict):
+            continue
+        gap_name = str(gap.get("gap", "")).strip() or "intelligence gap"
+        severity_label = str(gap.get("severity", "")).lower()
+        detail = str(gap.get("detail", "")).strip() or None
+        action = gap.get("recommended_action")
+        if severity_label == "critical":
+            _add_risk(
+                gap_name,
+                category="intelligence",
+                severity=4,
+                status="critical",
+                detail=detail or f"Critical gap detected: {gap_name}.",
+                action=action,
+            )
+        elif severity_label == "major":
+            _add_risk(
+                gap_name,
+                category="intelligence",
+                severity=3,
+                status="major",
+                detail=detail or f"Major gap detected: {gap_name}.",
+                action=action,
+            )
+        elif action:
+            _add_risk(
+                gap_name,
+                category="intelligence",
+                severity=1,
+                status="minor",
+                detail=detail or f"Gap requires monitoring: {gap_name}.",
+                action=action,
+            )
+
+    weighted_conf = detection_quality.get("weighted_avg_confidence")
+    if isinstance(weighted_conf, (float, int)):
+        if weighted_conf < 0.55:
+            _add_risk(
+                "Detection confidence",
+                category="telemetry",
+                severity=3,
+                status="critical",
+                detail="Weighted detection confidence is critically low.",
+                drivers=detection_quality.get("drivers", []),
+                action=(detection_quality.get("recommended_actions") or [None])[0]
+                if detection_quality.get("recommended_actions")
+                else None,
+            )
+        elif weighted_conf < 0.65:
+            _add_risk(
+                "Detection confidence",
+                category="telemetry",
+                severity=2,
+                status="watch",
+                detail="Detection confidence is degrading and should be monitored.",
+                drivers=detection_quality.get("drivers", []),
+                action=(detection_quality.get("recommended_actions") or [None])[0]
+                if detection_quality.get("recommended_actions")
+                else None,
+            )
+
+    if not risks:
+        return None
+
+    risks.sort(key=lambda item: (-int(item.get("severity", 0)), item.get("name", "")))
+    actions = list(dict.fromkeys(actions))
+    driver_notes = list(dict.fromkeys(driver_notes))
+    focus_names = list(dict.fromkeys(focus_names))
+
+    status = "stable"
+    if highest_severity >= 5 or severity_total >= 18:
+        status = "critical"
+    elif highest_severity >= 4 or severity_total >= 12:
+        status = "escalated"
+    elif highest_severity >= 3 or severity_total >= 6:
+        status = "elevated"
+    elif severity_total > 0:
+        status = "watch"
+
+    if status == "critical":
+        _add_action("Escalate the operational risk register to command leadership immediately.")
+    elif status == "escalated":
+        _add_action("Schedule an accelerated risk coordination session within the next shift.")
+    elif status == "elevated":
+        _add_action("Assign owners to close out the highest severity risks before the next review.")
+
+    actions = list(dict.fromkeys(actions))
+
+    payload: Dict[str, Any] = {
+        "status": status,
+        "severity_score": severity_total,
+        "risk_count": len(risks),
+        "risks": risks,
+    }
+    if driver_notes:
+        payload["drivers"] = driver_notes
+    if actions:
+        payload["recommended_actions"] = actions
+    if focus_names:
+        payload["focus_areas"] = focus_names
+    if window_candidates:
+        payload["next_review_hours"] = round(min(window_candidates), 2)
+
+    return payload
+
+
 def gather_intelligence_brief(
     *,
     area: Optional[str] = None,
@@ -3465,6 +3981,26 @@ def gather_intelligence_brief(
             insight["allocation_count"] = len(allocation)
         brief.setdefault("insights", {})["resource_sustainment"] = insight
         for action in sustainment.get("recommended_actions", []) or []:
+            _append_recommendation(brief, action)
+
+    risk_register = _derive_operational_risk_register(brief)
+    if risk_register:
+        brief["operational_risks"] = risk_register
+        insight = {
+            "status": risk_register.get("status"),
+            "risk_count": risk_register.get("risk_count"),
+            "severity_score": risk_register.get("severity_score"),
+        }
+        top_risk = None
+        risks = risk_register.get("risks")
+        if isinstance(risks, list) and risks:
+            top_risk = risks[0]
+        if isinstance(top_risk, dict) and top_risk.get("name"):
+            insight["top_risk"] = top_risk["name"]
+        if risk_register.get("next_review_hours") is not None:
+            insight["next_review_hours"] = risk_register["next_review_hours"]
+        brief.setdefault("insights", {})["operational_risks"] = insight
+        for action in risk_register.get("recommended_actions", []) or []:
             _append_recommendation(brief, action)
 
     return brief

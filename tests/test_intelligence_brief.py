@@ -856,6 +856,97 @@ def test_resource_sustainment_surges_for_multifaceted_strain():
     assert isinstance(window, (float, int)) and window <= 2.0
 
 
+def test_operational_risk_register_escalates_compound_signals():
+    brief: Dict[str, Any] = {
+        "response_readiness": {
+            "level": "critical",
+            "support_window_hours": 2.0,
+            "drivers": ["Readiness degraded"],
+            "priority_actions": ["Mobilise reserve analysts to restore readiness coverage."],
+        },
+        "response_pressure": {
+            "status": "critical_backlog",
+            "estimated_clearance_hours": 3.5,
+            "drivers": ["Prediction backlog exceeds analyst throughput."],
+            "recommended_actions": ["Deploy surge analysts to triage queued predictions immediately."],
+        },
+        "intelligence_confidence": {
+            "level": "low",
+            "drivers": ["Feedback drift"],
+            "recommended_actions": ["Audit telemetry pipelines with the analyst enablement team."],
+        },
+        "health": {
+            "risk_level": "high",
+            "drivers": ["Telemetry and workload strain"],
+            "recommended_actions": ["Convene cross-functional leadership to manage the elevated risk."],
+        },
+        "operational_outlook": {
+            "status": "rapid_response",
+            "severity_score": 14,
+            "planning_horizon_hours": 4.0,
+            "focus_areas": ["Telemetry recovery"],
+            "recommended_actions": ["Stage contingency resources to match the rapid response outlook."],
+        },
+        "command_directives": {
+            "severity": 16,
+            "status": "accelerate",
+            "drivers": ["Leadership tasks growing"],
+            "recommended_actions": ["Hold an immediate leadership briefing on surge posture."],
+            "planning_window_hours": 5.0,
+        },
+        "resource_sustainment": {
+            "status": "surge",
+            "resupply_window_hours": 3.0,
+            "drivers": ["Telemetry repairs"],
+            "recommended_actions": ["Stage logistics teams to support telemetry recovery."],
+        },
+        "communication_plan": {
+            "status": "escalated",
+            "update_cadence_minutes": 30,
+            "drivers": ["Leadership updates"],
+            "recommended_actions": ["Issue hourly updates to command leadership."],
+        },
+        "data_freshness": {
+            "feeds": {"detections": {"status": "stale", "age_minutes": 90}}
+        },
+        "intelligence_gaps": [
+            {
+                "gap": "prediction_coverage",
+                "severity": "critical",
+                "detail": "Prediction coverage below 40%.",
+                "recommended_action": "Escalate to modelling for immediate retraining.",
+            }
+        ],
+        "contingency_plans": {
+            "status": "activate",
+            "activation_window_hours": 1.5,
+            "drivers": ["Telemetry outage scenarios"],
+            "recommended_actions": ["Stand contingency team for telemetry outage playbooks."],
+        },
+        "support_priorities": {
+            "status": "mobilise",
+            "recommended_actions": ["Coordinate mobilisation tasks across highlighted support teams."],
+            "priorities": [
+                {"team": "Telemetry Operations", "support_window_hours": 1.0}
+            ],
+        },
+        "detection_quality": {"weighted_avg_confidence": 0.5},
+    }
+
+    register = intel_brief._derive_operational_risk_register(brief)
+    assert register is not None
+    assert register.get("status") in {"critical", "escalated"}
+    assert register.get("risk_count", 0) >= 5
+    assert register.get("severity_score", 0) >= 12
+    names = {entry.get("name") for entry in register.get("risks", []) if isinstance(entry, dict)}
+    assert "Response readiness" in names
+    assert "Analyst response pressure" in names
+    assert "Command directives" in names
+    assert register.get("recommended_actions")
+    assert register.get("drivers")
+    assert register.get("next_review_hours") is not None
+
+
 def test_gather_intelligence_brief_builds_communication_plan(monkeypatch):
     now = datetime(2024, 9, 10, 8, tzinfo=UTC)
     monkeypatch.setattr(intel_brief, "_utcnow", lambda: now)
@@ -963,6 +1054,14 @@ def test_gather_intelligence_brief_builds_communication_plan(monkeypatch):
     assert sustainment_insight.get("status") == sustainment.get("status")
     assert sustainment_insight.get("needs") == len(sustainment.get("resource_needs", []))
     assert any("telemetry" in rec.lower() for rec in brief.get("recommendations", []))
+    risk_register = brief.get("operational_risks")
+    assert risk_register is not None
+    assert risk_register.get("status") in {"critical", "escalated", "elevated"}
+    risk_insight = brief.get("insights", {}).get("operational_risks", {})
+    assert risk_insight.get("risk_count") == risk_register.get("risk_count")
+    assert risk_insight.get("status") == risk_register.get("status")
+    assert risk_insight.get("severity_score") == risk_register.get("severity_score")
+    assert any("risk" in rec.lower() for rec in brief.get("recommendations", []))
 
 
 def test_detection_quality_highlights_low_confidence(monkeypatch):

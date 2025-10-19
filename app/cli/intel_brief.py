@@ -699,6 +699,64 @@ def _render_resource_sustainment(plan: Optional[Dict[str, Any]]) -> None:
             console.print(f"- {action}")
 
 
+def _render_operational_risks(register: Optional[Dict[str, Any]]) -> None:
+    if not register:
+        return
+
+    console.print(_t("Operational risk register"), style="bold")
+
+    status = str(register.get("status", "stable"))
+    severity = register.get("severity_score")
+    risk_count = register.get("risk_count")
+    line = f"{_t('Status')}: {status.replace('_', ' ').title()}"
+    if isinstance(severity, (int, float)):
+        line += f" • {_t('Severity score')}: {int(severity)}"
+    if isinstance(risk_count, (int, float)):
+        line += f" • {_t('Tracked risks')}: {int(risk_count)}"
+    next_review = register.get("next_review_hours")
+    if isinstance(next_review, (int, float)):
+        line += f" • {_t('Next review in')}: {float(next_review):.1f} {_t('hours')}"
+    console.print(line)
+
+    focus = register.get("focus_areas")
+    if isinstance(focus, list) and focus:
+        console.print(_t("Focus areas:"), style="bold")
+        for entry in focus:
+            console.print(f"- {entry}")
+
+    risks = register.get("risks")
+    if isinstance(risks, list) and risks:
+        table = Table(title=_t("Risk detail"))
+        table.add_column(_t("Risk"))
+        table.add_column(_t("Category"))
+        table.add_column(_t("Severity"), justify="right")
+        table.add_column(_t("Status"))
+        table.add_column(_t("Detail"))
+        table.add_column(_t("Review (hr)"), justify="right")
+        for entry in risks:
+            severity_value = entry.get("severity")
+            review = entry.get("review_window_hours")
+            table.add_row(
+                str(entry.get("name", "-")),
+                str(entry.get("category", "-")) if entry.get("category") else "-",
+                str(int(severity_value)) if isinstance(severity_value, (int, float)) else "-",
+                str(entry.get("status", "-")),
+                str(entry.get("detail", "-")) if entry.get("detail") else "-",
+                f"{float(review):.1f}" if isinstance(review, (int, float)) else "-",
+            )
+        console.print(table)
+
+    if register.get("drivers"):
+        console.print(_t("Drivers:"), style="bold")
+        for driver in register["drivers"]:
+            console.print(f"- {driver}")
+
+    if register.get("recommended_actions"):
+        console.print(_t("Risk actions:"), style="bold")
+        for action in register["recommended_actions"]:
+            console.print(f"- {action}")
+
+
 def _render_communication_plan(plan: Optional[Dict[str, Any]]) -> None:
     if not plan:
         return
@@ -808,6 +866,8 @@ def main(area: Optional[str], hours: int, limit: int, raw: bool) -> None:
         _render_communication_plan(brief["communication_plan"])
     if brief.get("resource_sustainment"):
         _render_resource_sustainment(brief["resource_sustainment"])
+    if brief.get("operational_risks"):
+        _render_operational_risks(brief["operational_risks"])
     if brief.get("intelligence_gaps"):
         _render_intelligence_gaps(brief["intelligence_gaps"])
     if brief.get("insights"):
