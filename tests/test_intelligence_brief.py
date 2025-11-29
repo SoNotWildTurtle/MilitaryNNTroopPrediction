@@ -6514,6 +6514,84 @@ def test_gather_intelligence_brief_adds_automation_force_projection(monkeypatch)
     assert any("projection" in rec.lower() for rec in recommendations)
 
 
+def test_operator_dashboard_snapshot_flags_strain_and_prompts():
+    brief = {
+        "response_readiness": {"level": "critical"},
+        "response_pressure": {"status": "critical_backlog"},
+        "operational_resilience": {"status": "degraded"},
+        "data_freshness": {
+            "feeds": {
+                "predictions": {"status": "stale", "age_minutes": 180.0},
+                "detections": {"status": "warning", "age_minutes": 75.0},
+            }
+        },
+        "intelligence_confidence": {"score": 55.0},
+        "automation_force_projection": {"force_projection_score": 52.0, "status": "manual_bridge"},
+        "automation_mission_control": {"status": "manual_bridge"},
+        "automation_autonomy": {"status": "manual"},
+        "support_priorities": {"status": "mobilise"},
+        "mission_assurance": {"status": "blocked"},
+    }
+
+    dashboard = intel_brief._derive_operator_dashboard_snapshot(brief)
+
+    assert dashboard is not None
+    assert dashboard.get("status") == "critical"
+    assert dashboard.get("dashboard_score", 100) < 70
+    drivers = " ".join(dashboard.get("drivers", []))
+    assert "backlog" in drivers.lower() or "telemetry" in drivers.lower()
+    prompts = dashboard.get("ukrainian_operator_prompts", [])
+    assert prompts and any("аналі" in prompt.lower() or "черг" in prompt.lower() for prompt in prompts)
+    actions = " ".join(dashboard.get("recommended_actions", []))
+    assert "telemetry" in actions.lower() or "surge" in actions.lower()
+
+
+def test_operator_dashboard_snapshot_recognises_ready_state():
+    brief = {
+        "response_readiness": {"level": "ready"},
+        "response_pressure": {"status": "balanced"},
+        "operational_resilience": {"status": "strong"},
+        "operational_continuity": {"status": "protected"},
+        "intelligence_confidence": {"score": 90.0},
+        "automation_force_projection": {"force_projection_score": 86.0, "status": "mission_ready"},
+        "automation_mission_control": {"status": "mission_ready"},
+        "automation_autonomy": {"status": "mission_ready"},
+    }
+
+    dashboard = intel_brief._derive_operator_dashboard_snapshot(brief)
+
+    assert dashboard is not None
+    assert dashboard.get("status") == "mission_ready"
+    assert dashboard.get("dashboard_score", 0) >= 82
+    assert dashboard.get("summary")
+    cards = dashboard.get("dashboard_cards", [])
+    assert any(card.get("label") == "Force projection" for card in cards)
+
+
+def test_gather_intelligence_brief_includes_operator_dashboard(monkeypatch):
+    payload = {
+        "status": "guarded",
+        "dashboard_score": 74.5,
+        "recommended_actions": ["Validate telemetry routing with operators."],
+        "summary": "Dashboard guarded while telemetry is checked.",
+    }
+
+    monkeypatch.setattr(
+        intel_brief,
+        "_derive_operator_dashboard_snapshot",
+        lambda brief: payload,
+    )
+
+    brief = intel_brief.gather_intelligence_brief(hours=6, activity_limit=10)
+
+    assert brief.get("operator_dashboard") == payload
+    insight = brief.get("insights", {}).get("operator_dashboard", {})
+    assert insight.get("status") == "guarded"
+    assert insight.get("dashboard_score") == payload["dashboard_score"]
+    recs = brief.get("recommendations", [])
+    assert any("telemetry" in rec.lower() for rec in recs)
+
+
 def test_detection_quality_highlights_low_confidence(monkeypatch):
     now = datetime(2024, 7, 10, 6, tzinfo=UTC)
     monkeypatch.setattr(intel_brief, "_utcnow", lambda: now)

@@ -602,6 +602,15 @@ Rich CLI prints the force projection table alongside the full track matrix, and
 force packages so dashboards can spotlight how close automation is to scaling
 across the front.
 
+Operators also receive a fused **dashboard snapshot** via the `operator_dashboard`
+payload. It blends readiness, pressure, resilience, continuity, assurance,
+confidence, automation posture, governance, and freshness signals into a scored
+summary with cards for workload, force projection, command posture, and intel
+confidence. The payload carries Ukrainian-language prompts and recommended
+actions so Kyiv and brigade duty officers can rapidly brief shifts when queues
+or telemetry degrade, while dashboards surface the score and status under
+`insights.operator_dashboard` for the operator console.
+
 To keep teams focused on the most pressing blind spots, the brief highlights an
 **intelligence gaps** table. It inspects the existing tempo, freshness, and
 meta-analysis blocks to flag when prediction coverage collapses, telemetry

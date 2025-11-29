@@ -2385,6 +2385,60 @@ def _render_automation_force_projection(payload: Optional[Dict[str, Any]]) -> No
             console.print(f"- {action}")
 
 
+def _render_operator_dashboard(payload: Optional[Dict[str, Any]]) -> None:
+    if not payload:
+        return
+
+    console.print(_t("Operator dashboard snapshot"), style="bold")
+
+    table = Table(show_header=False)
+    table.add_column(_t("Metric"))
+    table.add_column(_t("Value"))
+
+    status = str(payload.get("status", _t("unknown"))).replace("_", " ").title()
+    table.add_row(_t("Status"), status)
+
+    score = payload.get("dashboard_score")
+    if isinstance(score, (int, float)):
+        table.add_row(_t("Dashboard score"), f"{float(score):.1f}")
+
+    summary = payload.get("summary")
+    if summary:
+        table.add_row(_t("Summary"), summary)
+
+    cards = payload.get("dashboard_cards")
+    if isinstance(cards, list):
+        for card in cards:
+            if not isinstance(card, dict):
+                continue
+            label = str(card.get("label", "")).strip()
+            value = card.get("value")
+            if not label:
+                continue
+            table.add_row(label, str(value) if value is not None else "-")
+
+    console.print(table)
+
+    for label, key in [(_t("Drivers:"), "drivers"), (_t("Watch items:"), "watch_items")]:
+        values = payload.get(key)
+        if isinstance(values, list) and values:
+            console.print(label, style="bold")
+            for value in values:
+                console.print(f"- {value}")
+
+    prompts = payload.get("ukrainian_operator_prompts")
+    if isinstance(prompts, list) and prompts:
+        console.print(_t("Prompts for Ukrainian operators:"), style="bold blue")
+        for prompt in prompts:
+            console.print(f"- {prompt}", style="blue")
+
+    actions = payload.get("recommended_actions")
+    if isinstance(actions, list) and actions:
+        console.print(_t("Operator dashboard actions:"), style="bold")
+        for action in actions:
+            console.print(f"- {action}")
+
+
 def _render_automation_strategic_convergence(payload: Optional[Dict[str, Any]]) -> None:
     if not payload:
         return
@@ -2800,6 +2854,8 @@ def main(area: Optional[str], hours: int, limit: int, raw: bool) -> None:
         )
     if brief.get("automation_force_projection"):
         _render_automation_force_projection(brief["automation_force_projection"])
+    if brief.get("operator_dashboard"):
+        _render_operator_dashboard(brief["operator_dashboard"])
     if brief.get("automation_joint_operations"):
         _render_automation_joint_operations(brief["automation_joint_operations"])
     if brief.get("operational_risks"):

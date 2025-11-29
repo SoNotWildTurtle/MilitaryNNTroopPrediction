@@ -14397,6 +14397,185 @@ def _derive_automation_force_projection(
     return payload if payload else None
 
 
+def _derive_operator_dashboard_snapshot(brief: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Summarise fused telemetry into an operator dashboard snapshot."""
+
+    readiness = brief.get("response_readiness") or {}
+    pressure = brief.get("response_pressure") or {}
+    resilience = brief.get("operational_resilience") or {}
+    continuity = brief.get("operational_continuity") or {}
+    assurance = brief.get("mission_assurance") or {}
+    confidence = brief.get("intelligence_confidence") or {}
+    force_projection = brief.get("automation_force_projection") or {}
+    mission_control = brief.get("automation_mission_control") or {}
+    autonomy = brief.get("automation_autonomy") or {}
+    supreme = brief.get("automation_supreme_command") or {}
+    governance = brief.get("operational_governance") or {}
+    freshness = brief.get("data_freshness") or {}
+    support = brief.get("support_priorities") or {}
+
+    if not any(
+        [
+            readiness,
+            pressure,
+            resilience,
+            continuity,
+            assurance,
+            confidence,
+            force_projection,
+            mission_control,
+            autonomy,
+            supreme,
+            governance,
+            freshness,
+            support,
+        ]
+    ):
+        return None
+
+    score = 72.0
+    drivers: List[str] = []
+    actions: List[str] = []
+    prompts: List[str] = []
+    cards: List[Dict[str, Any]] = []
+
+    readiness_level = str(readiness.get("level", "")).lower()
+    if readiness_level:
+        cards.append({"label": "Readiness", "value": readiness_level})
+    if readiness_level in {"critical", "strained"}:
+        score -= 22
+        drivers.append("Response readiness is strained, limiting operator slack.")
+        actions.append("Reassign reserve analysts to restore critical readiness levels.")
+        prompts.append("Негайно підсиліть зміну додатковими аналітиками.")
+    elif readiness_level in {"ready", "steady", "mobilise", "elevated"}:
+        score += 6
+
+    pressure_status = str(pressure.get("status", "")).lower()
+    if pressure_status:
+        cards.append({"label": "Workload", "value": pressure_status})
+    if pressure_status in {"critical_backlog", "prediction_gap"}:
+        score -= 24
+        drivers.append("Analyst workload or modelling gaps are blocking timely responses.")
+        actions.append("Trigger surge routing to clear prediction backlogs and cover modelling gaps.")
+        prompts.append("Запустіть чергову команду для розвантаження черги прогнозів.")
+    elif pressure_status in {"backlog", "prediction_gap_watch", "feedback_strain", "quality_watch"}:
+        score -= 10
+        drivers.append("Operator backlog is building; monitor queues and modelling coverage.")
+
+    resilience_status = str(resilience.get("status", "")).lower()
+    if resilience_status:
+        cards.append({"label": "Resilience", "value": resilience_status})
+    if resilience_status in {"critical", "degraded"}:
+        score -= 12
+        drivers.append("Operational resilience is degraded, raising the risk of cascading failures.")
+        actions.append("Stage contingency playbooks and verify fallback channels with operators.")
+    elif resilience_status in {"watch", "constrained"}:
+        score -= 5
+    elif resilience_status in {"strong", "reinforced"}:
+        score += 6
+
+    continuity_status = str(continuity.get("status", "")).lower()
+    if continuity_status:
+        cards.append({"label": "Continuity", "value": continuity_status})
+    if continuity_status in {"at_risk", "constrained"}:
+        score -= 8
+        drivers.append("Continuity constraints could interrupt operator workflows.")
+        actions.append("Pre-stage manual continuity drills for priority tracks.")
+
+    assurance_status = str(assurance.get("status", "")).lower()
+    if assurance_status in {"blocked", "critical"}:
+        score -= 10
+        drivers.append("Mission assurance blockers require leadership attention.")
+        actions.append("Escalate blockers with command liaison and assign owners.")
+
+    confidence_score = confidence.get("score")
+    if isinstance(confidence_score, (float, int)):
+        score += (float(confidence_score) - 70) * 0.15
+        cards.append({"label": "Intel confidence", "value": f"{float(confidence_score):.0f}"})
+        if confidence_score < 60:
+            drivers.append("Telemetry confidence is low, slowing operator decision speed.")
+            actions.append("Pair operators with analysts to validate confidence gaps in real time.")
+
+    projection_score = force_projection.get("force_projection_score")
+    if isinstance(projection_score, (float, int)):
+        score += (float(projection_score) - 65) * 0.1
+        cards.append({"label": "Force projection", "value": f"{float(projection_score):.1f}"})
+
+    mission_control_status = str(mission_control.get("status", "")).lower()
+    autonomy_status = str(autonomy.get("status", "")).lower()
+    if mission_control_status:
+        cards.append({"label": "Mission control", "value": mission_control_status})
+    if autonomy_status:
+        cards.append({"label": "Autonomy", "value": autonomy_status})
+    if mission_control_status in {"manual_bridge", "degraded"} or autonomy_status in {"manual", "guarded"}:
+        score -= 6
+        drivers.append("Automation oversight requires manual intervention for this shift.")
+        actions.append("Keep automation in supervised mode and enforce guardrails for operators.")
+
+    supreme_status = str(supreme.get("status", "")).lower()
+    if supreme_status:
+        cards.append({"label": "Supreme command", "value": supreme_status})
+
+    governance_status = str(governance.get("status", "")).lower()
+    if governance_status in {"gaps", "degraded"}:
+        score -= 4
+        drivers.append("Governance gaps detected; tighten oversight cues for operators.")
+
+    feeds = freshness.get("feeds") if isinstance(freshness, dict) else {}
+    if isinstance(feeds, dict) and feeds:
+        stale = [name for name, feed in feeds.items() if feed.get("status") == "stale"]
+        warn = [name for name, feed in feeds.items() if feed.get("status") == "warning"]
+        if stale:
+            score -= 10 + 2 * (len(stale) - 1)
+            drivers.append(f"Stale telemetry detected for feeds: {', '.join(sorted(stale))}.")
+            actions.append("Validate data pipelines and brief operators on manual verification steps.")
+            prompts.append("Перевірте запасні канали даних для застійних потоків.")
+        if warn:
+            score -= 4
+            drivers.append(f"Telemetry freshness warnings for: {', '.join(sorted(warn))}.")
+
+    support_status = str(support.get("status", "")).lower()
+    if support_status in {"mobilise", "strained"}:
+        score -= 6
+        drivers.append("Support teams are mobilising, which may delay operator requests.")
+
+    score = max(0.0, min(100.0, score))
+    if score >= 82:
+        status = "mission_ready"
+        summary = "Operator dashboard is mission-ready with balanced automation and support."
+    elif score >= 68:
+        status = "guarded"
+        summary = "Dashboard is stable but requires guarded monitoring of queues and telemetry."
+    elif score >= 52:
+        status = "watch"
+        summary = "Operators should maintain watch posture and prepare escalation paths."
+    else:
+        status = "critical"
+        summary = "Dashboard is degraded; prioritise backlog relief and telemetry recovery."
+
+    drivers = list(dict.fromkeys(drivers))
+    actions = list(dict.fromkeys(actions))
+    prompts = list(dict.fromkeys(prompts))
+    cards = [card for card in cards if card.get("label")]
+
+    snapshot: Dict[str, Any] = {
+        "status": status,
+        "dashboard_score": round(score, 1),
+    }
+    if cards:
+        snapshot["dashboard_cards"] = cards
+    if drivers:
+        snapshot["drivers"] = drivers
+    if actions:
+        snapshot["recommended_actions"] = actions
+    if prompts:
+        snapshot["ukrainian_operator_prompts"] = prompts
+    if summary:
+        snapshot["summary"] = summary
+
+    return snapshot if snapshot else None
+
+
 def gather_intelligence_brief(
     *,
     area: Optional[str] = None,
@@ -15185,6 +15364,17 @@ def gather_intelligence_brief(
             insight["projection_channel_count"] = len(channels)
         brief.setdefault("insights", {})["automation_force_projection"] = insight
         for action in force_projection.get("recommended_actions", []) or []:
+            _append_recommendation(brief, action)
+
+    dashboard = _derive_operator_dashboard_snapshot(brief)
+    if dashboard:
+        brief["operator_dashboard"] = dashboard
+        insight = {
+            "status": dashboard.get("status"),
+            "dashboard_score": dashboard.get("dashboard_score"),
+        }
+        brief.setdefault("insights", {})["operator_dashboard"] = insight
+        for action in dashboard.get("recommended_actions", []) or []:
             _append_recommendation(brief, action)
 
     governance = _derive_operational_governance(brief)
