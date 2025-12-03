@@ -90,6 +90,552 @@ python -m app.cli.space_identification ru_troops_kherson
 
 Items are stored in a CSV catalog so operators can sort them by classifier and review model confidence. The `pseudo_labeler` automatically registers each labeled image with its score.
 
+### Intelligence brief
+
+Generate a consolidated situational report that merges detection metrics, cluster
+threat scoring and recent model activity:
+
+```bash
+python -m app.cli.intel_brief --area donetsk --hours 12
+```
+
+Use `--limit` to cap how many raw records each section includes and `--raw` to
+output the JSON payload instead of the formatted Rich tables. Inputs must be
+positive integers; invalid values abort with a helpful error message. When no
+area is provided, the brief aggregates detections and predictions across all
+tracked sectors.
+
+The same payload is available through the API for dashboards or external
+systems:
+
+```http
+GET /intel/brief?area=donetsk&hours=12&limit=25
+```
+
+Hours and limits are validated by FastAPI, returning `400` if the request is
+outside the supported range.
+
+Alongside raw counts, the brief now inspects **detection quality**. It computes
+the weighted average confidence across active classes, highlights any labels
+with sub-0.55 confidence, and calls out classes that only appear sparsely in
+the window or are missing confidence telemetry. Those classes are promoted into
+the recommendation list so sensor calibrations and collection plans can be
+triaged before they produce blind spots. The detection quality metrics are
+exposed through the CLI tables and the `insights` payload so dashboards can
+track confidence drift over time.
+
+The briefing payload also contains an **operational tempo** section that
+summarises raw activity volumes, detection rates per hour and the prediction
+coverage ratio so analysts can see whether inference pipelines are keeping pace
+with detections. Surge conditions automatically surface as recommendations in
+both the CLI and API responses, alongside warnings when less than half of recent
+detections received predictions.
+
+To support bughunting and pipeline triage, the payload now tracks **data
+freshness** for detections, predictions and cluster scoring feeds. Each feed
+reports the latest timestamp observed, how many minutes old it is relative to
+the generated brief, and whether the stream is *fresh*, approaching a latency
+warning, or fully *stale*. The stalest feed is highlighted so analysts can jump
+straight to the failing ingestion job, and stale feeds automatically trigger
+recovery recommendations in the CLI output.
+
+The consolidated brief also publishes a **health assessment** that fuses
+operational tempo, threat scores, data freshness and feedback accuracy into a
+single risk indicator. Analysts receive a concise summary of the current risk
+band, confidence level, and the drivers pushing the rating higher or lower.
+When the risk climbs to *high* or *severe*, the brief automatically surfaces
+response playbook prompts, while low confidence highlights data recovery tasks
+to restore telemetry fidelity before decision-making.
+
+Building on the health score, the brief derives an **operational posture** so
+watch officers immediately know the stance to adopt for the next shift. The
+posture blends risk level, tempo, telemetry freshness and high-threat clusters
+to highlight whether teams should *monitor*, *reinforce*, *stabilise*, or
+*recover*. Each summary includes the focus for the next planning horizon,
+confidence inherited from the health snapshot, and the key drivers that triggered
+the recommendation, keeping command and intelligence sections aligned on the
+response cadence.
+
+To translate those insights into staffing plans, the payload now includes a
+**response readiness** block. It fuses posture, risk, telemetry freshness,
+feedback accuracy and cluster load to recommend how many personnel to schedule
+on the next shift, how long heightened coverage should persist, and which
+immediate actions to prioritise (telemetry recovery, analyst calibration, rapid
+response staging). The CLI renders the readiness table with drivers and priority
+actions, and the API exposes the same recommendations for orchestration systems
+that need to scale watch rotations automatically.
+
+Analyst workload can also bottleneck decision-making, so the brief introduces an
+**analyst response pressure** synthesis. It compares recent detections and
+predictions, folds in detection confidence, feedback accuracy, and current
+readiness levels, then reports whether the prediction queue is balanced,
+building, or in a critical backlog. The block calculates pending predictions,
+unmatched detections, and an estimated clearance horizon so shift leads know how
+quickly to surge staffing. When the workload spikes, the brief publishes the
+drivers, queues targeted remediation actions (triage the backlog, regenerate
+predictions, calibrate feedback), and surfaces a compact insight so dashboards
+can visualise pressure alongside posture and readiness trends.
+
+Coordinating the recovery often demands help from multiple teams, so the brief
+now emits a **support priorities** queue. It fuses readiness, posture, pressure,
+freshness, detection quality, and intelligence gap signals to list which teams
+need to mobilise (telemetry, model operations, sensor engineering, command
+liaisons, analyst enablement) and how urgent their intervention is. Each row
+captures the driver, an optional support window, and concrete follow-up actions
+so watch officers can immediately page the right specialists. The summary rolls
+up into the `insights` payload and renders in the CLI for quick situational
+awareness during shift changeovers.
+
+Confidence in the telemetry is just as important as staffing. The brief now
+publishes an **intelligence confidence index** that blends feedback accuracy,
+detection quality, telemetry freshness, open intelligence gaps, and the health
+assessment into a single score. The block exposes the confidence level, score,
+and supporting components (weighted confidence, active class ratio, stale or
+warning feeds, unresolved gaps) so analysts can trace exactly why trust dipped.
+Drivers and recommended actions cascade into the global recommendations list
+and render in the CLI, helping teams prioritise telemetry recovery, calibration
+cycles, or incident coordination before decision quality erodes.
+
+To steer the next shift hand-off, the brief also emits an **operational
+outlook**. The synthesiser fuses posture, readiness, analyst pressure,
+freshness, intelligence confidence, and threat telemetry into a severity score,
+planning horizon, and focus areas. Analysts can immediately see whether the
+environment is in steady watch, stabilisation, heightened watch, rapid
+response, or escalation-imminent states and why. The CLI renders the new block
+with focus areas, drivers, and action prompts, while the API surfaces the
+summary in `insights.operational_outlook` so dashboards can trend the outlook
+alongside tempo, readiness, and gap metrics.
+
+To move from assessment to decisive action, the brief now assembles a
+**command directives** queue. The synthesiser blends the operational outlook,
+posture, readiness, pressure, support priorities, confidence index, health
+assessment, and gap telemetry to rank directives as immediate, next-shift, or
+monitor items. It publishes the fused status (`monitor`, `focus`, `accelerate`,
+`escalate`), the tightest planning window, directive counts, and coordination
+teams so leadership can see which groups to mobilise. The CLI renders the
+directive table with sources, contexts, and support windows, while the API
+exposes the detailed payload under `command_directives` and a compact summary
+in `insights.command_directives` for dashboards and battle rhythms.
+
+To keep commanders, analysts, and support teams aligned on messaging cadence,
+the brief now emits a **communication plan**. The planner inspects directives,
+outlook, posture, readiness, analyst pressure, telemetry freshness, confidence,
+gap severity, and threat cues to assign update cadences for each audience,
+highlight key talking points, and suggest communication follow-ups. The CLI
+prints the audience cadence table, drivers, and communication-specific actions,
+while the API exposes the full payload under `communication_plan` and
+summarises the status, audience count, and cadence within
+`insights.communication_plan` so dashboards can schedule syncs alongside other
+operational analytics.
+
+To translate elevated signals into concrete playbooks, the brief also builds a
+**contingency planning** module. It fuses the operational outlook, command
+directives, posture, readiness, analyst pressure, support priorities, telemetry
+freshness, detection quality, confidence, and open intelligence gaps to lay out
+scenarios that might need activation. Each scenario captures triggers,
+objectives, suggested owners, and recommended actions so duty officers can
+rapidly mobilise the right teams. Watch items and activation windows are
+surfaced in the CLI and summarised in `insights.contingency_plans`, helping
+dashboards visualise how close the organisation is to executing escalation
+playbooks.
+
+Keeping those playbooks supplied now falls to a **resource sustainment** plan.
+The synthesiser reviews readiness, analyst pressure, support priorities,
+telemetry freshness, outstanding gaps, leadership directives, contingency
+status, and communication cadence to highlight which teams need staffing,
+engineering, or logistics support. It calculates the tightest resupply window,
+lists aggregated resource needs, and publishes an allocation table with
+priorities, quantities, and windows. The Rich CLI renders the sustainment
+section with drivers and recommended actions, while the API exposes the payload
+under `resource_sustainment` and surfaces a compact summary inside
+`insights.resource_sustainment` so scheduling tooling can stage personnel ahead
+of surge or mobilisation events.
+
+To keep the wider command picture aligned, the brief also curates an
+**operational risk register**. It aggregates the highest-severity findings from
+readiness, analyst pressure, support coordination, telemetry freshness,
+intelligence confidence, health, outlook, directives, contingency, logistics,
+communication, and gap analysers to score overall risk, capture focus areas,
+and highlight the next review window. Each risk entry records the category,
+severity, status, context drivers, and an optional follow-up action so
+leadership can immediately route owners. The CLI renders the register table and
+associated driver list, while the API exposes the detailed payload under
+`operational_risks` with a condensed snapshot inside
+`insights.operational_risks` for dashboards and shift hand-off briefs.
+
+When leadership, support, and sustainment plans start to drift, the new
+**command alignment** dashboard steps in. It fuses the directive queue,
+communication cadence, sustainment posture, risk register, readiness, analyst
+pressure, support priorities, outlook, posture, and contingency analytics to
+calculate an alignment score, list coordination gaps, highlight shared focus
+areas, and suggest the next cross-team sync window. Alignment drivers and
+aggregated follow-up actions help command staff spot the single-threaded issues
+holding teams back. The Rich CLI renders the alignment summary with gaps,
+drivers, and actions, while the API publishes the payload at
+`command_alignment` and mirrors a compact view inside
+`insights.command_alignment` for dashboards that coordinate leadership touch
+points.
+
+To give leadership a single, end-to-end checkpoint, the brief now publishes a
+**mission assurance** scoreboard. It blends readiness, alignment, sustainment,
+risk, contingency, communication, directives, outlook, posture, analyst
+pressure, support priorities, intelligence confidence, health, telemetry
+freshness, and open gaps into an assurance score and status band. The payload
+lists blockers driving assurance down, highlights focus areas, aggregates
+dependency windows (readiness coverage, resupply and sync checkpoints), and
+deduplicates recommended actions that must close before the mission is secure.
+The Rich CLI renders the new section with blockers, drivers, focus areas, and a
+dependency window table, while the API surfaces the structured payload under
+`mission_assurance` with a summarised insight so dashboards can track
+mission-level risk alongside posture, readiness, and alignment trends.
+
+Layered on top of assurance is an **operational resilience** pulse that scans
+assurance, readiness, sustainment, risk, contingency, communications, alignment,
+analyst pressure, support priorities, telemetry freshness, intelligence
+confidence, gap severity, and the operational outlook to score how well teams
+can absorb continued disruptions. The payload calls out reinforcing factors,
+weak spots, shared drivers, stability windows, and deduplicated follow-up
+actions so planners know which levers strengthen resilience versus drain it.
+CLI operators get a dedicated table with status, scores, and highlight lists,
+and the API exposes the structured payload under `operational_resilience` with a
+matching insight block for dashboards and shift briefs.
+
+To project whether those gains actually carry through the next planning
+window, the brief layers in an **operational continuity** synthesiser. It fuses
+assurance, resilience, sustainment, risk, contingency, directives, alignment,
+support, readiness, analyst pressure, telemetry freshness, confidence, and the
+outlook into a continuity score with status, constraint list, risk table,
+stability factors, horizon estimate, and a deduplicated action queue. The Rich
+CLI renders the new continuity section with constraint and risk tables plus
+watch items for quick hand-off reviews, while the API surfaces the payload at
+`operational_continuity` and mirrors a compact snapshot inside
+`insights.operational_continuity` so dashboards can track how close the mission
+is to bumping into critical constraints.
+
+Because leadership still needs to know how fast to escalate when those
+constraints wobble, the brief now calculates an **escalation readiness matrix**.
+It blends command directives, continuity posture, resilience, mission
+assurance, readiness, analyst pressure, support priorities, contingency and
+communication cadences, sustainment, operational risk, intelligence gaps,
+telemetry freshness, confidence, outlook, and alignment to score escalation
+readiness. The payload surfaces pathway queues with priorities and triggers,
+lists destabilising signals versus stabilising factors, aggregates shared
+drivers and watch items, and captures the next review window alongside a
+deduplicated action list. The CLI prints a dedicated escalation table with the
+pathways, signals, and actions so shift leads can brief leadership in minutes,
+and the API exposes the matrix at `escalation_readiness` plus a summarised
+insight under `insights.escalation_readiness` for dashboards tracking when to
+spin up executive decision cells.
+
+To close the loop between escalation posture and restoration, the brief now
+builds an **operational recovery** roadmap. It fuses continuity, resilience,
+assurance, sustainment, alignment, directives, analyst pressure, support
+queues, escalation posture, risk registers, contingency plans, communications,
+confidence levels, and telemetry freshness into a scored recovery plan. The
+payload highlights critical dependencies, stabilisation actions, recovery
+tracks with owners and focus areas, a consolidated action queue, and the
+shortest recovery window so teams can stage resources with confidence. The Rich
+CLI renders the recovery dashboard with tables for dependencies and tracks plus
+momentum factors and watch items, while the API returns the data at
+`operational_recovery` and mirrors a compact snapshot under
+`insights.operational_recovery` for dashboards coordinating multi-team recovery
+workstreams.
+
+To carry that momentum into longer-term change, the briefing pipeline now adds
+an **operational transformation** agenda. It blends recovery posture, continuity
+constraints, resilience and assurance scores, sustainment plans, leadership
+alignment, directive queues, support mobilisations, readiness coverage, analyst
+pressure, operational outlook, risk registers, communications cadence,
+contingency hooks, telemetry confidence, and overall health signals to score
+transformation progress. The payload publishes maturity stage, focus tracks with
+owners and actions, quick wins versus long-horizon initiatives, enabling
+factors, constraints, watch indicators, metrics to monitor, and a deduplicated
+action queue alongside the next review window. The Rich CLI renders the agenda
+with summary tables, track listings, and highlight lists, while the API exposes
+the structured payload under `operational_transformation` and surfaces an
+insight in `insights.operational_transformation` so dashboards can trend how
+recovery efforts graduate into sustainable change.
+
+To ensure leadership oversight keeps pace with all those moving parts, the brief
+now surfaces an **operational governance** ledger. It fuses transformation
+momentum, recovery progress, continuity constraints, resilience posture,
+mission assurance, sustainment demands, command alignment, directive focus,
+communications cadence, risk register severity, support queues, readiness and
+pressure telemetry, contingency planning, outlook cues, and escalation posture
+to score governance health. The synthesiser promotes compliance gaps, review
+windows, council line-ups, shared drivers, focus areas, watch indicators, and a
+deduplicated action list directly into the payload so commanders can see which
+boards must convene next and why. The CLI renders an oversight council table
+with statuses, focus topics, and follow-up actions, while the API exposes the
+structured payload under `operational_governance` alongside a compact insight in
+`insights.operational_governance` for dashboards and shift hand-offs.
+
+To keep Ukrainian frontline brigades resourced, the brief now compiles a
+**frontline support posture**. It blends sustainment plans, support priorities,
+readiness and pressure telemetry, continuity and resilience scores, mission
+assurance, command alignment drift, operational outlook, risk register alerts,
+freshness warnings, detection quality, and critical intelligence gaps into a
+scored `frontline_support` payload. The synthesiser surfaces priority units,
+logistics corridor windows, brigade-level support tables, Ukrainian operator
+notes, and logistics-focused recommendations while mirroring a compact snapshot
+under `insights.frontline_support`. The Rich CLI renders the posture with tables
+for brigade support, signals, and localised operator notes so Ukrainian shift
+leads can coordinate convoys and staffing without leaving the terminal.
+
+To drive **full automation for Ukrainian operators**, the brief now emits an
+`automation_playbook`. The synthesiser fuses command directives, communication
+cadence, governance posture, sustainment health, frontline support, readiness,
+pressure queues, support priorities, transformation maturity, alignment,
+confidence, freshness, and gap telemetry into a scored automation status. It
+maps the triggers that demand manual overrides, assembles automation-ready task
+queues with owners and windows, highlights monitoring channels the duty officer
+should keep open, and injects Ukrainian-language operator prompts so every
+automated workflow is double-checked before execution. The CLI renders the
+automation table, task matrix, triggers, and prompts, while the REST payload is
+available under `automation_playbook` with a summary insight at
+`insights.automation_playbook` for dashboards, bots, and scheduling pipelines.
+
+Full automation still needs safe guardrails, so the brief now exposes an
+`automation_guardrails` payload that scores autonomy posture, compiles the live
+guardrail list, and tracks the next supervision review window. The synthesiser
+inspects readiness, pressure, frontline support, governance, assurance,
+resilience, continuity, recovery, transformation, sustainment, support,
+alignment, directives, communications, outlook, intelligence confidence,
+detection quality, freshness, gaps, risk register severity, and feedback
+accuracy alongside the automation playbook itself. It responds by tightening or
+relaxing guardrails, recommending operator overrides, highlighting Ukrainian
+checklists for duty officers, and logging safety checks plus monitoring
+channels that must stay online for unattended runs. The CLI renders the
+guardrail table, safety checklist, overrides, and automation candidates in both
+languages so Ukrainian operators can rapidly confirm that automation is safe
+before delegating repetitive work to the playbook.
+
+To orchestrate these automation signals in one place, the brief now delivers an
+`automation_mission_control` payload. It fuses the playbook, guardrails,
+readiness, pressure, frontline support, governance cadence, command directives,
+communications, alignment posture, sustainment pressure, intelligence
+confidence, feedback accuracy, and escalation timing into a mission-control
+score with supervision tiers. The synthesiser highlights critical guardrails,
+mission channels, hand-off requirements, supervisor actions, and a Ukrainian
+prompt pack so duty officers can brief the next shift in seconds. Dashboards
+can read the compact status from `insights.automation_mission_control`, while
+the Rich CLI renders the mission-control table, focus areas, watch items, and
+localized prompts to keep Ukrainian operators aligned during fully automated
+runs.
+
+To certify when unattended execution is acceptable, the brief now emits an
+`automation_autonomy` payload. It blends the playbook, guardrails, mission
+control posture, readiness, pressure, frontline sustainment, governance,
+alignment, directives, communications, resilience, continuity, recovery,
+assurance, telemetry confidence, freshness, risk, and gap telemetry into a
+scored autonomy status with explicit supervision requirements. The synthesiser
+splits trusted versus restricted automation tasks, lists enabling factors and
+risk drivers, computes the next autonomy window, and aggregates monitoring
+channels plus fallback protocols that Ukrainian operators must keep on standby.
+It also publishes localized safeguards and rehearsal prompts so automation
+teams can log every override and brief the duty officer before expanding
+autonomous windows. The CLI renders the autonomy table, task breakdowns,
+watch items, and Ukrainian guidance, while dashboards consume the structured
+payload via `insights.automation_autonomy` alongside deduplicated recommended
+actions.
+
+To lock in safe recovery for aggressive automation pushes, the brief now ships
+an `automation_failsafes` payload. It cross-checks the playbook, guardrails,
+mission control, autonomy posture, readiness, pressure, frontline support,
+sustainment, support priorities, governance cadence, mission assurance,
+resilience, continuity, recovery progress, transformation maturity, command
+directives, communications, escalation timing, telemetry confidence, detection
+quality, freshness telemetry, risk register severity, and intelligence gaps to
+score failsafe coverage. The synthesiser surfaces failsafe measures, fallback
+channels, recovery steps, Ukrainian-language operator prompts, drill schedules,
+coverage gaps, and recommended actions while calculating the next failsafe
+window and documenting the number of required tests. The Rich CLI renders the
+failsafe table, watch lists, test checklist, and localized prompts so Ukrainian
+duty officers can rehearse shutdown drills without leaving the terminal, while
+dashboards can subscribe to `insights.automation_failsafes` for a compact status
+and test counts that keep autonomous missions safe.
+
+To certify automation releases without slowing Ukrainian brigades, the brief now
+produces an `automation_validation` payload. It fuses the playbook, guardrails,
+mission control, autonomy posture, failsafe status, readiness, pressure,
+frontline and sustainment telemetry, support priorities, governance cadence,
+assurance, resilience, continuity, recovery, transformation maturity,
+confidence, detection quality, freshness, gaps, and feedback accuracy to score
+validation discipline. The synthesiser assembles validation tracks, cross-team
+test matrices, Ukrainian-language prompts, training requirements, watch items,
+and evidence pulled from monitoring channels plus sustainment plans while
+tracking the tightest validation window. The Rich CLI renders the validation
+table, test checklist, and localized guidance so duty officers can sign off on
+automated runs in seconds, and dashboards can read
+`insights.automation_validation` for status, window, and training counts when
+automating mission workflows.
+
+To translate these automation tracks into live execution, the brief now
+assembles an `automation_deployment` payload. It reconciles the playbook,
+guardrails, mission control, autonomy posture, failsafes, validation cadence,
+readiness, pressure, frontline posture, sustainment, support priorities,
+governance, assurance, resilience, continuity, recovery, transformation,
+command alignment, directives, communications, escalation outlook, telemetry
+confidence, detection quality, freshness, gaps, feedback accuracy, and tempo
+signals to score deployment posture. The synthesiser extracts deployment tracks
+with owners, readiness tags, and execution windows, highlights prerequisites to
+lift guardrails or finish validation, and compiles watch items so operators know
+which constraints must clear before broad rollout. Ukrainian-language prompts
+and mission actions help duty officers brief brigades while keeping deployment
+logs synchronized across shifts. The CLI renders the deployment table, track
+matrix, prerequisites, watch list, and localized prompts, and dashboards can
+read the structured payload from `automation_deployment` alongside a compact
+insight in `insights.automation_deployment` for orchestration bots and mission
+timelines.
+
+To make sure every automated release stays under live Ukrainian supervision,
+the brief now produces an `automation_overwatch` payload. It blends the
+playbook, guardrails, mission control, autonomy posture, failsafes, validation,
+deployment readiness, frontline mobilisations, sustainment pressure, support
+queues, governance cadence, assurance posture, resilience, continuity,
+recovery, transformation maturity, command directives, alignment drift,
+communications cadence, escalation timing, telemetry confidence, detection
+quality, freshness warnings, risk register severity, and feedback accuracy to
+score overwatch coverage. The synthesiser assembles watch teams, monitoring
+channels, fallback nets, focus areas, and watch items, calculates the tightest
+sync window, and publishes Ukrainian-language prompts so duty officers can log
+overrides, rehearse fallback drills, and coordinate with brigades in minutes.
+The CLI renders the overwatch posture, watch team list, monitoring channels,
+focus areas, fallback nets, and localized prompts while the REST payload
+surfaces under `automation_overwatch` with a summary in
+`insights.automation_overwatch` so dashboards can confirm human-in-the-loop
+coverage alongside deployment and mission-control metrics.
+
+To choreograph the automation warfighting stack with brigade needs, the brief
+now emits an `automation_battle_management` payload. It blends mission control,
+overwatch, autonomy posture, failsafe coverage, validation cadence, deployment
+tracks, readiness, pressure, frontline sustainment, sustainment cadence,
+support priorities, guardrails, command directives, alignment signals,
+communications tempo, governance cadence, escalation timing, telemetry
+confidence, detection quality, freshness, and risk posture into a scored battle
+management outlook. The synthesiser assembles coordination tracks with leads,
+windows, readiness tags, and statuses, tracks hand-off requirements and
+priority telemetry feeds, and aggregates Ukrainian-language prompts so duty
+officers can brief brigades on automation effects before every release. The
+Rich CLI renders the battle management table, track matrix, focus lists,
+handoff requirements, and localized prompts while dashboards can consume the
+structured payload under `automation_battle_management` with insight counts for
+coordination tracks, windows, and recommended actions.
+
+To extend those battle tracks into a theatre-level rhythm, the brief publishes
+an `automation_campaign_orchestration` payload. It fuses automation playbooks,
+guardrails, mission control, battle management, overwatch, autonomy, failsafe,
+validation, deployment, readiness, pressure, frontline support, sustainment,
+support priorities, command directives, alignment, communications cadence,
+governance and telemetry confidence into a single campaign score. The
+synthesiser compiles orchestration tracks from automation tasks, deployment
+runs, support queues, and brigade requirements, tallies integration partners and
+operational dependencies, and highlights the tightest campaign window so duty
+officers know when to trigger supervised releases. Ukrainian-language prompts,
+driver lists, focus areas, and dependency summaries accompany the payload, the
+Rich CLI renders the orchestration table with modes, readiness tags, and
+sources, and `insights.automation_campaign_orchestration` provides dashboards
+with partner and track counts for situational awareness.
+
+Coalition partners now have their own scoreboard through
+`automation_joint_operations`. The synthesiser blends campaign orchestration,
+mission control, battle management, frontline support, sustainment, support
+queues, directives, alignment, communications, and readiness telemetry into a
+joint operations score. It aggregates shared automation tracks, integration
+channels, coalition partners, support cells, and handoff requirements so
+Ukrainian operators can see who must be on the net before automation runs. The
+Rich CLI renders the joint operations table with the full track matrix while the
+insight block surfaces counts for tracks, partners, channels, and support cells
+for dashboards and bots that coordinate allied responses.
+
+Multi-theatre command now lands inside the brief via the
+`automation_theater_command` payload. It unifies joint operations, campaign,
+battle management, mission control, guardrails, failsafes, autonomy posture,
+deployment readiness, frontline sustainment, command directives, alignment,
+communications cadence, and governance telemetry into a theatre command score
+with severity, windows, and support requirements. The synthesiser tallies
+command tracks from coalition, battle, and campaign matrices, records command
+channels, coordinating theatres, and coalition commanders, and distils Ukrainian
+operator prompts so shift leads know which HQ to brief before granting releases.
+The Rich CLI prints the theatre command table, track matrix, coordination lists,
+and recommended command actions, while dashboards pick up summaries under
+`insights.automation_theater_command` for orchestration bots and digital duty
+officers.
+
+Strategic staffs now receive a single national picture through the
+`automation_supreme_command` payload. It fuses theatre command, coalition
+operations, campaign orchestration, battle management, mission control,
+overwatch, guardrails, autonomy, failsafes, validation, deployment, frontline
+support, sustainment, readiness, pressure, assurance, resilience, governance,
+and command alignment telemetry into a supreme automation score with a severity
+index and next release window. The synthesiser aggregates command tracks across
+every automation tier, deduplicates command nodes, coalition liaisons, support
+dependencies, and integration channels, and emits Ukrainian-language prompts so
+operators in Kyiv or field HQs can coordinate national releases in seconds. The
+Rich CLI renders a supreme command table and track matrix alongside focus areas,
+while dashboards surface counts via `insights.automation_supreme_command` for
+mission schedulers and chat ops bots.
+
+Automation leaders also receive a strategic convergence lens through the
+`automation_strategic_convergence` payload. It blends supreme, theatre, joint,
+campaign, battle, guardrail, autonomy, failsafe, deployment, frontline,
+sustainment, readiness, pressure, assurance, resilience, continuity, and risk
+signals into a convergence score with severity, next window, and cross-domain
+automation tracks. The synthesiser rolls up national command nodes, coalition
+partners, strategic channels, dependencies, and Ukrainian operator prompts so
+Kyiv duty officers can harmonise automation releases with allied command posts
+in minutes. The Rich CLI renders the convergence table and track matrix, and the
+brief publishes counts via `insights.automation_strategic_convergence` so
+dashboards and bots can watch track totals, partner counts, and national nodes
+as part of the automation battle rhythm.
+
+Force projection cells now receive a dedicated automation posture via the
+`automation_force_projection` payload. It inspects strategic convergence,
+supreme/theatre/joint automation, frontline sustainment, readiness, pressure,
+and sustainment telemetry to score projection readiness, flag manual bridges,
+and surface the tightest automation launch window. The synthesiser aggregates
+projection tracks from every automation tier, tallies force packages, command
+nodes, dependency corridors, and cross-domain channels, and emits Ukrainian
+operator prompts so brigade liaisons can coordinate releases in seconds. The
+Rich CLI prints the force projection table alongside the full track matrix, and
+`insights.automation_force_projection` exposes counts for tracks, channels, and
+force packages so dashboards can spotlight how close automation is to scaling
+across the front.
+
+Operators also receive a fused **dashboard snapshot** via the `operator_dashboard`
+payload. It blends readiness, pressure, resilience, continuity, assurance,
+confidence, automation posture, governance, and freshness signals into a scored
+summary with cards for workload, force projection, command posture, and intel
+confidence. The payload carries Ukrainian-language prompts and recommended
+actions so Kyiv and brigade duty officers can rapidly brief shifts when queues
+or telemetry degrade, while dashboards surface the score and status under
+`insights.operator_dashboard` for the operator console.
+
+The snapshot now ships with **operator alerts** and a **shift checklist** so the
+console immediately flags critical telemetry, backlog, or guardrail issues with
+ready-to-run actions. Alerts surface stale feeds, manual automation control, or
+mobilising support teams; the checklist captures dual-approval guardrail steps
+and surge-routing reminders so Ukrainian operators can hand off a clean, auditable
+plan during shift changes. An **operator utilities** tray rounds out the
+snapshot by bundling ready-to-run shortcuts for opening the Textual dashboard,
+exporting JSON briefs for Signal hand-offs, launching the leadership control
+centre, or running data/system checks. When telemetry degrades, the tray adds
+contextual utilities—like surge reroute, queue monitoring, or telemetry
+validation—to speed Ukrainian operators toward the right tool without hunting
+through menus.
+
+To keep teams focused on the most pressing blind spots, the brief highlights an
+**intelligence gaps** table. It inspects the existing tempo, freshness, and
+meta-analysis blocks to flag when prediction coverage collapses, telemetry
+feeds go stale, feedback accuracy disappears, or cluster scoring falls behind.
+Each row carries a severity badge and an optional remediation task, and the
+counts are summarised under the `insights` payload so downstream dashboards can
+plot the outstanding critical gaps alongside posture and readiness metrics.
+
+> **Tip:** FastAPI powers both the REST interface and the regression tests. Run
+> `bash scripts/setup.sh` (or `pip install fastapi uvicorn`) before `pytest` so
+> the API tests execute instead of being skipped in minimal environments.
+
 ### SMS & email alerts
 
 Configure Twilio credentials in your environment or `.env` file to enable SMS notifications from the dashboard:
