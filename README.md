@@ -11,7 +11,7 @@ This repository provides a starting point for a machine vision application that 
   - `models/` – trajectory prediction models
   - `pipeline/` – scripts combining ingestion, detection and prediction
   - `api/` – FastAPI endpoints
-- `scripts/` – setup and startup scripts
+- `scripts/` – setup, diagnostics, quickstart, and startup scripts
 - `tests/` – lightweight smoke tests for setup and CLI behavior
 - `.env.example` – copyable first-run configuration template
 - `.github/workflows/ci.yml` – GitHub Actions smoke checks for pushes and pull requests
@@ -22,6 +22,30 @@ This repository provides a starting point for a machine vision application that 
 - `goals.md` – high-level roadmap
 
 ## Usage
+
+### Fast first run
+
+For a guided local setup path that installs the small core dependency set, creates
+`.env` when needed, runs diagnostics, and prints the next command to run:
+
+```bash
+python -m app.cli.quickstart
+# or
+bash scripts/quickstart.sh
+```
+
+Useful options:
+
+```bash
+python -m app.cli.quickstart --skip-install
+python -m app.cli.quickstart --install-profile optional --check-optional --check-mongo
+python -m app.cli.quickstart --launch-api --host 127.0.0.1 --port 8000
+```
+
+The default quickstart path is intentionally conservative: it installs only
+`requirements-core.txt`, creates a safe local config if one does not already
+exist, skips optional ML/GIS/dashboard dependency checks, skips MongoDB socket
+checks, and does not run detection or prediction.
 
 ### 1. Install dependencies
 
@@ -162,6 +186,7 @@ python -m app.pipeline.run_real_time_pipeline AREA path/to/model
 
 Several helper scripts aid with data preparation and automation:
 
+- `cli/quickstart.py` – guided first-run setup. Run as `python -m app.cli.quickstart`.
 - `cli/doctor.py` – run read-only setup diagnostics. Run as `python -m app.cli.doctor`.
 - `utils/dataset_augmentation.py` – create augmented training images using
   Albumentations. Run as `python -m app.utils.dataset_augmentation SRC DST -n 5`.
@@ -200,6 +225,7 @@ Several helper scripts aid with data preparation and automation:
 Example usage:
 
 ```bash
+python -m app.cli.quickstart
 python -m app.cli.configure --non-interactive
 python -m app.cli.doctor
 python -m app.cli.dashboard
@@ -218,36 +244,4 @@ python -m app.movement_logger UNIT123 movements.csv
 python -m app.analysis.cluster_strategy_tracker UNIT123 --hours 24
 python -m app.analysis.state_encoder kyiv --hours 24 --res 32 -o state.npy
 python -m app.analysis.image_stats images/train -o image_stats.csv
-python -m app.analysis.movement_stats UNIT123 --hours 24
-python -m app.analysis.hog_features images/train -o hog_feats.npz
-
-python -m app.analysis.threat_assessment '[{"center": [30.5, 50.4], "count": 5}]'
-# Train a YOLO model after preparing a data.yaml file:
-python -m app.training.dataset_loader /data/train/images /data/val/images \
-    --classes troop vehicle -o data.yaml
-python -m app.training.train_yolo /data/train/images /data/val/images yolo_model.pt \
-    --classes troop vehicle --epochs 50
-# Train sequentially on multiple YAML datasets
-python -m app.training.train_sequential_yolo dataset1.yaml dataset2.yaml yolo_model.pt \
-    --epochs 25
-python -m app.utils.pseudo_labeler images/new -o pseudo_labels --conf 0.7
-python -m app.cli.self_reinforce images/new /data/train/images /data/val/images \
-    --classes troop vehicle --out-model updated_model.pt --epochs 5
 ```
-
-## Training Methodology
-
-1. **Prepare images**: Organize raw imagery by class and optionally run
-   `utils/dataset_augmentation.py` to expand the dataset with flips, brightness
-   changes and random rotations.
-2. **Create data configuration**: Use `training/dataset_loader.py` to generate
-   the `data.yaml` file required by the Ultralytics trainer.
-3. **Train the detector**: Execute `training/train_yolo.py` pointing to the
-   training and validation directories. Optional flags allow adjusting batch
-   size, image resolution and learning rate for finer control.
-4. **Sequential training**: For very large datasets you can train in batches
-   using `training/train_sequential_yolo.py` and a list of `data.yaml` files.
-   Each YAML is trained for the specified epochs before moving to the next to
-   conserve GPU memory.
-5. **Deploy**: Copy the resulting `.pt` model into the pipeline and update the
-   detection wrapper to load it instead of the stub.
