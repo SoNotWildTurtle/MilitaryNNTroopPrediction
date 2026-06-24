@@ -30,6 +30,7 @@ mkdir -p "${ARTIFACT_DIR}"
 "${PYTHON_BIN}" -m app.cli.export_dashboard_mockup --help > "${ARTIFACT_DIR}/export-dashboard-mockup-help.txt"
 "${PYTHON_BIN}" -m app.cli.release_bundle_index --help > "${ARTIFACT_DIR}/release-bundle-index-help.txt"
 "${PYTHON_BIN}" -m app.cli.artifact_manifest --help > "${ARTIFACT_DIR}/artifact-manifest-help.txt"
+"${PYTHON_BIN}" -m app.cli.export_html_previews --help > "${ARTIFACT_DIR}/export-html-previews-help.txt"
 
 cat > "${ARTIFACT_DIR}/summary.txt" <<'SUMMARY'
 MilitaryNNTroopPrediction CI diagnostic artifact bundle
@@ -47,6 +48,9 @@ Files:
 - api-response-examples.md: human-readable synthetic API response examples.
 - dashboard-mockup.html: self-contained static dashboard preview generated from synthetic examples.
 - release-bundle-index.html: self-contained reviewer landing page linking key bundle outputs.
+- html-previews.md: human-readable index of SVG previews for static HTML artifacts.
+- previews/dashboard-mockup.svg: lightweight browser-free visual preview of the dashboard mockup.
+- previews/release-bundle-index.svg: lightweight browser-free visual preview of the release bundle index.
 - quickstart-help.txt: current quickstart CLI options.
 - doctor-help.txt: current doctor CLI options.
 - release-health-help.txt: current release health CLI options.
@@ -55,16 +59,20 @@ Files:
 - export-dashboard-mockup-help.txt: current dashboard mockup export CLI options.
 - release-bundle-index-help.txt: current release bundle index CLI options.
 - artifact-manifest-help.txt: current artifact manifest CLI options.
+- export-html-previews-help.txt: current HTML preview export CLI options.
 - artifact-manifest.json: machine-readable index of generated artifacts with sizes and SHA-256 hashes.
 - artifact-manifest.md: human-readable index of generated artifacts with sizes and SHA-256 hashes.
 SUMMARY
 
+"${PYTHON_BIN}" -m app.cli.release_bundle_index \
+  --artifact-dir "${ARTIFACT_DIR}" \
+  --html-path "${ARTIFACT_DIR}/release-bundle-index.html"
+"${PYTHON_BIN}" -m app.cli.export_html_previews \
+  --artifact-dir "${ARTIFACT_DIR}" \
+  --markdown-path "${ARTIFACT_DIR}/html-previews.md"
 "${PYTHON_BIN}" -m app.cli.artifact_manifest \
   --artifact-dir "${ARTIFACT_DIR}" \
   --json-path "${ARTIFACT_DIR}/artifact-manifest.json" \
   --markdown-path "${ARTIFACT_DIR}/artifact-manifest.md"
-"${PYTHON_BIN}" -m app.cli.release_bundle_index \
-  --artifact-dir "${ARTIFACT_DIR}" \
-  --html-path "${ARTIFACT_DIR}/release-bundle-index.html"
 
 printf 'Wrote CI diagnostics to %s\n' "${ARTIFACT_DIR}"
