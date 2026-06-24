@@ -152,8 +152,8 @@ basic breakage before heavier ML workflows are attempted. It installs the shared
 core requirements file, compiles the Python package and tests, runs the setup
 doctor in minimal mode, validates the lightweight API health layer, exports the
 OpenAPI contract, exports synthetic API response examples, exports the static
-dashboard mockup, exports a diagnostic artifact manifest, and executes the
-standard-library unit tests:
+dashboard mockup, exports a diagnostic artifact manifest, exports a release
+bundle index page, and executes the standard-library unit tests:
 
 ```bash
 python -m pip install -r requirements-core.txt
@@ -163,6 +163,7 @@ python -m app.cli.export_openapi --json-path /tmp/militarynntroopprediction-open
 python -m app.cli.export_api_examples --json-path /tmp/militarynntroopprediction-api-response-examples.json --markdown-path /tmp/militarynntroopprediction-api-response-examples.md
 python -m app.cli.export_dashboard_mockup --html-path /tmp/militarynntroopprediction-dashboard-mockup.html
 python -m app.cli.artifact_manifest --artifact-dir /tmp --json-path /tmp/militarynntroopprediction-artifact-manifest.json --markdown-path /tmp/militarynntroopprediction-artifact-manifest.md
+python -m app.cli.release_bundle_index --artifact-dir /tmp --html-path /tmp/militarynntroopprediction-release-bundle-index.html
 python -m unittest discover -s tests -p 'test_*.py'
 ```
 
@@ -175,14 +176,20 @@ bash scripts/test.sh
 CI also creates a `ci-diagnostics` artifact bundle on every run, even failed
 runs. The bundle includes the Python and pip versions, `pip freeze`, doctor JSON,
 release health reports, the generated FastAPI OpenAPI contract, synthetic API
-response examples, a self-contained static dashboard mockup, SHA-256 artifact
-manifests, and the current help output for the doctor, quickstart, release
-health, OpenAPI export, API example export, dashboard mockup, and artifact
-manifest CLIs. To build the same bundle locally:
+response examples, a self-contained static dashboard mockup, a reviewer-friendly
+release bundle index page, SHA-256 artifact manifests, and the current help
+output for the doctor, quickstart, release health, OpenAPI export, API example
+export, dashboard mockup, release bundle index, and artifact manifest CLIs. To
+build the same bundle locally:
 
 ```bash
 bash scripts/ci_report.sh
 ```
+
+Open `ci_artifacts/release-bundle-index.html` first when reviewing a local or CI
+bundle. It links the release health summary, OpenAPI contract, synthetic examples,
+dashboard mockup, artifact manifest, and all indexed bundle files from one static,
+dependency-free page.
 
 To export only the API contract without launching the server:
 
@@ -216,6 +223,15 @@ not fetch live imagery, connect to MongoDB, or run prediction models. CI and
 `scripts/ci_report.sh` now include this HTML mockup in the `ci-diagnostics`
 artifact bundle so non-technical reviewers can inspect the analytical UI preview
 without cloning the repository or launching the API.
+
+To generate a release bundle landing page for any diagnostics directory:
+
+```bash
+python -m app.cli.release_bundle_index --artifact-dir ci_artifacts
+python -m app.cli.release_bundle_index --artifact-dir ci_artifacts --html-path release-bundle-index.html
+# or
+bash scripts/export_release_bundle_index.sh
+```
 
 To index any generated diagnostics directory with file sizes, SHA-256 hashes,
 and missing expected outputs:
