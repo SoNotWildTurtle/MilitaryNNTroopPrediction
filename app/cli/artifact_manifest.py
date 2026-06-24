@@ -26,6 +26,9 @@ EXPECTED_ARTIFACTS: Dict[str, str] = {
     "api-response-examples.md": "Human-readable synthetic API response examples.",
     "dashboard-mockup.html": "Self-contained static dashboard preview.",
     "release-bundle-index.html": "Self-contained reviewer landing page for the diagnostic bundle.",
+    "html-previews.md": "Human-readable index of generated SVG previews for static HTML artifacts.",
+    "previews/dashboard-mockup.svg": "Browser-free visual preview of the dashboard mockup artifact.",
+    "previews/release-bundle-index.svg": "Browser-free visual preview of the release bundle index artifact.",
     "quickstart-help.txt": "Current quickstart CLI options.",
     "doctor-help.txt": "Current doctor CLI options.",
     "release-health-help.txt": "Current release health CLI options.",
@@ -33,6 +36,8 @@ EXPECTED_ARTIFACTS: Dict[str, str] = {
     "export-api-examples-help.txt": "Current API example export CLI options.",
     "export-dashboard-mockup-help.txt": "Current dashboard mockup export CLI options.",
     "release-bundle-index-help.txt": "Current release bundle index CLI options.",
+    "artifact-manifest-help.txt": "Current artifact manifest CLI options.",
+    "export-html-previews-help.txt": "Current HTML preview export CLI options.",
     "summary.txt": "Plain-language bundle index for humans.",
 }
 
