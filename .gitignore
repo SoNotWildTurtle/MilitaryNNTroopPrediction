@@ -13,6 +13,7 @@ env/
 
 # Generated diagnostics and reports
 ci_artifacts/
+release-bundle-index.html
 
 # Generated dashboard/client mockups
 dashboard-mockup.html
