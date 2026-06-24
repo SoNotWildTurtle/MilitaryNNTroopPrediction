@@ -14,6 +14,9 @@ env/
 # Generated diagnostics and reports
 ci_artifacts/
 
+# Generated dashboard/client mockups
+dashboard-mockup.html
+
 # Generated outputs
 *_heatmap.png
 *.log
