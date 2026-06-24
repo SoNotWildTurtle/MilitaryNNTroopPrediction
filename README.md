@@ -12,7 +12,7 @@ This repository provides a starting point for a machine vision application that 
   - `pipeline/` – scripts combining ingestion, detection and prediction
   - `api/` – FastAPI endpoints
 - `scripts/` – setup, diagnostics, quickstart, and startup scripts
-- `tests/` – lightweight smoke tests for setup and CLI behavior
+- `tests/` – lightweight smoke tests for setup, API health, and CLI behavior
 - `.env.example` – copyable first-run configuration template
 - `.github/workflows/ci.yml` – GitHub Actions smoke checks for pushes and pull requests
 - `requirements-core.txt` – minimal packages for API, doctor, and CI smoke checks
@@ -79,11 +79,19 @@ Run `scripts/start.sh` to install dependencies and launch the API:
 bash scripts/start.sh
 ```
 
-This will start a local server at `http://localhost:8000` with several endpoints:
+This will start a local server at `http://localhost:8000` with user-friendly health
+and analytical endpoints:
 
+- `GET /` - service index with useful links and available routes
+- `GET /healthz` - no-dependency liveness check for scripts and uptime monitors
+- `GET /readyz` - lightweight readiness summary for config and optional Sentinel setup
 - `POST /predict/{area}` - run detection and prediction for an area
 - `GET /detections/{area}?limit=10` - fetch recent detections
 - `GET /predictions/{area}?limit=10` - fetch recent trajectory predictions
+
+The API imports the heavier TensorFlow/YOLO prediction pipeline only when
+`POST /predict/{area}` is called, so first-run health checks can work with just
+the core dependency profile.
 
 ### 2. Create local configuration
 
@@ -136,7 +144,8 @@ running the API or automation pipeline.
 A lightweight GitHub Actions workflow runs on pushes and pull requests to catch
 basic breakage before heavier ML workflows are attempted. It installs the shared
 core requirements file, compiles the Python package and tests, runs the setup
-doctor in minimal mode, and executes the standard-library unit tests:
+doctor in minimal mode, validates the lightweight API health layer, and executes
+the standard-library unit tests:
 
 ```bash
 python -m pip install -r requirements-core.txt
