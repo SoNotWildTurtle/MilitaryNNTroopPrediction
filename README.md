@@ -10,7 +10,7 @@ This repository provides a starting point for a machine vision application that 
   - `detection/` – YOLO wrappers
   - `models/` – trajectory prediction models
   - `pipeline/` – scripts combining ingestion, detection and prediction
-  - `api/` – FastAPI endpoints
+  - `api/` – FastAPI endpoints and typed response schemas
 - `scripts/` – setup, diagnostics, quickstart, and startup scripts
 - `tests/` – lightweight smoke tests for setup, API health, and CLI behavior
 - `.env.example` – copyable first-run configuration template
@@ -92,6 +92,12 @@ and analytical endpoints:
 The API imports the heavier TensorFlow/YOLO prediction pipeline only when
 `POST /predict/{area}` is called, so first-run health checks can work with just
 the core dependency profile.
+
+API responses are backed by Pydantic models in `app/api/schemas.py`, so the
+exported OpenAPI contract includes stable response shapes for health, readiness,
+prediction status, detections, and predictions. MongoDB `_id` values are exposed
+as public `id` strings, while analytical records remain forward-compatible with
+extra fields produced by future pipeline stages.
 
 ### 2. Create local configuration
 
