@@ -151,13 +151,15 @@ A lightweight GitHub Actions workflow runs on pushes and pull requests to catch
 basic breakage before heavier ML workflows are attempted. It installs the shared
 core requirements file, compiles the Python package and tests, runs the setup
 doctor in minimal mode, validates the lightweight API health layer, exports the
-OpenAPI contract, and executes the standard-library unit tests:
+OpenAPI contract, exports synthetic API response examples, and executes the
+standard-library unit tests:
 
 ```bash
 python -m pip install -r requirements-core.txt
 python -m compileall app tests
 python -m app.cli.doctor --skip-optional --skip-mongo --json
 python -m app.cli.export_openapi --json-path /tmp/militarynntroopprediction-openapi.json --markdown-path /tmp/militarynntroopprediction-openapi.md
+python -m app.cli.export_api_examples --json-path /tmp/militarynntroopprediction-api-response-examples.json --markdown-path /tmp/militarynntroopprediction-api-response-examples.md
 python -m unittest discover -s tests -p 'test_*.py'
 ```
 
@@ -169,9 +171,10 @@ bash scripts/test.sh
 
 CI also creates a `ci-diagnostics` artifact bundle on every run, even failed
 runs. The bundle includes the Python and pip versions, `pip freeze`, doctor JSON,
-release health reports, the generated FastAPI OpenAPI contract, and the current
-help output for the doctor, quickstart, release health, and OpenAPI export CLIs.
-To build the same bundle locally:
+release health reports, the generated FastAPI OpenAPI contract, synthetic API
+response examples, and the current help output for the doctor, quickstart,
+release health, OpenAPI export, and API example export CLIs. To build the same
+bundle locally:
 
 ```bash
 bash scripts/ci_report.sh
@@ -182,6 +185,16 @@ To export only the API contract without launching the server:
 ```bash
 python -m app.cli.export_openapi
 python -m app.cli.export_openapi --json-path openapi.json --markdown-path openapi-summary.md
+```
+
+To export synthetic API response examples for dashboard mockups, docs, and
+client tests without MongoDB, Sentinel Hub, TensorFlow, YOLO, or live imagery:
+
+```bash
+python -m app.cli.export_api_examples
+python -m app.cli.export_api_examples --json-path api-response-examples.json --markdown-path api-response-examples.md
+# or
+bash scripts/export_api_examples.sh
 ```
 
 These checks are intentionally small and fast. Optional ML, dashboard, mapping,
@@ -222,6 +235,7 @@ Several helper scripts aid with data preparation and automation:
 - `cli/quickstart.py` – guided first-run setup. Run as `python -m app.cli.quickstart`.
 - `cli/doctor.py` – run read-only setup diagnostics. Run as `python -m app.cli.doctor`.
 - `cli/export_openapi.py` – export the FastAPI OpenAPI contract and summary without starting the API. Run as `python -m app.cli.export_openapi`.
+- `cli/export_api_examples.py` – export synthetic API response examples for dashboards, documentation, and client tests. Run as `python -m app.cli.export_api_examples`.
 - `utils/dataset_augmentation.py` – create augmented training images using
   Albumentations. Run as `python -m app.utils.dataset_augmentation SRC DST -n 5`.
 - `utils/troop_training_cli.py` – label troop images and train a classifier. Run
