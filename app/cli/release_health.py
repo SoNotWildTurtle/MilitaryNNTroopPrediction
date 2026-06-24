@@ -25,6 +25,12 @@ def _status_icon(status: str) -> str:
     return {"ok": "✅", "warn": "⚠️", "fail": "❌"}.get(status, "•")
 
 
+def _escape_table_cell(value: str) -> str:
+    """Escape text for a Markdown table cell."""
+
+    return value.replace("|", "\\|").replace("\n", " ")
+
+
 def render_markdown(results: Sequence[doctor.CheckResult], generated_at: datetime | None = None) -> str:
     """Render doctor results as a maintainer-friendly Markdown report."""
 
@@ -48,12 +54,14 @@ def render_markdown(results: Sequence[doctor.CheckResult], generated_at: datetim
     ]
     for result in results:
         remediation = result.remediation or "—"
+        detail = _escape_table_cell(result.detail)
+        remediation = _escape_table_cell(remediation)
         lines.append(
             "| "
             f"{_status_icon(result.status)} {result.status.upper()} | "
             f"`{result.name}` | "
-            f"{result.detail.replace('|', '\\|')} | "
-            f"{remediation.replace('|', '\\|')} |"
+            f"{detail} | "
+            f"{remediation} |"
         )
 
     lines.extend(
