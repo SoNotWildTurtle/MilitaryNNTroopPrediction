@@ -151,8 +151,8 @@ A lightweight GitHub Actions workflow runs on pushes and pull requests to catch
 basic breakage before heavier ML workflows are attempted. It installs the shared
 core requirements file, compiles the Python package and tests, runs the setup
 doctor in minimal mode, validates the lightweight API health layer, exports the
-OpenAPI contract, exports synthetic API response examples, and executes the
-standard-library unit tests:
+OpenAPI contract, exports synthetic API response examples, exports the static
+dashboard mockup, and executes the standard-library unit tests:
 
 ```bash
 python -m pip install -r requirements-core.txt
@@ -173,9 +173,9 @@ bash scripts/test.sh
 CI also creates a `ci-diagnostics` artifact bundle on every run, even failed
 runs. The bundle includes the Python and pip versions, `pip freeze`, doctor JSON,
 release health reports, the generated FastAPI OpenAPI contract, synthetic API
-response examples, and the current help output for the doctor, quickstart,
-release health, OpenAPI export, and API example export CLIs. To build the same
-bundle locally:
+response examples, a self-contained static dashboard mockup, and the current help
+output for the doctor, quickstart, release health, OpenAPI export, API example
+export, and dashboard mockup CLIs. To build the same bundle locally:
 
 ```bash
 bash scripts/ci_report.sh
@@ -209,7 +209,10 @@ bash scripts/export_dashboard_mockup.sh
 
 The generated page is static and dependency-free. It is intended for user
 onboarding, dashboard prototyping, screenshots, and API client planning; it does
-not fetch live imagery, connect to MongoDB, or run prediction models.
+not fetch live imagery, connect to MongoDB, or run prediction models. CI and
+`scripts/ci_report.sh` now include this HTML mockup in the `ci-diagnostics`
+artifact bundle so non-technical reviewers can inspect the analytical UI preview
+without cloning the repository or launching the API.
 
 These checks are intentionally small and fast. Optional ML, dashboard, mapping,
 and training dependencies should be validated by targeted workflows as those
@@ -218,66 +221,3 @@ areas mature.
 Additional modules handle Sentinel Hub imagery and CLI workflows:
 - `satellite/` – Sentinel image download and inference pipeline
   - `movement_history.py` – query MongoDB for recent unit positions
-  - `pipeline/run_real_time_pipeline.py` – CLI to fetch imagery and run detection
-  - `pipeline/realtime.py` – store detections and predictions in MongoDB
-  - `detection/ground_troop.py` – enhanced detection for irregular troop images
-  - `drones/live_feed.py` – capture a drone video stream for live inference
-  Detection results are stored in the `detections` collection and trajectory predictions in `predictions`.
-
-## Environment
-The pipeline can optionally fetch imagery from Sentinel Hub. Set the following
-environment variables before running the scripts, or put them in `.env`:
-
-```
-export SENTINEL_CLIENT_ID="your-client-id"
-export SENTINEL_CLIENT_SECRET="your-secret"
-export SENTINEL_INSTANCE_ID="your-instance-id"
-```
-
-If these variables are unset, placeholder images will be used instead.
-
-To run the standalone pipeline from the command line:
-
-```bash
-python -m app.pipeline.run_real_time_pipeline AREA path/to/model
-```
-
-## Utilities
-
-Several helper scripts aid with data preparation and automation:
-
-- `cli/quickstart.py` – guided first-run setup. Run as `python -m app.cli.quickstart`.
-- `cli/doctor.py` – run read-only setup diagnostics. Run as `python -m app.cli.doctor`.
-- `cli/export_openapi.py` – export the FastAPI OpenAPI contract and summary without starting the API. Run as `python -m app.cli.export_openapi`.
-- `cli/export_api_examples.py` – export synthetic API response examples for dashboards, documentation, and client tests. Run as `python -m app.cli.export_api_examples`.
-- `cli/export_dashboard_mockup.py` – export a static HTML dashboard preview from synthetic API examples. Run as `python -m app.cli.export_dashboard_mockup`.
-- `utils/dataset_augmentation.py` – create augmented training images using
-  Albumentations. Run as `python -m app.utils.dataset_augmentation SRC DST -n 5`.
-- `utils/troop_training_cli.py` – label troop images and train a classifier. Run
-  as `python -m app.utils.troop_training_cli DIR model.h5 --csv labels.csv`.
-- `utils/human_feedback_viewer.py` – review predictions in a simple Tkinter
-  GUI and record whether they are correct.
-- `watch_directory.py` – poll a folder for new satellite images and process them
-  automatically via the real-time pipeline.
-- `pipeline/monitor.py` – periodically fetch imagery from Sentinel Hub and run
-  detection without manual intervention.
-- `cli/configure.py` – interactive or non-interactive setup to write environment variables to a `.env` file.
-- `drones/live_feed.py` – capture a drone camera stream and perform live inference.
-- `detection/ground_troop.py` – detect troops from low-quality or angled images.
-- `detection/troop_identifier.py` – classify detected troops by type and uniform.
-- `detection/drone_identifier.py` – classify drone models from images.
-- `detection/vehicle_identifier.py` – classify vehicles from images.
-- `training/dataset_loader.py` – generate YOLO data.yaml files.
-- `training/train_yolo.py` – train a YOLO model from prepared datasets.
-- `training/train_sequential_yolo.py` – train on multiple datasets sequentially.
-- `analysis/dbscan_cluster.py` – cluster movement logs with DBSCAN to find
-  common locations. Run as `python -m app.analysis.dbscan_cluster UNIT_ID`.
-- `analysis/heatmap.py` – generate detection heatmaps as PNG images.
-- `analysis/geo_mapper.py` – create interactive HTML maps from stored detections.
-- `movement_logger.py` – log detection records for clustering.
-- `analysis/cluster_strategy_tracker.py` – cluster unit movements and generate heatmaps.
-- `analysis/threat_assessment.py` – compute simple threat scores from clusters.
-- `analysis/state_encoder.py` – encode detections into a grid tensor for ML models.
-- `analysis/image_stats.py` – compute brightness and blur metrics for training datasets.
-- `analysis/movement_stats.py` – summarize average speed and heading from logged movements.
-- `analysis/hog_features.py` – extract HOG descriptors from images for feature analysis.
