@@ -207,7 +207,7 @@ Several helper scripts aid with data preparation and automation:
   automatically via the real-time pipeline.
 - `pipeline/monitor.py` – periodically fetch imagery from Sentinel Hub and run
   detection without manual intervention.
-- `cli/configure.py` – interactive or non-interative setup to write environment variables to a `.env` file.
+- `cli/configure.py` – interactive or non-interactive setup to write environment variables to a `.env` file.
 - `drones/live_feed.py` – capture a drone camera stream and perform live inference.
 - `detection/ground_troop.py` – detect troops from low-quality or angled images.
 - `detection/troop_identifier.py` – classify detected troops by type and uniform.
