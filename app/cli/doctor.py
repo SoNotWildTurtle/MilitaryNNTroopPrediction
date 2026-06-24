@@ -16,6 +16,7 @@ import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Iterable, Sequence
+from urllib.parse import urlparse
 
 from app.config import settings
 
@@ -111,18 +112,30 @@ def _check_env() -> CheckResult:
     )
 
 
-def _check_mongo(timeout: float) -> CheckResult:
-    host_port = settings.MONGO_URI.removeprefix("mongodb://").split("/", 1)[0].split("@")[-1]
+def _mongo_host_port() -> tuple[str, int]:
+    parsed = urlparse(settings.MONGO_URI)
+    if parsed.scheme == "mongodb+srv":
+        # SRV discovery is handled by pymongo. A raw socket probe cannot resolve
+        # the final host:port accurately, so use the standard TLS MongoDB port.
+        return parsed.hostname or "localhost", 27017
+    if parsed.scheme and parsed.hostname:
+        return parsed.hostname, parsed.port or 27017
+
+    host_port = settings.MONGO_URI.split("/", 1)[0].split("@")[-1]
     host, _, port_text = host_port.partition(":")
-    port = int(port_text or "27017")
+    return host or "localhost", int(port_text or "27017")
+
+
+def _check_mongo(timeout: float) -> CheckResult:
     try:
+        host, port = _mongo_host_port()
         with socket.create_connection((host, port), timeout=timeout):
             return CheckResult("mongo_socket", "ok", f"Connected to {host}:{port}")
     except Exception as exc:  # noqa: BLE001 - diagnostics should preserve connection failures.
         return CheckResult(
             "mongo_socket",
             "warn",
-            f"Could not connect to {host}:{port}: {exc}",
+            f"Could not connect using MONGO_URI={settings.MONGO_URI!r}: {exc}",
             (
                 "Start MongoDB, update MONGO_URI, or continue with workflows "
                 "that do not require the database."
