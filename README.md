@@ -12,6 +12,8 @@ This repository provides a starting point for a machine vision application that 
   - `pipeline/` – scripts combining ingestion, detection and prediction
   - `api/` – FastAPI endpoints
 - `scripts/` – setup and startup scripts
+- `tests/` – lightweight smoke tests for setup and CLI behavior
+- `.github/workflows/ci.yml` – GitHub Actions smoke checks for pushes and pull requests
 - `notes.md` – project notes
 - `dev_notes.md` – developer notes
 - `goals.md` – high-level roadmap
@@ -52,6 +54,23 @@ The command is read-only except for creating the configured `DATA_DIR` and a
 short-lived write probe inside it. Warnings identify optional capabilities that
 are missing; failures identify core setup problems that should be fixed before
 running the API or automation pipeline.
+
+### Automated checks
+
+A lightweight GitHub Actions workflow runs on pushes and pull requests to catch
+basic breakage before heavier ML workflows are attempted. It installs only core
+runtime dependencies, compiles the Python package and tests, runs the setup
+doctor in minimal mode, and executes the standard-library unit tests:
+
+```bash
+python -m compileall app tests
+python -m app.cli.doctor --skip-optional --skip-mongo --json
+python -m unittest discover -s tests -p 'test_*.py'
+```
+
+These checks are intentionally small and fast. Optional ML, dashboard, mapping,
+and training dependencies should be validated by targeted workflows as those
+areas mature.
 
 Additional modules handle Sentinel Hub imagery and CLI workflows:
 - `satellite/` – Sentinel image download and inference pipeline
@@ -118,7 +137,6 @@ Several helper scripts aid with data preparation and automation:
 - `cli/dashboard.py` – interactive Rich-based CLI to run common tasks.
 - `utils/pseudo_labeler.py` – create YOLO label files from new images.
 - `cli/self_reinforce.py` – label fresh images, merge them into the dataset and retrain the detector.
-- `cli/dashboard.py` – interactive Rich-based CLI to run common tasks.
 
 Example usage:
 
@@ -143,18 +161,18 @@ python -m app.analysis.image_stats images/train -o image_stats.csv
 python -m app.analysis.movement_stats UNIT123 --hours 24
 python -m app.analysis.hog_features images/train -o hog_feats.npz
 
-python -m app.analysis.threat_assessment "[{"center": [30.5, 50.4], "count": 5}]"
+python -m app.analysis.threat_assessment '[{"center": [30.5, 50.4], "count": 5}]'
 # Train a YOLO model after preparing a data.yaml file:
-python -m app.training.dataset_loader /data/train/images /data/val/images \ 
+python -m app.training.dataset_loader /data/train/images /data/val/images \
     --classes troop vehicle -o data.yaml
 python -m app.training.train_yolo /data/train/images /data/val/images yolo_model.pt \
     --classes troop vehicle --epochs 50
 # Train sequentially on multiple YAML datasets
 python -m app.training.train_sequential_yolo dataset1.yaml dataset2.yaml yolo_model.pt \
     --epochs 25
-  python -m app.utils.pseudo_labeler images/new -o pseudo_labels --conf 0.7
-  python -m app.cli.self_reinforce images/new /data/train/images /data/val/images \
-      --classes troop vehicle --out-model updated_model.pt --epochs 5
+python -m app.utils.pseudo_labeler images/new -o pseudo_labels --conf 0.7
+python -m app.cli.self_reinforce images/new /data/train/images /data/val/images \
+    --classes troop vehicle --out-model updated_model.pt --epochs 5
 ```
 
 ## Training Methodology
