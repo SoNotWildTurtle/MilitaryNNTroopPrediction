@@ -144,13 +144,14 @@ running the API or automation pipeline.
 A lightweight GitHub Actions workflow runs on pushes and pull requests to catch
 basic breakage before heavier ML workflows are attempted. It installs the shared
 core requirements file, compiles the Python package and tests, runs the setup
-doctor in minimal mode, validates the lightweight API health layer, and executes
-the standard-library unit tests:
+doctor in minimal mode, validates the lightweight API health layer, exports the
+OpenAPI contract, and executes the standard-library unit tests:
 
 ```bash
 python -m pip install -r requirements-core.txt
 python -m compileall app tests
 python -m app.cli.doctor --skip-optional --skip-mongo --json
+python -m app.cli.export_openapi --json-path /tmp/militarynntroopprediction-openapi.json --markdown-path /tmp/militarynntroopprediction-openapi.md
 python -m unittest discover -s tests -p 'test_*.py'
 ```
 
@@ -162,11 +163,19 @@ bash scripts/test.sh
 
 CI also creates a `ci-diagnostics` artifact bundle on every run, even failed
 runs. The bundle includes the Python and pip versions, `pip freeze`, doctor JSON,
-and the current help output for the doctor and quickstart CLIs. To build the same
-bundle locally:
+release health reports, the generated FastAPI OpenAPI contract, and the current
+help output for the doctor, quickstart, release health, and OpenAPI export CLIs.
+To build the same bundle locally:
 
 ```bash
 bash scripts/ci_report.sh
+```
+
+To export only the API contract without launching the server:
+
+```bash
+python -m app.cli.export_openapi
+python -m app.cli.export_openapi --json-path openapi.json --markdown-path openapi-summary.md
 ```
 
 These checks are intentionally small and fast. Optional ML, dashboard, mapping,
@@ -179,7 +188,7 @@ Additional modules handle Sentinel Hub imagery and CLI workflows:
   - `pipeline/run_real_time_pipeline.py` – CLI to fetch imagery and run detection
   - `pipeline/realtime.py` – store detections and predictions in MongoDB
   - `detection/ground_troop.py` – enhanced detection for irregular troop images
-  - `drones/live_feed.py` – capture drone video streams for live inference
+  - `drones/live_feed.py` – capture a drone video stream for live inference
   Detection results are stored in the `detections` collection and trajectory predictions in `predictions`.
 
 ## Environment
@@ -206,6 +215,7 @@ Several helper scripts aid with data preparation and automation:
 
 - `cli/quickstart.py` – guided first-run setup. Run as `python -m app.cli.quickstart`.
 - `cli/doctor.py` – run read-only setup diagnostics. Run as `python -m app.cli.doctor`.
+- `cli/export_openapi.py` – export the FastAPI OpenAPI contract and summary without starting the API. Run as `python -m app.cli.export_openapi`.
 - `utils/dataset_augmentation.py` – create augmented training images using
   Albumentations. Run as `python -m app.utils.dataset_augmentation SRC DST -n 5`.
 - `utils/troop_training_cli.py` – label troop images and train a classifier. Run
