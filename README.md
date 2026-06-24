@@ -166,6 +166,7 @@ python -m app.cli.export_dashboard_mockup --html-path /tmp/militarynntrooppredic
 python -m app.cli.release_bundle_index --artifact-dir /tmp --html-path /tmp/militarynntroopprediction-release-bundle-index.html
 python -m app.cli.export_html_previews --artifact-dir /tmp --output-dir /tmp/militarynntroopprediction-html-previews --markdown-path /tmp/militarynntroopprediction-html-previews.md
 python -m app.cli.artifact_manifest --artifact-dir /tmp --json-path /tmp/militarynntroopprediction-artifact-manifest.json --markdown-path /tmp/militarynntroopprediction-artifact-manifest.md
+python -m app.cli.release_notes --health-json /tmp/militarynntroopprediction-release-health.json --manifest-json /tmp/militarynntroopprediction-artifact-manifest.json --markdown-path /tmp/militarynntroopprediction-release-notes.md --json-path /tmp/militarynntroopprediction-release-notes.json
 python -m unittest discover -s tests -p 'test_*.py'
 ```
 
@@ -177,13 +178,13 @@ bash scripts/test.sh
 
 CI also creates a `ci-diagnostics` artifact bundle on every run, even failed
 runs. The bundle includes the Python and pip versions, `pip freeze`, doctor JSON,
-release health reports, the generated FastAPI OpenAPI contract, synthetic API
-response examples, a self-contained static dashboard mockup, a reviewer-friendly
-release bundle index page, lightweight SVG previews for static HTML outputs,
-SHA-256 artifact manifests, and the current help output for the doctor,
-quickstart, release health, OpenAPI export, API example export, dashboard mockup,
-release bundle index, HTML preview export, and artifact manifest CLIs. To build
-the same bundle locally:
+release health reports, generated release notes, the generated FastAPI OpenAPI
+contract, synthetic API response examples, a self-contained static dashboard
+mockup, a reviewer-friendly release bundle index page, lightweight SVG previews
+for static HTML outputs, SHA-256 artifact manifests, and the current help output
+for the doctor, quickstart, release health, release notes, OpenAPI export, API
+example export, dashboard mockup, release bundle index, HTML preview export, and
+artifact manifest CLIs. To build the same bundle locally:
 
 ```bash
 bash scripts/ci_report.sh
@@ -258,14 +259,15 @@ python -m app.cli.artifact_manifest --artifact-dir ci_artifacts
 python -m app.cli.artifact_manifest --artifact-dir ci_artifacts --json-path manifest.json --markdown-path manifest.md
 ```
 
-These manifests make it easier for downstream automation, reviewers, and release
-notes to verify what a CI run actually produced without hard-coding artifact
-filenames.
+To turn a release health JSON file plus an artifact manifest into manager-friendly
+release notes:
 
-These checks are intentionally small and fast. Optional ML, dashboard, mapping,
-and training dependencies should be validated by targeted workflows as those
-areas mature.
+```bash
+python -m app.cli.release_notes
+python -m app.cli.release_notes --health-json ci_artifacts/release-health.json --manifest-json ci_artifacts/artifact-manifest.json --markdown-path ci_artifacts/release-notes.md --json-path ci_artifacts/release-notes.json
+```
 
-Additional modules handle Sentinel Hub imagery and CLI workflows:
-- `satellite/` – Sentinel image download and inference pipeline
-  - `movement_history.py` – query MongoDB for recent unit positions
+The release notes summarize readiness, health counts, missing expected artifacts,
+priority failures or warnings, reviewer artifacts, and a recommended next step.
+This is useful when sharing CI bundles with users who need a quick analytical
+handoff rather than raw JSON diagnostics.
