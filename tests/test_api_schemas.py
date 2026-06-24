@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import unittest
 from datetime import datetime
+from typing import get_args, get_origin
 
 from app.api import main
 from app.api.schemas import (
@@ -29,8 +30,13 @@ class ApiSchemaTests(unittest.TestCase):
         self.assertIs(response_models["/healthz"], HealthStatus)
         self.assertIs(response_models["/readyz"], ReadinessStatus)
         self.assertIs(response_models["/predict/{area}"], PredictionStatus)
-        self.assertIs(response_models["/detections/{area}"], list[AnalyticalRecord])
-        self.assertIs(response_models["/predictions/{area}"], list[AnalyticalRecord])
+
+        detections_model = response_models["/detections/{area}"]
+        predictions_model = response_models["/predictions/{area}"]
+        self.assertIs(get_origin(detections_model), list)
+        self.assertEqual(get_args(detections_model), (AnalyticalRecord,))
+        self.assertIs(get_origin(predictions_model), list)
+        self.assertEqual(get_args(predictions_model), (AnalyticalRecord,))
 
     def test_public_record_renames_mongo_id_and_preserves_extra_fields(self) -> None:
         raw = {
