@@ -14,9 +14,13 @@ mkdir -p "${ARTIFACT_DIR}"
 "${PYTHON_BIN}" -m app.cli.release_health \
   --markdown-path "${ARTIFACT_DIR}/release-health.md" \
   --json-path "${ARTIFACT_DIR}/release-health.json"
+"${PYTHON_BIN}" -m app.cli.export_openapi \
+  --json-path "${ARTIFACT_DIR}/openapi.json" \
+  --markdown-path "${ARTIFACT_DIR}/openapi-summary.md"
 "${PYTHON_BIN}" -m app.cli.quickstart --help > "${ARTIFACT_DIR}/quickstart-help.txt"
 "${PYTHON_BIN}" -m app.cli.doctor --help > "${ARTIFACT_DIR}/doctor-help.txt"
 "${PYTHON_BIN}" -m app.cli.release_health --help > "${ARTIFACT_DIR}/release-health-help.txt"
+"${PYTHON_BIN}" -m app.cli.export_openapi --help > "${ARTIFACT_DIR}/export-openapi-help.txt"
 
 cat > "${ARTIFACT_DIR}/summary.txt" <<'SUMMARY'
 MilitaryNNTroopPrediction CI diagnostic artifact bundle
@@ -28,9 +32,12 @@ Files:
 - doctor-minimal.json: machine-readable core setup diagnostics.
 - release-health.md: human-readable release readiness summary.
 - release-health.json: machine-readable release readiness summary.
+- openapi.json: machine-readable FastAPI OpenAPI contract.
+- openapi-summary.md: human-readable API contract summary.
 - quickstart-help.txt: current quickstart CLI options.
 - doctor-help.txt: current doctor CLI options.
 - release-health-help.txt: current release health CLI options.
+- export-openapi-help.txt: current OpenAPI export CLI options.
 SUMMARY
 
 printf 'Wrote CI diagnostics to %s\n' "${ARTIFACT_DIR}"
