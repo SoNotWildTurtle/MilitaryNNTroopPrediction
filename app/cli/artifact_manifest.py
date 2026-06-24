@@ -25,12 +25,14 @@ EXPECTED_ARTIFACTS: Dict[str, str] = {
     "api-response-examples.json": "Synthetic JSON responses for dashboards and client builders.",
     "api-response-examples.md": "Human-readable synthetic API response examples.",
     "dashboard-mockup.html": "Self-contained static dashboard preview.",
+    "release-bundle-index.html": "Self-contained reviewer landing page for the diagnostic bundle.",
     "quickstart-help.txt": "Current quickstart CLI options.",
     "doctor-help.txt": "Current doctor CLI options.",
     "release-health-help.txt": "Current release health CLI options.",
     "export-openapi-help.txt": "Current OpenAPI export CLI options.",
     "export-api-examples-help.txt": "Current API example export CLI options.",
     "export-dashboard-mockup-help.txt": "Current dashboard mockup export CLI options.",
+    "release-bundle-index-help.txt": "Current release bundle index CLI options.",
     "summary.txt": "Plain-language bundle index for humans.",
 }
 
