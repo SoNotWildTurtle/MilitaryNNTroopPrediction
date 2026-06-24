@@ -26,3 +26,15 @@ jobs:
 
       - name: Run local smoke checks
         run: bash scripts/test.sh
+
+      - name: Build diagnostic artifact bundle
+        if: always()
+        run: bash scripts/ci_report.sh
+
+      - name: Upload diagnostic artifact bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-diagnostics
+          path: ci_artifacts/
+          if-no-files-found: error
