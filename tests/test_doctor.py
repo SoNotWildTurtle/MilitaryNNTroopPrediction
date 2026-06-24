@@ -12,7 +12,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from app.cli import doctor
+from app.cli import configure, doctor
 
 
 class DoctorSmokeTests(unittest.TestCase):
@@ -21,26 +21,54 @@ class DoctorSmokeTests(unittest.TestCase):
     def test_core_checks_can_run_without_optional_or_mongo(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             with mock.patch.object(doctor.settings, "DATA_DIR", Path(tmpdir)):
-                results = doctor.run_checks(include_optional=False, check_mongo=False)
+                results = doctor.run_checks(
+                    include_optional=False,
+                    check_mongo=False,
+                    check_env_files=False,
+                )
 
         names = {result.name for result in results}
         self.assertIn("python", names)
         self.assertIn("data_dir", names)
         self.assertIn("sentinel_env", names)
         self.assertNotIn("mongo_socket", names)
+        self.assertNotIn("env_template", names)
         self.assertFalse(any(name.startswith("import:tensorflow") for name in names))
 
     def test_json_output_is_machine_readable(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             with mock.patch.object(doctor.settings, "DATA_DIR", Path(tmpdir)):
                 with mock.patch("builtins.print") as mocked_print:
-                    exit_code = doctor.main(["--json", "--skip-optional", "--skip-mongo"])
+                    exit_code = doctor.main([
+                        "--json",
+                        "--skip-optional",
+                        "--skip-mongo",
+                        "--skip-env-files",
+                    ])
 
         self.assertIn(exit_code, {0, 1})
         printed = "\n".join(str(call.args[0]) for call in mocked_print.call_args_list)
         payload = json.loads(printed)
         self.assertIsInstance(payload, list)
         self.assertTrue(all({"name", "status", "detail", "remediation"} <= set(item) for item in payload))
+
+    def test_env_template_checker_detects_missing_template(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            missing = Path(tmpdir) / ".env.example"
+            result = doctor._check_env_template(missing)
+
+        self.assertEqual(result.name, "env_template")
+        self.assertEqual(result.status, "warn")
+
+    def test_configure_non_interactive_writes_defaults(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            env_path = Path(tmpdir) / ".env"
+            configure.run_config_setup(env_path, non_interactive=True)
+            written = configure.load_env(env_path)
+
+        self.assertEqual(written["DATA_DIR"], "data")
+        self.assertEqual(written["MONGO_URI"], "mongodb://localhost:27017")
+        self.assertEqual(written["DB_NAME"], "troop_db")
 
 
 if __name__ == "__main__":
