@@ -45,6 +45,13 @@ SENTINEL_ENV_VARS: tuple[str, ...] = (
     "SENTINEL_INSTANCE_ID",
 )
 
+RECOMMENDED_ENV_VARS: tuple[str, ...] = (
+    "DATA_DIR",
+    "MONGO_URI",
+    "DB_NAME",
+    *SENTINEL_ENV_VARS,
+)
+
 
 @dataclass
 class CheckResult:
@@ -78,6 +85,59 @@ def _check_imports(imports: Iterable[tuple[str, str]], required: bool) -> list[C
             )
             results.append(CheckResult(f"import:{module_name}", severity, purpose, remediation))
     return results
+
+
+def _read_env_keys(path: Path) -> set[str]:
+    keys: set[str] = set()
+    if not path.exists():
+        return keys
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip() or line.lstrip().startswith("#") or "=" not in line:
+            continue
+        key, _ = line.split("=", 1)
+        keys.add(key.strip())
+    return keys
+
+
+def _check_env_template(template_path: Path = Path(".env.example")) -> CheckResult:
+    if not template_path.exists():
+        return CheckResult(
+            "env_template",
+            "warn",
+            f"{template_path} is missing",
+            "Add .env.example so new users can bootstrap configuration safely.",
+        )
+
+    missing = sorted(set(RECOMMENDED_ENV_VARS) - _read_env_keys(template_path))
+    if missing:
+        return CheckResult(
+            "env_template",
+            "warn",
+            f"{template_path} is missing keys: {', '.join(missing)}",
+            "Keep .env.example aligned with app.config.Settings.",
+        )
+    return CheckResult("env_template", "ok", f"{template_path} includes recommended keys")
+
+
+def _check_local_env(env_path: Path = Path(".env")) -> CheckResult:
+    if not env_path.exists():
+        return CheckResult(
+            "local_env",
+            "warn",
+            f"{env_path} has not been created yet",
+            "Run `python -m app.cli.configure --non-interactive` for defaults, "
+            "or `python -m app.cli.configure` for interactive setup.",
+        )
+
+    missing = sorted(set(RECOMMENDED_ENV_VARS) - _read_env_keys(env_path))
+    if missing:
+        return CheckResult(
+            "local_env",
+            "warn",
+            f"{env_path} is missing keys: {', '.join(missing)}",
+            "Run `python -m app.cli.configure` to fill missing values.",
+        )
+    return CheckResult("local_env", "ok", f"{env_path} includes recommended keys")
 
 
 def _check_data_dir() -> CheckResult:
@@ -146,15 +206,18 @@ def _check_mongo(timeout: float) -> CheckResult:
 def run_checks(
     include_optional: bool = True,
     check_mongo: bool = True,
+    check_env_files: bool = True,
     timeout: float = 2.0,
 ) -> list[CheckResult]:
     """Run project preflight checks and return structured results."""
 
-    results: list[CheckResult] = [
-        CheckResult("python", "ok", sys.version.split()[0]),
+    results: list[CheckResult] = [CheckResult("python", "ok", sys.version.split()[0])]
+    if check_env_files:
+        results.extend([_check_env_template(), _check_local_env()])
+    results.extend([
         _check_data_dir(),
         _check_env(),
-    ]
+    ])
     results.extend(_check_imports(REQUIRED_IMPORTS, required=True))
     if include_optional:
         results.extend(_check_imports(OPTIONAL_IMPORTS, required=False))
@@ -198,6 +261,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="do not test MongoDB socket connectivity",
     )
     parser.add_argument(
+        "--skip-env-files",
+        action="store_true",
+        help="do not check .env.example or local .env presence",
+    )
+    parser.add_argument(
         "--timeout",
         type=float,
         default=2.0,
@@ -208,6 +276,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     results = run_checks(
         include_optional=not args.skip_optional,
         check_mongo=not args.skip_mongo,
+        check_env_files=not args.skip_env_files,
         timeout=args.timeout,
     )
     if args.json:
