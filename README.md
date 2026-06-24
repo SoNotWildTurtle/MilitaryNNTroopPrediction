@@ -29,6 +29,30 @@ This will start a local server at `http://localhost:8000` with several endpoints
 - `GET /detections/{area}?limit=10` - fetch recent detections
 - `GET /predictions/{area}?limit=10` - fetch recent trajectory predictions
 
+### Check your setup first
+
+Before launching heavier workflows, run the setup doctor to verify that Python,
+core dependencies, optional analysis dependencies, the data directory, Sentinel
+Hub environment variables, and MongoDB socket connectivity are configured:
+
+```bash
+python -m app.cli.doctor
+# or
+bash scripts/doctor.sh
+```
+
+Useful options:
+
+```bash
+python -m app.cli.doctor --skip-optional --skip-mongo
+python -m app.cli.doctor --json
+```
+
+The command is read-only except for creating the configured `DATA_DIR` and a
+short-lived write probe inside it. Warnings identify optional capabilities that
+are missing; failures identify core setup problems that should be fixed before
+running the API or automation pipeline.
+
 Additional modules handle Sentinel Hub imagery and CLI workflows:
 - `satellite/` – Sentinel image download and inference pipeline
   - `movement_history.py` – query MongoDB for recent unit positions
@@ -60,6 +84,7 @@ python -m app.pipeline.run_real_time_pipeline AREA path/to/model
 
 Several helper scripts aid with data preparation and automation:
 
+- `cli/doctor.py` – run read-only setup diagnostics. Run as `python -m app.cli.doctor`.
 - `utils/dataset_augmentation.py` – create augmented training images using
   Albumentations. Run as `python -m app.utils.dataset_augmentation SRC DST -n 5`.
 - `utils/troop_training_cli.py` – label troop images and train a classifier. Run
@@ -98,6 +123,7 @@ Several helper scripts aid with data preparation and automation:
 Example usage:
 
 ```bash
+python -m app.cli.doctor
 python -m app.cli.dashboard
 python -m app.cli.configure  # create or update a .env file
 python -m app.utils.dataset_augmentation images/raw images/augmented -n 5
