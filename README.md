@@ -152,8 +152,9 @@ basic breakage before heavier ML workflows are attempted. It installs the shared
 core requirements file, compiles the Python package and tests, runs the setup
 doctor in minimal mode, validates the lightweight API health layer, exports the
 OpenAPI contract, exports synthetic API response examples, exports the static
-dashboard mockup, exports a diagnostic artifact manifest, exports a release
-bundle index page, and executes the standard-library unit tests:
+dashboard mockup, exports a release bundle index page, exports lightweight SVG
+previews for static HTML artifacts, exports a diagnostic artifact manifest, and
+executes the standard-library unit tests:
 
 ```bash
 python -m pip install -r requirements-core.txt
@@ -162,8 +163,9 @@ python -m app.cli.doctor --skip-optional --skip-mongo --json
 python -m app.cli.export_openapi --json-path /tmp/militarynntroopprediction-openapi.json --markdown-path /tmp/militarynntroopprediction-openapi.md
 python -m app.cli.export_api_examples --json-path /tmp/militarynntroopprediction-api-response-examples.json --markdown-path /tmp/militarynntroopprediction-api-response-examples.md
 python -m app.cli.export_dashboard_mockup --html-path /tmp/militarynntroopprediction-dashboard-mockup.html
-python -m app.cli.artifact_manifest --artifact-dir /tmp --json-path /tmp/militarynntroopprediction-artifact-manifest.json --markdown-path /tmp/militarynntroopprediction-artifact-manifest.md
 python -m app.cli.release_bundle_index --artifact-dir /tmp --html-path /tmp/militarynntroopprediction-release-bundle-index.html
+python -m app.cli.export_html_previews --artifact-dir /tmp --output-dir /tmp/militarynntroopprediction-html-previews --markdown-path /tmp/militarynntroopprediction-html-previews.md
+python -m app.cli.artifact_manifest --artifact-dir /tmp --json-path /tmp/militarynntroopprediction-artifact-manifest.json --markdown-path /tmp/militarynntroopprediction-artifact-manifest.md
 python -m unittest discover -s tests -p 'test_*.py'
 ```
 
@@ -177,10 +179,11 @@ CI also creates a `ci-diagnostics` artifact bundle on every run, even failed
 runs. The bundle includes the Python and pip versions, `pip freeze`, doctor JSON,
 release health reports, the generated FastAPI OpenAPI contract, synthetic API
 response examples, a self-contained static dashboard mockup, a reviewer-friendly
-release bundle index page, SHA-256 artifact manifests, and the current help
-output for the doctor, quickstart, release health, OpenAPI export, API example
-export, dashboard mockup, release bundle index, and artifact manifest CLIs. To
-build the same bundle locally:
+release bundle index page, lightweight SVG previews for static HTML outputs,
+SHA-256 artifact manifests, and the current help output for the doctor,
+quickstart, release health, OpenAPI export, API example export, dashboard mockup,
+release bundle index, HTML preview export, and artifact manifest CLIs. To build
+the same bundle locally:
 
 ```bash
 bash scripts/ci_report.sh
@@ -232,6 +235,20 @@ python -m app.cli.release_bundle_index --artifact-dir ci_artifacts --html-path r
 # or
 bash scripts/export_release_bundle_index.sh
 ```
+
+To generate lightweight SVG preview cards for static HTML outputs without a
+browser, Playwright, Selenium, or live API server:
+
+```bash
+python -m app.cli.export_html_previews --artifact-dir ci_artifacts
+python -m app.cli.export_html_previews --artifact-dir ci_artifacts --output-dir ci_artifacts/previews --markdown-path ci_artifacts/html-previews.md
+```
+
+The preview exporter reads generated HTML files such as `dashboard-mockup.html`
+and `release-bundle-index.html`, extracts titles, headings, excerpts, and simple
+link/table/section counts, and writes small SVG cards plus a Markdown index. This
+is useful for CI artifact browsing, release notes, and quick screenshots when a
+reviewer does not want to launch the full HTML page.
 
 To index any generated diagnostics directory with file sizes, SHA-256 hashes,
 and missing expected outputs:
