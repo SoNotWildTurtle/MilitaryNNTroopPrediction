@@ -17,10 +17,14 @@ mkdir -p "${ARTIFACT_DIR}"
 "${PYTHON_BIN}" -m app.cli.export_openapi \
   --json-path "${ARTIFACT_DIR}/openapi.json" \
   --markdown-path "${ARTIFACT_DIR}/openapi-summary.md"
+"${PYTHON_BIN}" -m app.cli.export_api_examples \
+  --json-path "${ARTIFACT_DIR}/api-response-examples.json" \
+  --markdown-path "${ARTIFACT_DIR}/api-response-examples.md"
 "${PYTHON_BIN}" -m app.cli.quickstart --help > "${ARTIFACT_DIR}/quickstart-help.txt"
 "${PYTHON_BIN}" -m app.cli.doctor --help > "${ARTIFACT_DIR}/doctor-help.txt"
 "${PYTHON_BIN}" -m app.cli.release_health --help > "${ARTIFACT_DIR}/release-health-help.txt"
 "${PYTHON_BIN}" -m app.cli.export_openapi --help > "${ARTIFACT_DIR}/export-openapi-help.txt"
+"${PYTHON_BIN}" -m app.cli.export_api_examples --help > "${ARTIFACT_DIR}/export-api-examples-help.txt"
 
 cat > "${ARTIFACT_DIR}/summary.txt" <<'SUMMARY'
 MilitaryNNTroopPrediction CI diagnostic artifact bundle
@@ -34,10 +38,13 @@ Files:
 - release-health.json: machine-readable release readiness summary.
 - openapi.json: machine-readable FastAPI OpenAPI contract.
 - openapi-summary.md: human-readable API contract summary.
+- api-response-examples.json: synthetic JSON responses for dashboard and client builders.
+- api-response-examples.md: human-readable synthetic API response examples.
 - quickstart-help.txt: current quickstart CLI options.
 - doctor-help.txt: current doctor CLI options.
 - release-health-help.txt: current release health CLI options.
 - export-openapi-help.txt: current OpenAPI export CLI options.
+- export-api-examples-help.txt: current API example export CLI options.
 SUMMARY
 
 printf 'Wrote CI diagnostics to %s\n' "${ARTIFACT_DIR}"
