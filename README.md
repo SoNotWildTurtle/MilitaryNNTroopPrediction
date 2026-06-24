@@ -151,6 +151,15 @@ You can run the same checks locally with:
 bash scripts/test.sh
 ```
 
+CI also creates a `ci-diagnostics` artifact bundle on every run, even failed
+runs. The bundle includes the Python and pip versions, `pip freeze`, doctor JSON,
+and the current help output for the doctor and quickstart CLIs. To build the same
+bundle locally:
+
+```bash
+bash scripts/ci_report.sh
+```
+
 These checks are intentionally small and fast. Optional ML, dashboard, mapping,
 and training dependencies should be validated by targeted workflows as those
 areas mature.
@@ -198,7 +207,7 @@ Several helper scripts aid with data preparation and automation:
   automatically via the real-time pipeline.
 - `pipeline/monitor.py` – periodically fetch imagery from Sentinel Hub and run
   detection without manual intervention.
-- `cli/configure.py` – interactive or non-interactive setup to write environment variables to a `.env` file.
+- `cli/configure.py` – interactive or non-interative setup to write environment variables to a `.env` file.
 - `drones/live_feed.py` – capture a drone camera stream and perform live inference.
 - `detection/ground_troop.py` – detect troops from low-quality or angled images.
 - `detection/troop_identifier.py` – classify detected troops by type and uniform.
@@ -218,30 +227,3 @@ Several helper scripts aid with data preparation and automation:
 - `analysis/image_stats.py` – compute brightness and blur metrics for training datasets.
 - `analysis/movement_stats.py` – summarize average speed and heading from logged movements.
 - `analysis/hog_features.py` – extract HOG descriptors from images for feature analysis.
-- `cli/dashboard.py` – interactive Rich-based CLI to run common tasks.
-- `utils/pseudo_labeler.py` – create YOLO label files from new images.
-- `cli/self_reinforce.py` – label fresh images, merge them into the dataset and retrain the detector.
-
-Example usage:
-
-```bash
-python -m app.cli.quickstart
-python -m app.cli.configure --non-interactive
-python -m app.cli.doctor
-python -m app.cli.dashboard
-python -m app.cli.configure  # create or update a .env file interactively
-python -m app.utils.dataset_augmentation images/raw images/augmented -n 5
-python -m app.watch_directory data/sentinel path/to/model kyiv
-python -m app.pipeline.monitor kyiv models/trajectory.h5 --interval 600
-python -m app.drones.live_feed 0 --model models/trajectory.h5 \
-    --troop-model troop_model.h5 --classify-drones --classify-vehicles
-python -m app.utils.troop_training_cli images/train troop_model.h5 --csv troop_labels.csv
-python -m app.utils.human_feedback_viewer images/train predictions.csv feedback.csv
-python -m app.analysis.dbscan_cluster UNIT123 --hours 48
-python -m app.analysis.heatmap kyiv --hours 24 -o kyiv_heatmap.png
-python -m app.analysis.geo_mapper kyiv --hours 24 -o kyiv_map.html
-python -m app.movement_logger UNIT123 movements.csv
-python -m app.analysis.cluster_strategy_tracker UNIT123 --hours 24
-python -m app.analysis.state_encoder kyiv --hours 24 --res 32 -o state.npy
-python -m app.analysis.image_stats images/train -o image_stats.csv
-```
