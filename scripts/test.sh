@@ -11,4 +11,5 @@ PYTHON_BIN=${PYTHON_BIN:-python3}
 "$PYTHON_BIN" -m app.cli.export_api_examples --json-path /tmp/militarynntroopprediction-api-response-examples.json --markdown-path /tmp/militarynntroopprediction-api-response-examples.md
 "$PYTHON_BIN" -m app.cli.export_dashboard_mockup --html-path /tmp/militarynntroopprediction-dashboard-mockup.html
 "$PYTHON_BIN" -m app.cli.artifact_manifest --artifact-dir /tmp --json-path /tmp/militarynntroopprediction-artifact-manifest.json --markdown-path /tmp/militarynntroopprediction-artifact-manifest.md
+"$PYTHON_BIN" -m app.cli.release_bundle_index --artifact-dir /tmp --html-path /tmp/militarynntroopprediction-release-bundle-index.html
 "$PYTHON_BIN" -m unittest discover -s tests -p 'test_*.py'
