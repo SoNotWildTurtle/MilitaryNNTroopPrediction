@@ -28,6 +28,7 @@ mkdir -p "${ARTIFACT_DIR}"
 "${PYTHON_BIN}" -m app.cli.export_openapi --help > "${ARTIFACT_DIR}/export-openapi-help.txt"
 "${PYTHON_BIN}" -m app.cli.export_api_examples --help > "${ARTIFACT_DIR}/export-api-examples-help.txt"
 "${PYTHON_BIN}" -m app.cli.export_dashboard_mockup --help > "${ARTIFACT_DIR}/export-dashboard-mockup-help.txt"
+"${PYTHON_BIN}" -m app.cli.artifact_manifest --help > "${ARTIFACT_DIR}/artifact-manifest-help.txt"
 
 cat > "${ARTIFACT_DIR}/summary.txt" <<'SUMMARY'
 MilitaryNNTroopPrediction CI diagnostic artifact bundle
@@ -50,6 +51,14 @@ Files:
 - export-openapi-help.txt: current OpenAPI export CLI options.
 - export-api-examples-help.txt: current API example export CLI options.
 - export-dashboard-mockup-help.txt: current dashboard mockup export CLI options.
+- artifact-manifest-help.txt: current artifact manifest CLI options.
+- artifact-manifest.json: machine-readable index of generated artifacts with sizes and SHA-256 hashes.
+- artifact-manifest.md: human-readable index of generated artifacts with sizes and SHA-256 hashes.
 SUMMARY
+
+"${PYTHON_BIN}" -m app.cli.artifact_manifest \
+  --artifact-dir "${ARTIFACT_DIR}" \
+  --json-path "${ARTIFACT_DIR}/artifact-manifest.json" \
+  --markdown-path "${ARTIFACT_DIR}/artifact-manifest.md"
 
 printf 'Wrote CI diagnostics to %s\n' "${ARTIFACT_DIR}"
