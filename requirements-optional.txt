@@ -1,0 +1,10 @@
+-r requirements-core.txt
+
+tensorflow
+albumentations
+opencv-python
+ultralytics
+scikit-learn
+matplotlib
+rich
+folium
