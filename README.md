@@ -160,6 +160,7 @@ python -m compileall app tests
 python -m app.cli.doctor --skip-optional --skip-mongo --json
 python -m app.cli.export_openapi --json-path /tmp/militarynntroopprediction-openapi.json --markdown-path /tmp/militarynntroopprediction-openapi.md
 python -m app.cli.export_api_examples --json-path /tmp/militarynntroopprediction-api-response-examples.json --markdown-path /tmp/militarynntroopprediction-api-response-examples.md
+python -m app.cli.export_dashboard_mockup --html-path /tmp/militarynntroopprediction-dashboard-mockup.html
 python -m unittest discover -s tests -p 'test_*.py'
 ```
 
@@ -196,6 +197,19 @@ python -m app.cli.export_api_examples --json-path api-response-examples.json --m
 # or
 bash scripts/export_api_examples.sh
 ```
+
+To turn those same safe examples into a self-contained HTML dashboard preview:
+
+```bash
+python -m app.cli.export_dashboard_mockup
+python -m app.cli.export_dashboard_mockup --html-path dashboard-mockup.html
+# or
+bash scripts/export_dashboard_mockup.sh
+```
+
+The generated page is static and dependency-free. It is intended for user
+onboarding, dashboard prototyping, screenshots, and API client planning; it does
+not fetch live imagery, connect to MongoDB, or run prediction models.
 
 These checks are intentionally small and fast. Optional ML, dashboard, mapping,
 and training dependencies should be validated by targeted workflows as those
@@ -236,6 +250,7 @@ Several helper scripts aid with data preparation and automation:
 - `cli/doctor.py` – run read-only setup diagnostics. Run as `python -m app.cli.doctor`.
 - `cli/export_openapi.py` – export the FastAPI OpenAPI contract and summary without starting the API. Run as `python -m app.cli.export_openapi`.
 - `cli/export_api_examples.py` – export synthetic API response examples for dashboards, documentation, and client tests. Run as `python -m app.cli.export_api_examples`.
+- `cli/export_dashboard_mockup.py` – export a static HTML dashboard preview from synthetic API examples. Run as `python -m app.cli.export_dashboard_mockup`.
 - `utils/dataset_augmentation.py` – create augmented training images using
   Albumentations. Run as `python -m app.utils.dataset_augmentation SRC DST -n 5`.
 - `utils/troop_training_cli.py` – label troop images and train a classifier. Run
