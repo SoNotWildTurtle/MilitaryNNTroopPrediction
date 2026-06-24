@@ -14,11 +14,40 @@ This repository provides a starting point for a machine vision application that 
 - `scripts/` – setup and startup scripts
 - `tests/` – lightweight smoke tests for setup and CLI behavior
 - `.github/workflows/ci.yml` – GitHub Actions smoke checks for pushes and pull requests
+- `requirements-core.txt` – minimal packages for API, doctor, and CI smoke checks
+- `requirements-optional.txt` – heavier ML, dashboard, mapping, and training packages
 - `notes.md` – project notes
 - `dev_notes.md` – developer notes
 - `goals.md` – high-level roadmap
 
 ## Usage
+
+### 1. Install dependencies
+
+For a fast smoke-test/API environment:
+
+```bash
+python -m pip install -r requirements-core.txt
+```
+
+For the full local toolkit, including ML, dashboard, mapping, and training helpers:
+
+```bash
+python -m pip install -r requirements-optional.txt
+```
+
+You can also use the setup wrapper, which installs the full optional stack by default:
+
+```bash
+bash scripts/setup.sh
+```
+
+Set `INSTALL_PROFILE=core` when you only want the smaller runtime used by CI:
+
+```bash
+INSTALL_PROFILE=core bash scripts/setup.sh
+```
+
 Run `scripts/start.sh` to install dependencies and launch the API:
 
 ```bash
@@ -58,14 +87,21 @@ running the API or automation pipeline.
 ### Automated checks
 
 A lightweight GitHub Actions workflow runs on pushes and pull requests to catch
-basic breakage before heavier ML workflows are attempted. It installs only core
-runtime dependencies, compiles the Python package and tests, runs the setup
+basic breakage before heavier ML workflows are attempted. It installs the shared
+core requirements file, compiles the Python package and tests, runs the setup
 doctor in minimal mode, and executes the standard-library unit tests:
 
 ```bash
+python -m pip install -r requirements-core.txt
 python -m compileall app tests
 python -m app.cli.doctor --skip-optional --skip-mongo --json
 python -m unittest discover -s tests -p 'test_*.py'
+```
+
+You can run the same checks locally with:
+
+```bash
+bash scripts/test.sh
 ```
 
 These checks are intentionally small and fast. Optional ML, dashboard, mapping,
