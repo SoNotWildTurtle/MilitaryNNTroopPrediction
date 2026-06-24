@@ -7,7 +7,7 @@ from rich.panel import Panel
 from ..pipeline import realtime, monitor
 from ..analysis import heatmap
 from ..utils.human_feedback_viewer import launch_feedback_gui
-from . import doctor
+from . import doctor, quickstart
 
 
 console = Console()
@@ -27,6 +27,23 @@ def _show_doctor_results() -> None:
             console.print(f"    fix: {result.remediation}", style="dim")
 
 
+def _run_quickstart() -> None:
+    """Run the safe quickstart path from the dashboard."""
+
+    console.print(Panel("Creating .env if needed and running core diagnostics.", title="Quickstart"))
+    exit_code = quickstart.run_quickstart(
+        quickstart.QuickstartOptions(
+            skip_install=True,
+            skip_optional_checks=True,
+            skip_mongo=True,
+        )
+    )
+    if exit_code:
+        console.print("Quickstart found required setup problems.", style="bold red")
+    else:
+        console.print("Quickstart completed successfully.", style="bold green")
+
+
 def _ask_int(label: str, default: str) -> int:
     """Prompt for an integer with friendly validation instead of a traceback."""
 
@@ -42,20 +59,23 @@ def run_dashboard() -> None:
     """Launch an interactive CLI for common tasks."""
     console.print(Panel("Troop Analysis Dashboard", style="bold cyan"))
     while True:
-        console.print("\n[1] Run setup doctor")
-        console.print("[2] Run pipeline once")
-        console.print("[3] Monitor area continuously")
-        console.print("[4] Generate heatmap")
-        console.print("[5] Launch feedback GUI")
-        console.print("[6] Exit")
-        choice = Prompt.ask("Select option", choices=["1", "2", "3", "4", "5", "6"], default="6")
+        console.print("\n[1] Run first-run quickstart")
+        console.print("[2] Run setup doctor")
+        console.print("[3] Run pipeline once")
+        console.print("[4] Monitor area continuously")
+        console.print("[5] Generate heatmap")
+        console.print("[6] Launch feedback GUI")
+        console.print("[7] Exit")
+        choice = Prompt.ask("Select option", choices=["1", "2", "3", "4", "5", "6", "7"], default="7")
         if choice == "1":
-            _show_doctor_results()
+            _run_quickstart()
         elif choice == "2":
+            _show_doctor_results()
+        elif choice == "3":
             area = Prompt.ask("Area name")
             model = Prompt.ask("Trajectory model", default="models/trajectory.h5")
             realtime.process_area(area, model)
-        elif choice == "3":
+        elif choice == "4":
             area = Prompt.ask("Area name")
             model = Prompt.ask("Trajectory model", default="models/trajectory.h5")
             interval = _ask_int("Interval seconds", default="300")
@@ -64,12 +84,12 @@ def run_dashboard() -> None:
                 monitor.monitor(area, model, interval)
             except KeyboardInterrupt:
                 console.print("Monitoring stopped")
-        elif choice == "4":
+        elif choice == "5":
             area = Prompt.ask("Area name")
             hours = _ask_int("Hours", default="24")
             output = Prompt.ask("Output file", default=f"{area}_heatmap.png")
             heatmap.generate_heatmap(area, hours, output=Path(output))
-        elif choice == "5":
+        elif choice == "6":
             img_dir = Path(Prompt.ask("Image directory"))
             pred_csv = Path(Prompt.ask("Predictions CSV"))
             out_csv = Path(Prompt.ask("Output feedback CSV"))
