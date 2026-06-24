@@ -1,0 +1,4 @@
+fastapi
+pymongo
+pillow
+uvicorn
