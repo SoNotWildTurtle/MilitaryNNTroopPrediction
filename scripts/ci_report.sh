@@ -25,6 +25,7 @@ mkdir -p "${ARTIFACT_DIR}"
 "${PYTHON_BIN}" -m app.cli.quickstart --help > "${ARTIFACT_DIR}/quickstart-help.txt"
 "${PYTHON_BIN}" -m app.cli.doctor --help > "${ARTIFACT_DIR}/doctor-help.txt"
 "${PYTHON_BIN}" -m app.cli.release_health --help > "${ARTIFACT_DIR}/release-health-help.txt"
+"${PYTHON_BIN}" -m app.cli.release_notes --help > "${ARTIFACT_DIR}/release-notes-help.txt"
 "${PYTHON_BIN}" -m app.cli.export_openapi --help > "${ARTIFACT_DIR}/export-openapi-help.txt"
 "${PYTHON_BIN}" -m app.cli.export_api_examples --help > "${ARTIFACT_DIR}/export-api-examples-help.txt"
 "${PYTHON_BIN}" -m app.cli.export_dashboard_mockup --help > "${ARTIFACT_DIR}/export-dashboard-mockup-help.txt"
@@ -42,6 +43,8 @@ Files:
 - doctor-minimal.json: machine-readable core setup diagnostics.
 - release-health.md: human-readable release readiness summary.
 - release-health.json: machine-readable release readiness summary.
+- release-notes.md: manager-friendly release notes generated from diagnostics.
+- release-notes.json: machine-readable release notes generated from diagnostics.
 - openapi.json: machine-readable FastAPI OpenAPI contract.
 - openapi-summary.md: human-readable API contract summary.
 - api-response-examples.json: synthetic JSON responses for dashboard and client builders.
@@ -54,6 +57,7 @@ Files:
 - quickstart-help.txt: current quickstart CLI options.
 - doctor-help.txt: current doctor CLI options.
 - release-health-help.txt: current release health CLI options.
+- release-notes-help.txt: current release notes CLI options.
 - export-openapi-help.txt: current OpenAPI export CLI options.
 - export-api-examples-help.txt: current API example export CLI options.
 - export-dashboard-mockup-help.txt: current dashboard mockup export CLI options.
@@ -70,6 +74,28 @@ SUMMARY
 "${PYTHON_BIN}" -m app.cli.export_html_previews \
   --artifact-dir "${ARTIFACT_DIR}" \
   --markdown-path "${ARTIFACT_DIR}/html-previews.md"
+
+# Release notes summarize the manifest, while the manifest must also include the
+# final release-note files. A two-pass handoff keeps both human notes and the
+# final machine-readable manifest useful without requiring any network calls.
+"${PYTHON_BIN}" -m app.cli.artifact_manifest \
+  --artifact-dir "${ARTIFACT_DIR}" \
+  --json-path "${ARTIFACT_DIR}/artifact-manifest.json" \
+  --markdown-path "${ARTIFACT_DIR}/artifact-manifest.md"
+"${PYTHON_BIN}" -m app.cli.release_notes \
+  --health-json "${ARTIFACT_DIR}/release-health.json" \
+  --manifest-json "${ARTIFACT_DIR}/artifact-manifest.json" \
+  --markdown-path "${ARTIFACT_DIR}/release-notes.md" \
+  --json-path "${ARTIFACT_DIR}/release-notes.json"
+"${PYTHON_BIN}" -m app.cli.artifact_manifest \
+  --artifact-dir "${ARTIFACT_DIR}" \
+  --json-path "${ARTIFACT_DIR}/artifact-manifest.json" \
+  --markdown-path "${ARTIFACT_DIR}/artifact-manifest.md"
+"${PYTHON_BIN}" -m app.cli.release_notes \
+  --health-json "${ARTIFACT_DIR}/release-health.json" \
+  --manifest-json "${ARTIFACT_DIR}/artifact-manifest.json" \
+  --markdown-path "${ARTIFACT_DIR}/release-notes.md" \
+  --json-path "${ARTIFACT_DIR}/release-notes.json"
 "${PYTHON_BIN}" -m app.cli.artifact_manifest \
   --artifact-dir "${ARTIFACT_DIR}" \
   --json-path "${ARTIFACT_DIR}/artifact-manifest.json" \
