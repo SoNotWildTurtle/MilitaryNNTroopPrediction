@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-__all__ = ["run_dashboard", "run_config_setup", "self_reinforce"]
+__all__ = ["run_dashboard", "run_config_setup", "run_quickstart", "self_reinforce"]
 
 
 def __getattr__(name: str) -> Any:
@@ -22,6 +22,10 @@ def __getattr__(name: str) -> Any:
         from .configure import run_config_setup
 
         return run_config_setup
+    if name == "run_quickstart":
+        from .quickstart import run_quickstart
+
+        return run_quickstart
     if name == "self_reinforce":
         from .self_reinforce import self_reinforce
 
