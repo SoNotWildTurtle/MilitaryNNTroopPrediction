@@ -13,6 +13,7 @@ This repository provides a starting point for a machine vision application that 
   - `api/` – FastAPI endpoints
 - `scripts/` – setup and startup scripts
 - `tests/` – lightweight smoke tests for setup and CLI behavior
+- `.env.example` – copyable first-run configuration template
 - `.github/workflows/ci.yml` – GitHub Actions smoke checks for pushes and pull requests
 - `requirements-core.txt` – minimal packages for API, doctor, and CI smoke checks
 - `requirements-optional.txt` – heavier ML, dashboard, mapping, and training packages
@@ -60,11 +61,32 @@ This will start a local server at `http://localhost:8000` with several endpoints
 - `GET /detections/{area}?limit=10` - fetch recent detections
 - `GET /predictions/{area}?limit=10` - fetch recent trajectory predictions
 
-### Check your setup first
+### 2. Create local configuration
+
+The app reads a simple `.env` file when present. To create one with safe local
+defaults from `.env.example`, run:
+
+```bash
+python -m app.cli.configure --non-interactive
+```
+
+For guided setup, run the interactive mode instead:
+
+```bash
+python -m app.cli.configure
+```
+
+Use `--path custom.env` to write a different file and `--overwrite` to replace an
+existing file. The default configuration uses `data/`, `mongodb://localhost:27017`,
+and `troop_db`; Sentinel Hub values can be left blank when you want placeholder
+imagery instead of live Sentinel imagery.
+
+### 3. Check your setup first
 
 Before launching heavier workflows, run the setup doctor to verify that Python,
-core dependencies, optional analysis dependencies, the data directory, Sentinel
-Hub environment variables, and MongoDB socket connectivity are configured:
+configuration templates, local environment files, core dependencies, optional
+analysis dependencies, the data directory, Sentinel Hub environment variables,
+and MongoDB socket connectivity are configured:
 
 ```bash
 python -m app.cli.doctor
@@ -76,6 +98,7 @@ Useful options:
 
 ```bash
 python -m app.cli.doctor --skip-optional --skip-mongo
+python -m app.cli.doctor --skip-env-files
 python -m app.cli.doctor --json
 ```
 
@@ -119,7 +142,7 @@ Additional modules handle Sentinel Hub imagery and CLI workflows:
 
 ## Environment
 The pipeline can optionally fetch imagery from Sentinel Hub. Set the following
-environment variables before running the scripts:
+environment variables before running the scripts, or put them in `.env`:
 
 ```
 export SENTINEL_CLIENT_ID="your-client-id"
@@ -150,7 +173,7 @@ Several helper scripts aid with data preparation and automation:
   automatically via the real-time pipeline.
 - `pipeline/monitor.py` – periodically fetch imagery from Sentinel Hub and run
   detection without manual intervention.
-- `cli/configure.py` – interactive setup to write environment variables to a `.env` file.
+- `cli/configure.py` – interactive or non-interactive setup to write environment variables to a `.env` file.
 - `drones/live_feed.py` – capture a drone camera stream and perform live inference.
 - `detection/ground_troop.py` – detect troops from low-quality or angled images.
 - `detection/troop_identifier.py` – classify detected troops by type and uniform.
@@ -177,9 +200,10 @@ Several helper scripts aid with data preparation and automation:
 Example usage:
 
 ```bash
+python -m app.cli.configure --non-interactive
 python -m app.cli.doctor
 python -m app.cli.dashboard
-python -m app.cli.configure  # create or update a .env file
+python -m app.cli.configure  # create or update a .env file interactively
 python -m app.utils.dataset_augmentation images/raw images/augmented -n 5
 python -m app.watch_directory data/sentinel path/to/model kyiv
 python -m app.pipeline.monitor kyiv models/trajectory.h5 --interval 600
