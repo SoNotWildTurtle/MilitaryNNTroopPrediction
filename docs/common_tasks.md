@@ -8,8 +8,7 @@ The root `Makefile` gives contributors one stable command surface for setup, val
 make help
 make install-core
 make configure
-make doctor
-make test
+make verify
 ```
 
 Use `make install-core` for the lightweight API, doctor, and CI smoke-test environment. Use `make install-optional` only when you need the heavier ML, dashboard, mapping, and training packages.
@@ -24,9 +23,21 @@ make install-core
 make configure
 make doctor
 make test
+make verify
 ```
 
 Then review `CONTRIBUTING.md` before opening a pull request. It summarizes the lawful defensive scope, test expectations, documentation checklist, and PR summary format.
+
+## One-command verification
+
+```bash
+make verify
+make verify ARTIFACT_DIR=ci_artifacts/local-verify
+```
+
+`make verify` intentionally chains the existing safe validation targets: `doctor`, `test`, and `ci-report`. It is the best pre-PR command when you want one local pass that checks minimal setup health, compiles and runs the unit tests, and builds the reviewer diagnostics bundle.
+
+After it completes, open `ci_artifacts/release-bundle-index.html` first. That static page links the health report, release notes, OpenAPI contract, synthetic examples, dashboard preview, HTML previews, and artifact manifest.
 
 ## Runtime
 
@@ -78,6 +89,7 @@ This removes generated local artifacts, Python bytecode caches, and `.pytest_cac
 | `make quickstart` | Run the guided conservative first-run workflow. |
 | `make doctor` | Run minimal read-only diagnostics. |
 | `make test` | Run the local smoke checks and standard-library test suite. |
+| `make verify` | Run doctor, tests, and diagnostics bundle generation in one pre-PR command. |
 | `make ci-report` | Build the same diagnostics bundle used by CI artifacts. |
 | `make openapi` | Export OpenAPI JSON and Markdown summaries. |
 | `make examples` | Export synthetic API response examples. |
