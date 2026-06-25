@@ -179,8 +179,8 @@ core requirements file, compiles the Python package and tests, runs the setup
 doctor in minimal mode, validates the lightweight API health layer, exports the
 OpenAPI contract, exports synthetic API response examples, exports the static
 dashboard mockup, exports a release bundle index page, exports lightweight SVG
-previews for static HTML artifacts, exports a diagnostic artifact manifest, and
-executes the standard-library unit tests:
+previews for static HTML artifacts, exports a diagnostic artifact manifest,
+exports an operator runbook index, and executes the standard-library unit tests:
 
 ```bash
 python -m pip install -r requirements-core.txt
@@ -192,6 +192,7 @@ python -m app.cli.export_dashboard_mockup --html-path /tmp/militarynntrooppredic
 python -m app.cli.release_bundle_index --artifact-dir /tmp --html-path /tmp/militarynntroopprediction-release-bundle-index.html
 python -m app.cli.export_html_previews --artifact-dir /tmp --output-dir /tmp/militarynntroopprediction-html-previews --markdown-path /tmp/militarynntroopprediction-html-previews.md
 python -m app.cli.artifact_manifest --artifact-dir /tmp --json-path /tmp/militarynntroopprediction-artifact-manifest.json --markdown-path /tmp/militarynntroopprediction-artifact-manifest.md
+python -m app.cli.operator_runbook_index --artifact-dir /tmp --markdown-path /tmp/militarynntroopprediction-operator-runbook-index.md --json-path /tmp/militarynntroopprediction-operator-runbook-index.json
 python -m app.cli.release_notes --health-json /tmp/militarynntroopprediction-release-health.json --manifest-json /tmp/militarynntroopprediction-artifact-manifest.json --markdown-path /tmp/militarynntroopprediction-release-notes.md --json-path /tmp/militarynntroopprediction-release-notes.json
 python -m unittest discover -s tests -p 'test_*.py'
 ```
@@ -216,10 +217,11 @@ runs. The bundle includes the Python and pip versions, `pip freeze`, doctor JSON
 release health reports, generated release notes, the generated FastAPI OpenAPI
 contract, synthetic API response examples, a self-contained static dashboard
 mockup, a reviewer-friendly release bundle index page, lightweight SVG previews
-for static HTML outputs, SHA-256 artifact manifests, and the current help output
-for the doctor, quickstart, release health, release notes, OpenAPI export, API
-example export, dashboard mockup, release bundle index, HTML preview export, and
-artifact manifest CLIs. To build the same bundle locally:
+for static HTML outputs, SHA-256 artifact manifests, an operator runbook index,
+and the current help output for the doctor, quickstart, release health, release
+notes, reviewer handoff, CI triage summary, operator runbook index, OpenAPI
+export, API example export, dashboard mockup, release bundle index, HTML preview
+export, and artifact manifest CLIs. To build the same bundle locally:
 
 ```bash
 bash scripts/ci_report.sh
@@ -318,17 +320,12 @@ python -m app.cli.artifact_manifest --artifact-dir ci_artifacts --json-path mani
 make manifest
 ```
 
-To turn a release health JSON file plus an artifact manifest into manager-friendly
-release notes:
+To generate a reviewer- and operator-friendly map of safe local commands,
+repository docs, generated artifacts, first steps, and safe scope:
 
 ```bash
-python -m app.cli.release_notes
-python -m app.cli.release_notes --health-json ci_artifacts/release-health.json --manifest-json ci_artifacts/artifact-manifest.json --markdown-path ci_artifacts/release-notes.md --json-path ci_artifacts/release-notes.json
+python -m app.cli.operator_runbook_index --artifact-dir ci_artifacts
+python -m app.cli.operator_runbook_index --artifact-dir ci_artifacts --markdown-path operator-runbook-index.md --json-path operator-runbook-index.json
 # or
-make release-notes
+make runbook-index
 ```
-
-The release notes summarize readiness, health counts, missing expected artifacts,
-priority failures or warnings, reviewer artifacts, and a recommended next step.
-This is useful when sharing CI bundles with users who need a quick analytical
-handoff rather than raw JSON diagnostics.
