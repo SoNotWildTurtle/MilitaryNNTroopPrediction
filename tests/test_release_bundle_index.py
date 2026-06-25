@@ -25,12 +25,24 @@ class ReleaseBundleIndexTests(unittest.TestCase):
             )
             (artifact_dir / "openapi-summary.md").write_text("# API\n", encoding="utf-8")
             (artifact_dir / "dashboard-mockup.html").write_text("<h1>Mockup</h1>\n", encoding="utf-8")
+            (artifact_dir / "triage-summary.md").write_text(
+                "# CI triage summary\n\nRecommended rerun: make verify\n",
+                encoding="utf-8",
+            )
+            (artifact_dir / "triage-summary.json").write_text(
+                '{"recommended_rerun":"make verify"}\n',
+                encoding="utf-8",
+            )
             (artifact_dir / "summary.txt").write_text("bundle summary\n", encoding="utf-8")
 
             html_text = render_html(artifact_dir)
 
         self.assertIn("Release bundle index", html_text)
         self.assertIn("Release readiness summary", html_text)
+        self.assertIn("CI triage summary and rerun targets", html_text)
+        self.assertIn('href="triage-summary.md"', html_text)
+        self.assertIn('href="triage-summary.json"', html_text)
+        self.assertIn("Recommended rerun: make verify", html_text)
         self.assertIn('href="openapi-summary.md"', html_text)
         self.assertIn('href="dashboard-mockup.html"', html_text)
         self.assertIn("bundle summary", html_text)
