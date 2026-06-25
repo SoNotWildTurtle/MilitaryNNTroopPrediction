@@ -27,6 +27,34 @@ HIGHLIGHTED_ARTIFACTS: Mapping[str, str] = {
     "summary.txt": "Plain-language bundle summary",
 }
 
+REVIEW_ORDER_STEPS: tuple[tuple[str, str, str], ...] = (
+    (
+        "Confirm bundle readiness",
+        "release-health.md",
+        "Start with the release health summary to decide whether the bundle is ready, warning-only, or blocked.",
+    ),
+    (
+        "Use the reviewer handoff",
+        "reviewer-handoff.md",
+        "Copy the handoff into a PR, issue, or chat so another reviewer gets status, rerun command, and missing-artifact context.",
+    ),
+    (
+        "Triage failures next",
+        "triage-summary.md",
+        "When CI fails or artifacts are absent, use the triage summary before opening lower-level logs.",
+    ),
+    (
+        "Verify artifact inventory",
+        "artifact-manifest.md",
+        "Check expected outputs, sizes, and SHA-256 hashes before sharing the bundle.",
+    ),
+    (
+        "Review user-facing contracts",
+        "openapi-summary.md",
+        "Inspect the API contract, synthetic examples, and dashboard mockup for interface drift.",
+    ),
+)
+
 STATUS_CLASS_BY_VALUE: Mapping[str, str] = {
     "pass": "status-ready",
     "passed": "status-ready",
@@ -111,6 +139,37 @@ def _artifact_link(path: str, label: str) -> str:
     safe_path = html.escape(path, quote=True)
     safe_label = html.escape(label)
     return f'<a href="{safe_path}">{safe_label}</a>'
+
+
+def _artifact_status(path: str, entries_by_path: Mapping[str, Dict[str, Any]]) -> str:
+    return "present" if path in entries_by_path else "missing"
+
+
+def _review_order_html(entries_by_path: Mapping[str, Dict[str, Any]]) -> str:
+    """Render the recommended review sequence for the bundle landing page."""
+
+    rows: List[str] = []
+    for index, (action, artifact_path, detail) in enumerate(REVIEW_ORDER_STEPS, start=1):
+        status = _artifact_status(artifact_path, entries_by_path)
+        rows.append(
+            "<tr>"
+            f"<td><strong>{index}</strong></td>"
+            f"<td>{html.escape(action)}</td>"
+            f"<td>{_artifact_link(artifact_path, artifact_path)}</td>"
+            f"<td>{_status_badge(status)}</td>"
+            f"<td>{html.escape(detail)}</td>"
+            "</tr>"
+        )
+    return (
+        "<section>"
+        "<h2>Review order checklist</h2>"
+        '<p class="muted">Follow this compact path when reviewing a bundle or reproducing a CI failure locally.</p>'
+        "<table>"
+        "<thead><tr><th>#</th><th>Action</th><th>Artifact</th><th>Status</th><th>Why it matters</th></tr></thead>"
+        f"<tbody>{''.join(rows)}</tbody>"
+        "</table>"
+        "</section>"
+    )
 
 
 def _highlight_rows(entries_by_path: Mapping[str, Dict[str, Any]]) -> Iterable[str]:
@@ -274,6 +333,7 @@ def render_html(artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> str:
     if summary_preview:
         summary_html = "<section><h2>Bundle summary</h2><pre>" + html.escape(summary_preview) + "</pre></section>"
 
+    review_order_html = _review_order_html(entries_by_path)
     reviewer_handoff_html = _reviewer_handoff_html(artifact_dir, reviewer_handoff)
     triage_html = _triage_summary_html(artifact_dir)
 
@@ -331,6 +391,8 @@ def render_html(artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> str:
     <div class="grid">
       {''.join(cards)}
     </div>
+
+    {review_order_html}
 
     <section>
       <h2>Start here</h2>
