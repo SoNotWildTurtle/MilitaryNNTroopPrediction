@@ -8,7 +8,7 @@ PORT ?= 8000
 ARTIFACT_DIR ?= ci_artifacts
 TRIAGE_ARTIFACT_DIR ?= ci_artifacts/local-ci
 
-.PHONY: help install-core install-optional configure doctor quickstart api test verify ci-triage ci-report openapi examples dashboard bundle-index previews manifest release-notes reviewer-handoff validate-handoff triage-summary clean
+.PHONY: help install-core install-optional configure doctor quickstart api test verify ci-triage ci-report openapi examples dashboard bundle-index previews manifest release-notes reviewer-handoff operator-digest validate-handoff triage-summary clean
 
 help:
 	@printf 'MilitaryNNTroopPrediction common tasks\n\n'
@@ -33,6 +33,7 @@ help:
 	@printf '  make manifest          Export artifact manifest with SHA-256 hashes\n'
 	@printf '  make release-notes     Export manager-friendly release notes\n'
 	@printf '  make reviewer-handoff  Export copyable reviewer handoff notes\n'
+	@printf '  make operator-digest   Export concise first-read operator summary\n'
 	@printf '  make triage-summary    Export CI triage summary and narrow rerun targets\n\n'
 	@printf 'Runtime:\n'
 	@printf '  make api               Launch FastAPI on HOST=$(HOST) PORT=$(PORT)\n\n'
@@ -61,7 +62,7 @@ test:
 	bash scripts/test.sh
 
 verify: doctor test ci-report validate-handoff
-	@printf '\nVerification complete. Review $(ARTIFACT_DIR)/release-bundle-index.html for generated diagnostics.\n'
+	@printf '\nVerification complete. Review $(ARTIFACT_DIR)/operator-digest.md first, then $(ARTIFACT_DIR)/release-bundle-index.html for generated diagnostics.\n'
 
 ci-triage:
 	@printf 'CI triage quick path\n\n'
@@ -70,14 +71,15 @@ ci-triage:
 	@printf '   make install-core\n\n'
 	@printf '2. Reproduce hosted validation locally with an isolated local artifact directory:\n'
 	@printf '   make verify ARTIFACT_DIR=$(TRIAGE_ARTIFACT_DIR)\n\n'
-	@printf '3. Open the reviewer landing page first:\n'
+	@printf '3. Open the operator digest and reviewer landing page first:\n'
+	@printf '   $(TRIAGE_ARTIFACT_DIR)/operator-digest.md\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/release-bundle-index.html\n\n'
 	@printf '4. If the bundle is incomplete, inspect the generated handoff, its validation result, and the triage summary, then rerun the narrow target:\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/reviewer-handoff.md\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/reviewer-handoff-validation.json\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/triage-summary.md\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/artifact-manifest.md\n'
-	@printf '   make doctor | make test | make ci-report | make validate-handoff | make openapi | make examples | make dashboard | make previews | make manifest | make release-notes | make reviewer-handoff | make triage-summary\n\n'
+	@printf '   make doctor | make test | make ci-report | make validate-handoff | make openapi | make examples | make dashboard | make previews | make manifest | make release-notes | make reviewer-handoff | make operator-digest | make triage-summary\n\n'
 	@printf 'Safe-scope reminder: keep triage limited to local setup, deterministic tests, synthetic examples, API contracts, generated artifacts, and documentation.\n'
 
 ci-report:
@@ -126,6 +128,12 @@ reviewer-handoff:
 		--artifact-dir $(ARTIFACT_DIR) \
 		--markdown-path $(ARTIFACT_DIR)/reviewer-handoff.md \
 		--json-path $(ARTIFACT_DIR)/reviewer-handoff.json
+
+operator-digest:
+	$(PYTHON_BIN) -m app.cli.operator_digest \
+		--artifact-dir $(ARTIFACT_DIR) \
+		--markdown-path $(ARTIFACT_DIR)/operator-digest.md \
+		--json-path $(ARTIFACT_DIR)/operator-digest.json
 
 validate-handoff:
 	$(PYTHON_BIN) scripts/validate_reviewer_handoff.py $(ARTIFACT_DIR)/reviewer-handoff.json --json
