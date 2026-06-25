@@ -43,9 +43,9 @@ Hosted CI now runs the same entrypoint:
 make verify ARTIFACT_DIR=ci_artifacts
 ```
 
-That keeps local and pull-request validation aligned. When CI fails, reproduce the run locally with the same command, then open `ci_artifacts/release-bundle-index.html` first to inspect generated health reports, release notes, API contracts, examples, previews, and manifests.
+That keeps local and pull-request validation aligned. When CI fails, reproduce the run locally with the same command, then open `ci_artifacts/release-bundle-index.html` first to inspect generated health reports, release notes, triage guidance, API contracts, examples, previews, and manifests.
 
-After it completes, open `ci_artifacts/release-bundle-index.html` first. That static page links the health report, release notes, OpenAPI contract, synthetic examples, dashboard preview, HTML previews, and artifact manifest.
+After it completes, open `ci_artifacts/release-bundle-index.html` first. That static page links the health report, release notes, triage summary, OpenAPI contract, synthetic examples, dashboard preview, HTML previews, and artifact manifest.
 
 ## CI failure triage
 
@@ -62,7 +62,7 @@ make install-core
 make verify ARTIFACT_DIR=ci_artifacts/local-ci
 ```
 
-Then open `ci_artifacts/local-ci/release-bundle-index.html` and check `artifact-manifest.md` for missing generated outputs. The troubleshooting guide maps common symptoms to the narrow target to rerun, such as `make doctor`, `make test`, `make ci-report`, `make openapi`, `make examples`, `make dashboard`, `make previews`, `make manifest`, or `make release-notes`.
+Then open `ci_artifacts/local-ci/release-bundle-index.html` and check `triage-summary.md` first. It summarizes failing health checks, missing expected artifacts, and the narrow target to rerun, such as `make doctor`, `make test`, `make ci-report`, `make openapi`, `make examples`, `make dashboard`, `make previews`, `make manifest`, `make release-notes`, or `make triage-summary`.
 
 ## Runtime
 
@@ -84,6 +84,7 @@ make bundle-index
 make previews
 make manifest
 make release-notes
+make triage-summary
 ```
 
 By default, artifact targets write into `ci_artifacts/`. Override the output directory when comparing multiple runs:
@@ -93,7 +94,7 @@ make ci-report ARTIFACT_DIR=ci_artifacts/local-smoke
 make openapi ARTIFACT_DIR=ci_artifacts/api-contract-review
 ```
 
-Open `ci_artifacts/release-bundle-index.html` first when reviewing a generated diagnostics bundle. It links the health report, release notes, OpenAPI contract, synthetic API examples, static dashboard mockup, HTML previews, and manifest from one dependency-free page.
+Open `ci_artifacts/release-bundle-index.html` first when reviewing a generated diagnostics bundle. It links the health report, release notes, triage summary, OpenAPI contract, synthetic API examples, static dashboard mockup, HTML previews, and manifest from one dependency-free page.
 
 ## Cleanup
 
@@ -124,5 +125,6 @@ This removes generated local artifacts, Python bytecode caches, and `.pytest_cac
 | `make previews` | Export SVG previews for static HTML outputs. |
 | `make manifest` | Export artifact manifest JSON and Markdown with SHA-256 hashes. |
 | `make release-notes` | Export manager-friendly release notes from diagnostics. |
+| `make triage-summary` | Export CI triage Markdown/JSON with failing checks, missing artifacts, and narrow rerun targets. |
 | `make api` | Start the FastAPI server. |
 | `make clean` | Remove generated local artifacts and caches. |
