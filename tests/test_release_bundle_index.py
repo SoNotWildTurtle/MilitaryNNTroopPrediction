@@ -61,6 +61,7 @@ class ReleaseBundleIndexTests(unittest.TestCase):
         self.assertIn("Handoff status", html_text)
         self.assertIn("Review status", html_text)
         self.assertIn("READY", html_text)
+        self.assertIn('class="badge status-ready"', html_text)
         self.assertIn("Release status", html_text)
         self.assertIn("Recommended local rerun", html_text)
         self.assertIn("Recommended rerun", html_text)
@@ -88,7 +89,34 @@ class ReleaseBundleIndexTests(unittest.TestCase):
 
         self.assertIn("Reviewer handoff", html_text)
         self.assertIn("MISSING", html_text)
+        self.assertIn('class="badge status-attention"', html_text)
         self.assertIn("Generate reviewer-handoff.json", html_text)
+
+    def test_render_html_badges_warning_reviewer_status(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            artifact_dir = Path(temp_dir)
+            (artifact_dir / "release-health.json").write_text(
+                '{"status":"review_warnings","checks":[]}\n',
+                encoding="utf-8",
+            )
+            (artifact_dir / "reviewer-handoff.json").write_text(
+                "{\n"
+                '  "review_status": "needs_attention",\n'
+                '  "release_status": "review_warnings",\n'
+                '  "recommended_rerun": "make verify",\n'
+                '  "missing_expected": ["release-health.md"],\n'
+                '  "missing_key_artifacts": ["reviewer-handoff.md"]\n'
+                "}\n",
+                encoding="utf-8",
+            )
+
+            html_text = render_html(artifact_dir)
+
+        self.assertIn("NEEDS ATTENTION", html_text)
+        self.assertIn("REVIEW WARNINGS", html_text)
+        self.assertIn('class="badge status-attention"', html_text)
+        self.assertIn('class="badge status-warning"', html_text)
+        self.assertIn('class="handoff-status status-attention-panel"', html_text)
 
     def test_write_html_creates_parent_directories(self) -> None:
         with TemporaryDirectory() as temp_dir:
