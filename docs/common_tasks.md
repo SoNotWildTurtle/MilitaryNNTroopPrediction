@@ -37,6 +37,14 @@ make verify ARTIFACT_DIR=ci_artifacts/local-verify
 
 `make verify` intentionally chains the existing safe validation targets: `doctor`, `test`, and `ci-report`. It is the best pre-PR command when you want one local pass that checks minimal setup health, compiles and runs the unit tests, and builds the reviewer diagnostics bundle.
 
+Hosted CI now runs the same entrypoint:
+
+```bash
+make verify ARTIFACT_DIR=ci_artifacts
+```
+
+That keeps local and pull-request validation aligned. When CI fails, reproduce the run locally with the same command, then open `ci_artifacts/release-bundle-index.html` first to inspect generated health reports, release notes, API contracts, examples, previews, and manifests.
+
 After it completes, open `ci_artifacts/release-bundle-index.html` first. That static page links the health report, release notes, OpenAPI contract, synthetic examples, dashboard preview, HTML previews, and artifact manifest.
 
 ## Runtime
@@ -89,7 +97,7 @@ This removes generated local artifacts, Python bytecode caches, and `.pytest_cac
 | `make quickstart` | Run the guided conservative first-run workflow. |
 | `make doctor` | Run minimal read-only diagnostics. |
 | `make test` | Run the local smoke checks and standard-library test suite. |
-| `make verify` | Run doctor, tests, and diagnostics bundle generation in one pre-PR command. |
+| `make verify` | Run doctor, tests, and diagnostics bundle generation in one pre-PR command; CI uses this same target. |
 | `make ci-report` | Build the same diagnostics bundle used by CI artifacts. |
 | `make openapi` | Export OpenAPI JSON and Markdown summaries. |
 | `make examples` | Export synthetic API response examples. |
