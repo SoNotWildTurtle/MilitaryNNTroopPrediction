@@ -12,7 +12,7 @@ This repository provides a starting point for a machine vision application that 
   - `pipeline/` – scripts combining ingestion, detection and prediction
   - `api/` – FastAPI endpoints and typed response schemas
 - `scripts/` – setup, diagnostics, quickstart, and startup scripts
-- `tests/` – lightweight smoke tests for setup, API health, and CLI behavior
+- `tests/` – lightweight smoke tests for setup, API health, CLI behavior, and task-runner docs
 - `Makefile` – stable task runner for setup, validation, API startup, artifacts, and cleanup
 - `CONTRIBUTING.md` – safe contribution scope, PR checklist, and reviewer guidance
 - `docs/common_tasks.md` – examples for common `make` workflows
@@ -34,11 +34,10 @@ For the most convenient contributor workflow, use the root task runner:
 make help
 make install-core
 make configure
-make doctor
-make test
+make verify
 ```
 
-See `docs/common_tasks.md` for the full target map and `CONTRIBUTING.md` for the safe contribution checklist.
+`make verify` runs the minimal setup doctor, local smoke/unit tests, and the diagnostics bundle generator in one safe pre-PR pass. See `docs/common_tasks.md` for the full target map and `CONTRIBUTING.md` for the safe contribution checklist.
 
 For a guided local setup path that installs the small core dependency set, creates
 `.env` when needed, runs diagnostics, and prints the next command to run:
@@ -201,6 +200,13 @@ You can run the same checks locally with:
 bash scripts/test.sh
 # or
 make test
+```
+
+For a fuller local pre-PR verification pass that also creates the diagnostic
+artifact bundle:
+
+```bash
+make verify
 ```
 
 CI also creates a `ci-diagnostics` artifact bundle on every run, even failed
