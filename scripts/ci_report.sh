@@ -150,5 +150,13 @@ SUMMARY
   --artifact-dir "${ARTIFACT_DIR}" \
   --json-path "${ARTIFACT_DIR}/artifact-manifest.json" \
   --markdown-path "${ARTIFACT_DIR}/artifact-manifest.md"
+"${PYTHON_BIN}" -m app.cli.operator_status_board \
+  --artifact-dir "${ARTIFACT_DIR}" \
+  --markdown-path "${ARTIFACT_DIR}/operator-status-board.md" \
+  --json-path "${ARTIFACT_DIR}/operator-status-board.json"
+"${PYTHON_BIN}" -m app.cli.artifact_manifest \
+  --artifact-dir "${ARTIFACT_DIR}" \
+  --json-path "${ARTIFACT_DIR}/artifact-manifest.json" \
+  --markdown-path "${ARTIFACT_DIR}/artifact-manifest.md"
 
 printf 'Wrote CI diagnostics to %s\n' "${ARTIFACT_DIR}"
