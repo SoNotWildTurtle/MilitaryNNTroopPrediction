@@ -8,7 +8,7 @@ PORT ?= 8000
 ARTIFACT_DIR ?= ci_artifacts
 TRIAGE_ARTIFACT_DIR ?= ci_artifacts/local-ci
 
-.PHONY: help install-core install-optional configure doctor quickstart api test verify ci-triage ci-report openapi examples dashboard bundle-index previews manifest release-notes reviewer-handoff validate-handoff triage-summary clean
+.PHONY: help install-core install-optional configure doctor quickstart api test verify ci-triage ci-report openapi examples dashboard bundle-index previews manifest artifact-gap-report release-notes reviewer-handoff validate-handoff triage-summary clean
 
 help:
 	@printf 'MilitaryNNTroopPrediction common tasks\n\n'
@@ -31,6 +31,7 @@ help:
 	@printf '  make bundle-index      Export release bundle landing page\n'
 	@printf '  make previews          Export lightweight SVG HTML previews\n'
 	@printf '  make manifest          Export artifact manifest with SHA-256 hashes\n'
+	@printf '  make artifact-gap-report Audit bundle completeness and suspicious artifacts\n'
 	@printf '  make release-notes     Export manager-friendly release notes\n'
 	@printf '  make reviewer-handoff  Export copyable reviewer handoff notes\n'
 	@printf '  make triage-summary    Export CI triage summary and narrow rerun targets\n\n'
@@ -72,12 +73,13 @@ ci-triage:
 	@printf '   make verify ARTIFACT_DIR=$(TRIAGE_ARTIFACT_DIR)\n\n'
 	@printf '3. Open the reviewer landing page first:\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/release-bundle-index.html\n\n'
-	@printf '4. If the bundle is incomplete, inspect the generated handoff, its validation result, and the triage summary, then rerun the narrow target:\n'
+	@printf '4. If the bundle is incomplete, inspect the gap report, generated handoff, validation result, and triage summary, then rerun the narrow target:\n'
+	@printf '   $(TRIAGE_ARTIFACT_DIR)/artifact-gap-report.md\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/reviewer-handoff.md\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/reviewer-handoff-validation.json\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/triage-summary.md\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/artifact-manifest.md\n'
-	@printf '   make doctor | make test | make ci-report | make validate-handoff | make openapi | make examples | make dashboard | make previews | make manifest | make release-notes | make reviewer-handoff | make triage-summary\n\n'
+	@printf '   make doctor | make test | make ci-report | make validate-handoff | make openapi | make examples | make dashboard | make previews | make manifest | make artifact-gap-report | make release-notes | make reviewer-handoff | make triage-summary\n\n'
 	@printf 'Safe-scope reminder: keep triage limited to local setup, deterministic tests, synthetic examples, API contracts, generated artifacts, and documentation.\n'
 
 ci-report:
@@ -113,6 +115,12 @@ manifest:
 		--artifact-dir $(ARTIFACT_DIR) \
 		--json-path $(ARTIFACT_DIR)/artifact-manifest.json \
 		--markdown-path $(ARTIFACT_DIR)/artifact-manifest.md
+
+artifact-gap-report:
+	$(PYTHON_BIN) -m app.cli.artifact_gap_report \
+		--artifact-dir $(ARTIFACT_DIR) \
+		--json-path $(ARTIFACT_DIR)/artifact-gap-report.json \
+		--markdown-path $(ARTIFACT_DIR)/artifact-gap-report.md
 
 release-notes:
 	$(PYTHON_BIN) -m app.cli.release_notes \
