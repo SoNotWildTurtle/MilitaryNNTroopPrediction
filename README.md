@@ -13,6 +13,9 @@ This repository provides a starting point for a machine vision application that 
   - `api/` – FastAPI endpoints and typed response schemas
 - `scripts/` – setup, diagnostics, quickstart, and startup scripts
 - `tests/` – lightweight smoke tests for setup, API health, and CLI behavior
+- `Makefile` – stable task runner for setup, validation, API startup, artifacts, and cleanup
+- `CONTRIBUTING.md` – safe contribution scope, PR checklist, and reviewer guidance
+- `docs/common_tasks.md` – examples for common `make` workflows
 - `.env.example` – copyable first-run configuration template
 - `.github/workflows/ci.yml` – GitHub Actions smoke checks for pushes and pull requests
 - `requirements-core.txt` – minimal packages for API, doctor, and CI smoke checks
@@ -24,6 +27,18 @@ This repository provides a starting point for a machine vision application that 
 ## Usage
 
 ### Fast first run
+
+For the most convenient contributor workflow, use the root task runner:
+
+```bash
+make help
+make install-core
+make configure
+make doctor
+make test
+```
+
+See `docs/common_tasks.md` for the full target map and `CONTRIBUTING.md` for the safe contribution checklist.
 
 For a guided local setup path that installs the small core dependency set, creates
 `.env` when needed, runs diagnostics, and prints the next command to run:
@@ -53,12 +68,16 @@ For a fast smoke-test/API environment:
 
 ```bash
 python -m pip install -r requirements-core.txt
+# or
+make install-core
 ```
 
 For the full local toolkit, including ML, dashboard, mapping, and training helpers:
 
 ```bash
 python -m pip install -r requirements-optional.txt
+# or
+make install-optional
 ```
 
 You can also use the setup wrapper, which installs the full optional stack by default:
@@ -77,6 +96,8 @@ Run `scripts/start.sh` to install dependencies and launch the API:
 
 ```bash
 bash scripts/start.sh
+# or
+make api
 ```
 
 This will start a local server at `http://localhost:8000` with user-friendly health
@@ -106,6 +127,8 @@ defaults from `.env.example`, run:
 
 ```bash
 python -m app.cli.configure --non-interactive
+# or
+make configure
 ```
 
 For guided setup, run the interactive mode instead:
@@ -130,6 +153,8 @@ and MongoDB socket connectivity are configured:
 python -m app.cli.doctor
 # or
 bash scripts/doctor.sh
+# or
+make doctor
 ```
 
 Useful options:
@@ -174,6 +199,8 @@ You can run the same checks locally with:
 
 ```bash
 bash scripts/test.sh
+# or
+make test
 ```
 
 CI also creates a `ci-diagnostics` artifact bundle on every run, even failed
@@ -188,6 +215,8 @@ artifact manifest CLIs. To build the same bundle locally:
 
 ```bash
 bash scripts/ci_report.sh
+# or
+make ci-report
 ```
 
 Open `ci_artifacts/release-bundle-index.html` first when reviewing a local or CI
@@ -200,6 +229,8 @@ To export only the API contract without launching the server:
 ```bash
 python -m app.cli.export_openapi
 python -m app.cli.export_openapi --json-path openapi.json --markdown-path openapi-summary.md
+# or
+make openapi
 ```
 
 To export synthetic API response examples for dashboard mockups, docs, and
@@ -210,6 +241,8 @@ python -m app.cli.export_api_examples
 python -m app.cli.export_api_examples --json-path api-response-examples.json --markdown-path api-response-examples.md
 # or
 bash scripts/export_api_examples.sh
+# or
+make examples
 ```
 
 To turn those same safe examples into a self-contained HTML dashboard preview:
@@ -219,6 +252,8 @@ python -m app.cli.export_dashboard_mockup
 python -m app.cli.export_dashboard_mockup --html-path dashboard-mockup.html
 # or
 bash scripts/export_dashboard_mockup.sh
+# or
+make dashboard
 ```
 
 The generated page is static and dependency-free. It is intended for user
@@ -235,6 +270,8 @@ python -m app.cli.release_bundle_index --artifact-dir ci_artifacts
 python -m app.cli.release_bundle_index --artifact-dir ci_artifacts --html-path release-bundle-index.html
 # or
 bash scripts/export_release_bundle_index.sh
+# or
+make bundle-index
 ```
 
 To generate lightweight SVG preview cards for static HTML outputs without a
@@ -243,6 +280,8 @@ browser, Playwright, Selenium, or live API server:
 ```bash
 python -m app.cli.export_html_previews --artifact-dir ci_artifacts
 python -m app.cli.export_html_previews --artifact-dir ci_artifacts --output-dir ci_artifacts/previews --markdown-path ci_artifacts/html-previews.md
+# or
+make previews
 ```
 
 The preview exporter reads generated HTML files such as `dashboard-mockup.html`
@@ -257,6 +296,8 @@ and missing expected outputs:
 ```bash
 python -m app.cli.artifact_manifest --artifact-dir ci_artifacts
 python -m app.cli.artifact_manifest --artifact-dir ci_artifacts --json-path manifest.json --markdown-path manifest.md
+# or
+make manifest
 ```
 
 To turn a release health JSON file plus an artifact manifest into manager-friendly
@@ -265,6 +306,8 @@ release notes:
 ```bash
 python -m app.cli.release_notes
 python -m app.cli.release_notes --health-json ci_artifacts/release-health.json --manifest-json ci_artifacts/artifact-manifest.json --markdown-path ci_artifacts/release-notes.md --json-path ci_artifacts/release-notes.json
+# or
+make release-notes
 ```
 
 The release notes summarize readiness, health counts, missing expected artifacts,
