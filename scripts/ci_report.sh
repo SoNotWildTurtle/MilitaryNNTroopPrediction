@@ -27,6 +27,7 @@ mkdir -p "${ARTIFACT_DIR}"
 "${PYTHON_BIN}" -m app.cli.release_health --help > "${ARTIFACT_DIR}/release-health-help.txt"
 "${PYTHON_BIN}" -m app.cli.release_notes --help > "${ARTIFACT_DIR}/release-notes-help.txt"
 "${PYTHON_BIN}" -m app.cli.reviewer_handoff --help > "${ARTIFACT_DIR}/reviewer-handoff-help.txt"
+"${PYTHON_BIN}" -m app.cli.operator_status_board --help > "${ARTIFACT_DIR}/operator-status-board-help.txt"
 "${PYTHON_BIN}" -m app.cli.triage_summary --help > "${ARTIFACT_DIR}/triage-summary-help.txt"
 "${PYTHON_BIN}" -m app.cli.export_openapi --help > "${ARTIFACT_DIR}/export-openapi-help.txt"
 "${PYTHON_BIN}" -m app.cli.export_api_examples --help > "${ARTIFACT_DIR}/export-api-examples-help.txt"
@@ -49,6 +50,8 @@ Files:
 - release-notes.json: machine-readable release notes generated from diagnostics.
 - reviewer-handoff.md: copyable reviewer handoff generated from diagnostics.
 - reviewer-handoff.json: machine-readable reviewer handoff generated from diagnostics.
+- operator-status-board.md: quick operator-facing readiness board generated from diagnostics.
+- operator-status-board.json: machine-readable operator readiness status board.
 - reviewer-handoff-validation.txt: human-readable reviewer handoff contract validation result.
 - reviewer-handoff-validation.json: machine-readable reviewer handoff contract validation result.
 - triage-summary.md: CI failure triage summary with narrow rerun targets.
@@ -67,6 +70,7 @@ Files:
 - release-health-help.txt: current release health CLI options.
 - release-notes-help.txt: current release notes CLI options.
 - reviewer-handoff-help.txt: current reviewer handoff CLI options.
+- operator-status-board-help.txt: current operator status board CLI options.
 - triage-summary-help.txt: current CI triage summary CLI options.
 - export-openapi-help.txt: current OpenAPI export CLI options.
 - export-api-examples-help.txt: current API example export CLI options.
@@ -85,10 +89,11 @@ SUMMARY
   --artifact-dir "${ARTIFACT_DIR}" \
   --markdown-path "${ARTIFACT_DIR}/html-previews.md"
 
-# Release notes, triage summaries, and reviewer handoffs read the manifest, while
-# the manifest must also include their final outputs. A multi-pass handoff keeps
-# human notes, narrow rerun guidance, copyable review context, and the final
-# machine-readable manifest useful without requiring any network calls.
+# Release notes, triage summaries, reviewer handoffs, and the operator status
+# board read the manifest, while the manifest must also include their final
+# outputs. Multi-pass generation keeps human notes, narrow rerun guidance,
+# copyable review context, operator readiness status, and final hashes useful
+# without requiring any network calls.
 "${PYTHON_BIN}" -m app.cli.artifact_manifest \
   --artifact-dir "${ARTIFACT_DIR}" \
   --json-path "${ARTIFACT_DIR}/artifact-manifest.json" \
@@ -108,6 +113,10 @@ SUMMARY
   --artifact-dir "${ARTIFACT_DIR}" \
   --markdown-path "${ARTIFACT_DIR}/reviewer-handoff.md" \
   --json-path "${ARTIFACT_DIR}/reviewer-handoff.json"
+"${PYTHON_BIN}" -m app.cli.operator_status_board \
+  --artifact-dir "${ARTIFACT_DIR}" \
+  --markdown-path "${ARTIFACT_DIR}/operator-status-board.md" \
+  --json-path "${ARTIFACT_DIR}/operator-status-board.json"
 "${PYTHON_BIN}" -m app.cli.artifact_manifest \
   --artifact-dir "${ARTIFACT_DIR}" \
   --json-path "${ARTIFACT_DIR}/artifact-manifest.json" \
@@ -127,6 +136,10 @@ SUMMARY
   --artifact-dir "${ARTIFACT_DIR}" \
   --markdown-path "${ARTIFACT_DIR}/reviewer-handoff.md" \
   --json-path "${ARTIFACT_DIR}/reviewer-handoff.json"
+"${PYTHON_BIN}" -m app.cli.operator_status_board \
+  --artifact-dir "${ARTIFACT_DIR}" \
+  --markdown-path "${ARTIFACT_DIR}/operator-status-board.md" \
+  --json-path "${ARTIFACT_DIR}/operator-status-board.json"
 "${PYTHON_BIN}" scripts/validate_reviewer_handoff.py \
   "${ARTIFACT_DIR}/reviewer-handoff.json" \
   > "${ARTIFACT_DIR}/reviewer-handoff-validation.txt"
