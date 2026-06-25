@@ -19,6 +19,17 @@ The landing page is dependency-free and links the most useful reviewer artifacts
 5. `dashboard-mockup.html` for the static analytical UI preview.
 6. `artifact-manifest.md` and `artifact-manifest.json` for sizes, hashes, and missing expected outputs.
 
+## Use the reviewer handoff
+
+Open `reviewer-handoff.md` when you need a copyable human handoff for a PR, issue, or chat review. Use `reviewer-handoff.json` when downstream automation needs the same status fields without parsing Markdown.
+
+The JSON handoff includes:
+
+- `review_status` and `release_status` for quick pass/warn/attention routing.
+- `recommended_rerun` for the narrow local command to run next.
+- `missing_expected` and `missing_key_artifacts` for incomplete-bundle checks.
+- `review_order`, a machine-readable checklist matching the landing page review sequence. Each step includes the step number, action, artifact path, present/missing status, and why the artifact matters.
+
 ## Triage failed or incomplete bundles
 
 When the index reports missing files or CI fails, review `triage-summary.md` before scanning raw logs. It is designed to answer three questions quickly:
@@ -44,8 +55,8 @@ This bundle review flow is limited to defensive, analytical software validation.
 
 A reviewer should be able to report:
 
-- Overall release status from `release-health.md`.
-- Any missing expected files from `artifact-manifest.md`.
-- The recommended narrow rerun target from `triage-summary.md`.
-- Whether API docs, examples, dashboard preview, and manifests are present.
+- Overall release status from `release-health.md` or `reviewer-handoff.json`.
+- Any missing expected files from `artifact-manifest.md` or the handoff JSON.
+- The recommended narrow rerun target from `triage-summary.md` or the handoff JSON.
+- Whether API docs, examples, dashboard preview, manifests, and review-order artifacts are present.
 - The next engineering action if the bundle is incomplete.
