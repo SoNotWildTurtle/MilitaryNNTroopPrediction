@@ -16,6 +16,7 @@ This repository provides a starting point for a machine vision application that 
 - `Makefile` – stable task runner for setup, validation, API startup, artifacts, and cleanup
 - `CONTRIBUTING.md` – safe contribution scope, PR checklist, and reviewer guidance
 - `docs/common_tasks.md` – examples for common `make` workflows
+- `docs/ci_troubleshooting.md` – local reproduction and diagnostics guide for CI failures
 - `.env.example` – copyable first-run configuration template
 - `.github/workflows/ci.yml` – GitHub Actions smoke checks for pushes and pull requests
 - `requirements-core.txt` – minimal packages for API, doctor, and CI smoke checks
@@ -37,7 +38,7 @@ make configure
 make verify
 ```
 
-`make verify` runs the minimal setup doctor, local smoke/unit tests, and the diagnostics bundle generator in one safe pre-PR pass. See `docs/common_tasks.md` for the full target map and `CONTRIBUTING.md` for the safe contribution checklist.
+`make verify` runs the minimal setup doctor, local smoke/unit tests, and the diagnostics bundle generator in one safe pre-PR pass. See `docs/common_tasks.md` for the full target map, `CONTRIBUTING.md` for the safe contribution checklist, and `docs/ci_troubleshooting.md` when a hosted CI run needs local reproduction.
 
 For a guided local setup path that installs the small core dependency set, creates
 `.env` when needed, runs diagnostics, and prints the next command to run:
@@ -229,6 +230,10 @@ Open `ci_artifacts/release-bundle-index.html` first when reviewing a local or CI
 bundle. It links the release health summary, OpenAPI contract, synthetic examples,
 dashboard mockup, artifact manifest, and all indexed bundle files from one static,
 dependency-free page.
+
+If hosted CI fails, follow `docs/ci_troubleshooting.md` to reproduce the exact
+`make verify` entrypoint locally, inspect `release-bundle-index.html`, and rerun
+the narrow failing target before changing workflow code.
 
 To export only the API contract without launching the server:
 
