@@ -25,6 +25,14 @@ class ReleaseBundleIndexTests(unittest.TestCase):
             )
             (artifact_dir / "openapi-summary.md").write_text("# API\n", encoding="utf-8")
             (artifact_dir / "dashboard-mockup.html").write_text("<h1>Mockup</h1>\n", encoding="utf-8")
+            (artifact_dir / "reviewer-handoff.md").write_text(
+                "# Reviewer handoff\n\nRecommended local rerun: `make verify`\n",
+                encoding="utf-8",
+            )
+            (artifact_dir / "reviewer-handoff.json").write_text(
+                '{"recommended_rerun":"make verify"}\n',
+                encoding="utf-8",
+            )
             (artifact_dir / "triage-summary.md").write_text(
                 "# CI triage summary\n\nRecommended rerun: make verify\n",
                 encoding="utf-8",
@@ -39,6 +47,11 @@ class ReleaseBundleIndexTests(unittest.TestCase):
 
         self.assertIn("Release bundle index", html_text)
         self.assertIn("Release readiness summary", html_text)
+        self.assertIn("Copyable reviewer handoff and review order", html_text)
+        self.assertIn('href="reviewer-handoff.md"', html_text)
+        self.assertIn('href="reviewer-handoff.json"', html_text)
+        self.assertIn("Reviewer handoff", html_text)
+        self.assertIn("Recommended local rerun", html_text)
         self.assertIn("CI triage summary and rerun targets", html_text)
         self.assertIn('href="triage-summary.md"', html_text)
         self.assertIn('href="triage-summary.json"', html_text)
