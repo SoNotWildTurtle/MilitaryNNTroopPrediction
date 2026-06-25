@@ -30,7 +30,14 @@ class ReleaseBundleIndexTests(unittest.TestCase):
                 encoding="utf-8",
             )
             (artifact_dir / "reviewer-handoff.json").write_text(
-                '{"recommended_rerun":"make verify"}\n',
+                "{\n"
+                '  "review_status": "ready",\n'
+                '  "release_status": "pass",\n'
+                '  "recommended_rerun": "make verify",\n'
+                '  "missing_expected": [],\n'
+                '  "missing_key_artifacts": [],\n'
+                '  "copyable_summary": "Reviewer handoff for `ci_artifacts`: status `ready`."\n'
+                "}\n",
                 encoding="utf-8",
             )
             (artifact_dir / "triage-summary.md").write_text(
@@ -51,7 +58,15 @@ class ReleaseBundleIndexTests(unittest.TestCase):
         self.assertIn('href="reviewer-handoff.md"', html_text)
         self.assertIn('href="reviewer-handoff.json"', html_text)
         self.assertIn("Reviewer handoff", html_text)
+        self.assertIn("Handoff status", html_text)
+        self.assertIn("Review status", html_text)
+        self.assertIn("READY", html_text)
+        self.assertIn("Release status", html_text)
         self.assertIn("Recommended local rerun", html_text)
+        self.assertIn("Recommended rerun", html_text)
+        self.assertIn("Missing expected outputs", html_text)
+        self.assertIn("Missing key artifacts", html_text)
+        self.assertIn("Reviewer handoff for `ci_artifacts`: status `ready`.", html_text)
         self.assertIn("CI triage summary and rerun targets", html_text)
         self.assertIn('href="triage-summary.md"', html_text)
         self.assertIn('href="triage-summary.json"', html_text)
@@ -60,6 +75,20 @@ class ReleaseBundleIndexTests(unittest.TestCase):
         self.assertIn('href="dashboard-mockup.html"', html_text)
         self.assertIn("bundle summary", html_text)
         self.assertIn("PASS", html_text)
+
+    def test_render_html_flags_missing_reviewer_handoff_json(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            artifact_dir = Path(temp_dir)
+            (artifact_dir / "release-health.json").write_text(
+                '{"status":"pass","checks":[]}\n',
+                encoding="utf-8",
+            )
+
+            html_text = render_html(artifact_dir)
+
+        self.assertIn("Reviewer handoff", html_text)
+        self.assertIn("MISSING", html_text)
+        self.assertIn("Generate reviewer-handoff.json", html_text)
 
     def test_write_html_creates_parent_directories(self) -> None:
         with TemporaryDirectory() as temp_dir:
