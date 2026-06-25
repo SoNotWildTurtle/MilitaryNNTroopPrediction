@@ -27,6 +27,25 @@ HIGHLIGHTED_ARTIFACTS: Mapping[str, str] = {
     "summary.txt": "Plain-language bundle summary",
 }
 
+STATUS_CLASS_BY_VALUE: Mapping[str, str] = {
+    "pass": "status-ready",
+    "passed": "status-ready",
+    "ready": "status-ready",
+    "present": "status-ready",
+    "ok": "status-ready",
+    "success": "status-ready",
+    "review_warnings": "status-warning",
+    "warnings": "status-warning",
+    "warning": "status-warning",
+    "needs_review": "status-warning",
+    "needs_attention": "status-attention",
+    "attention": "status-attention",
+    "missing": "status-attention",
+    "fail": "status-attention",
+    "failed": "status-attention",
+    "error": "status-attention",
+}
+
 
 def _format_bytes(size_bytes: int) -> str:
     """Return a compact human-friendly file size."""
@@ -63,11 +82,26 @@ def _artifact_lookup(manifest: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
     return {str(entry["path"]): entry for entry in manifest.get("files", [])}
 
 
+def _status_class(value: str) -> str:
+    """Return a stable CSS class for status/severity values."""
+
+    normalized = value.strip().lower().replace(" ", "_").replace("-", "_")
+    return STATUS_CLASS_BY_VALUE.get(normalized, "status-unknown")
+
+
+def _status_badge(value: str) -> str:
+    """Return an accessible visual badge for a status/severity value."""
+
+    normalized = value.strip().replace("_", " ").upper() or "UNKNOWN"
+    badge_class = _status_class(value)
+    return f'<span class="badge {badge_class}">{html.escape(normalized)}</span>'
+
+
 def _status_card(title: str, value: str, detail: str) -> str:
     return (
-        '<section class="card">'
+        f'<section class="card {_status_class(value)}-card">'
         f"<h2>{html.escape(title)}</h2>"
-        f"<p class=\"metric\">{html.escape(value)}</p>"
+        f'<p class="metric">{_status_badge(value)}</p>'
         f"<p>{html.escape(detail)}</p>"
         "</section>"
     )
@@ -87,7 +121,7 @@ def _highlight_rows(entries_by_path: Mapping[str, Dict[str, Any]]) -> Iterable[s
                 "<tr>"
                 f"<td>{html.escape(label)}</td>"
                 f"<td><code>{html.escape(path)}</code></td>"
-                "<td class=\"missing\">Missing</td>"
+                f'<td>{_status_badge("missing")}</td>'
                 "<td>-</td>"
                 "</tr>"
             )
@@ -96,7 +130,7 @@ def _highlight_rows(entries_by_path: Mapping[str, Dict[str, Any]]) -> Iterable[s
             "<tr>"
             f"<td>{_artifact_link(path, label)}</td>"
             f"<td><code>{html.escape(path)}</code></td>"
-            "<td class=\"present\">Present</td>"
+            f'<td>{_status_badge("present")}</td>'
             f"<td>{_format_bytes(int(entry['size_bytes']))}</td>"
             "</tr>"
         )
@@ -130,7 +164,7 @@ def _reviewer_handoff_card(handoff: Mapping[str, Any] | None) -> str:
             "MISSING",
             "Generate reviewer-handoff.json so reviewers can see bundle readiness at a glance.",
         )
-    review_status = str(handoff.get("review_status", "needs_review")).replace("_", " ").upper()
+    review_status = str(handoff.get("review_status", "needs_review"))
     recommended_rerun = str(handoff.get("recommended_rerun", "make verify"))
     missing_expected = _count_list(handoff.get("missing_expected"))
     missing_key_artifacts = _count_list(handoff.get("missing_key_artifacts"))
@@ -150,7 +184,7 @@ def _triage_summary_html(artifact_dir: Path) -> str:
     return (
         "<section>"
         "<h2>CI triage summary</h2>"
-        "<p class=\"muted\">Use this first when a hosted CI run fails or an expected artifact is missing.</p>"
+        '<p class="muted">Use this first when a hosted CI run fails or an expected artifact is missing.</p>'
         "<pre>" + html.escape(triage_preview) + "</pre>"
         "</section>"
     )
@@ -161,19 +195,19 @@ def _reviewer_handoff_summary(handoff: Mapping[str, Any] | None) -> str:
 
     if not handoff:
         return ""
-    review_status = str(handoff.get("review_status", "needs_review")).replace("_", " ").upper()
-    release_status = str(handoff.get("release_status", "unknown")).upper()
+    review_status = str(handoff.get("review_status", "needs_review"))
+    release_status = str(handoff.get("release_status", "unknown"))
     recommended_rerun = str(handoff.get("recommended_rerun", "make verify"))
     copyable_summary = str(handoff.get("copyable_summary", ""))
     missing_expected = _count_list(handoff.get("missing_expected"))
     missing_key_artifacts = _count_list(handoff.get("missing_key_artifacts"))
     summary_block = f"<pre>{html.escape(copyable_summary)}</pre>" if copyable_summary else ""
     return (
-        '<div class="handoff-status">'
+        f'<div class="handoff-status {_status_class(review_status)}-panel">'
         "<h3>Handoff status</h3>"
         "<dl>"
-        f"<dt>Review status</dt><dd><strong>{html.escape(review_status)}</strong></dd>"
-        f"<dt>Release status</dt><dd>{html.escape(release_status)}</dd>"
+        f"<dt>Review status</dt><dd>{_status_badge(review_status)}</dd>"
+        f"<dt>Release status</dt><dd>{_status_badge(release_status)}</dd>"
         f"<dt>Recommended rerun</dt><dd><code>{html.escape(recommended_rerun)}</code></dd>"
         f"<dt>Missing expected outputs</dt><dd>{missing_expected}</dd>"
         f"<dt>Missing key artifacts</dt><dd>{missing_key_artifacts}</dd>"
@@ -194,7 +228,7 @@ def _reviewer_handoff_html(artifact_dir: Path, handoff: Mapping[str, Any] | None
     return (
         "<section>"
         "<h2>Reviewer handoff</h2>"
-        "<p class=\"muted\">Copy this into an issue, PR, or chat when handing the bundle to another reviewer.</p>"
+        '<p class="muted">Copy this into an issue, PR, or chat when handing the bundle to another reviewer.</p>'
         f"{handoff_summary}"
         f"{preview_html}"
         "</section>"
@@ -224,11 +258,11 @@ def render_html(artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> str:
     missing = manifest.get("missing_expected", [])
 
     cards = [
-        _status_card("Release health", status.upper(), f"{passed_checks}/{total_checks} readiness checks passed."),
+        _status_card("Release health", status, f"{passed_checks}/{total_checks} readiness checks passed."),
         _reviewer_handoff_card(reviewer_handoff),
-        _status_card("Doctor failures", str(doctor_failures), "Core setup diagnostics from the minimal CI doctor run."),
+        _status_card("Doctor failures", "fail" if doctor_failures else "pass", "Core setup diagnostics from the minimal CI doctor run."),
         _status_card("Artifacts indexed", str(manifest["file_count"]), f"Total size {_format_bytes(int(manifest['total_size_bytes']))}."),
-        _status_card("Missing expected", str(len(missing)), "Expected files absent from this bundle."),
+        _status_card("Missing expected", "missing" if missing else "pass", "Expected files absent from this bundle."),
     ]
 
     missing_html = ""
@@ -260,8 +294,19 @@ def render_html(artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> str:
     .muted {{ color: #94a3b8; }}
     .grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }}
     .card, section {{ background: #111827; border: 1px solid #334155; border-radius: 16px; padding: 1rem; margin-bottom: 1rem; box-shadow: 0 16px 40px rgba(0,0,0,.18); }}
-    .metric {{ font-size: 2rem; font-weight: 800; margin: .25rem 0; }}
+    .metric {{ font-size: 1rem; font-weight: 800; margin: .25rem 0; }}
+    .badge {{ display: inline-block; border-radius: 999px; border: 1px solid currentColor; padding: .25rem .65rem; font-size: .78rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }}
+    .status-ready {{ color: #86efac; background: rgba(22, 101, 52, .22); }}
+    .status-warning {{ color: #fde68a; background: rgba(146, 64, 14, .22); }}
+    .status-attention {{ color: #fca5a5; background: rgba(153, 27, 27, .24); }}
+    .status-unknown {{ color: #cbd5e1; background: rgba(71, 85, 105, .26); }}
+    .status-ready-card {{ border-color: rgba(134, 239, 172, .45); }}
+    .status-warning-card {{ border-color: rgba(253, 230, 138, .48); }}
+    .status-attention-card {{ border-color: rgba(252, 165, 165, .5); }}
     .handoff-status {{ border: 1px solid #334155; border-radius: 12px; padding: 1rem; margin-bottom: 1rem; background: #0b1220; }}
+    .status-ready-panel {{ border-color: rgba(134, 239, 172, .45); }}
+    .status-warning-panel {{ border-color: rgba(253, 230, 138, .48); }}
+    .status-attention-panel {{ border-color: rgba(252, 165, 165, .5); }}
     .handoff-status dl {{ display: grid; grid-template-columns: minmax(160px, max-content) 1fr; gap: .4rem 1rem; margin: 0 0 1rem; }}
     .handoff-status dt {{ color: #cbd5e1; font-weight: 700; }}
     .handoff-status dd {{ margin: 0; }}
