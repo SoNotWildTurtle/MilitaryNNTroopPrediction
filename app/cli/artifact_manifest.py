@@ -24,6 +24,10 @@ EXPECTED_ARTIFACTS: Dict[str, str] = {
     "release-notes.json": "Machine-readable release notes generated from diagnostics.",
     "reviewer-handoff.md": "Copyable reviewer handoff generated from diagnostics and manifests.",
     "reviewer-handoff.json": "Machine-readable reviewer handoff generated from diagnostics and manifests.",
+    "reviewer-handoff-validation.txt": "Human-readable reviewer handoff contract validation result.",
+    "reviewer-handoff-validation.json": "Machine-readable reviewer handoff contract validation result.",
+    "operator-session-plan.md": "Ranked next-session checklist generated from release and triage artifacts.",
+    "operator-session-plan.json": "Machine-readable ranked next-session checklist.",
     "triage-summary.md": "Human-readable CI failure triage summary with narrow rerun targets.",
     "triage-summary.json": "Machine-readable CI failure triage summary with narrow rerun targets.",
     "openapi.json": "Machine-readable FastAPI OpenAPI contract.",
@@ -40,6 +44,7 @@ EXPECTED_ARTIFACTS: Dict[str, str] = {
     "release-health-help.txt": "Current release health CLI options.",
     "release-notes-help.txt": "Current release notes CLI options.",
     "reviewer-handoff-help.txt": "Current reviewer handoff CLI options.",
+    "operator-session-plan-help.txt": "Current operator session plan CLI options.",
     "triage-summary-help.txt": "Current CI triage summary CLI options.",
     "export-openapi-help.txt": "Current OpenAPI export CLI options.",
     "export-api-examples-help.txt": "Current API example export CLI options.",
@@ -179,8 +184,6 @@ def main() -> int:
     if not args.no_markdown:
         write_markdown(manifest, markdown_path)
         print(f"Wrote artifact manifest Markdown to {markdown_path}")
-    if args.no_json and args.no_markdown:
-        print("No outputs requested; remove --no-json or --no-markdown to write manifest files.")
     return 0
 
 
