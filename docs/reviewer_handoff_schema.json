@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/SoNotWildTurtle/MilitaryNNTroopPrediction/docs/reviewer_handoff_schema.json",
+  "title": "MilitaryNNTroopPrediction reviewer handoff",
+  "description": "Stable contract for reviewer-handoff.json files generated from diagnostic bundles. The schema is intentionally documentation-focused and dependency-free so downstream automation can validate expected fields without parsing Markdown.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "artifact_dir",
+    "copyable_summary",
+    "generated_at",
+    "key_artifacts",
+    "missing_expected",
+    "missing_key_artifacts",
+    "recommended_rerun",
+    "release_status",
+    "review_order",
+    "review_status"
+  ],
+  "properties": {
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC ISO-8601 timestamp for when the handoff was generated."
+    },
+    "artifact_dir": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Directory that was inspected to build the handoff."
+    },
+    "release_status": {
+      "type": "string",
+      "description": "Raw release-health status if available, otherwise unknown."
+    },
+    "review_status": {
+      "type": "string",
+      "enum": ["ready", "review_warnings", "needs_attention", "needs_review"],
+      "description": "Reviewer-facing routing status derived from release status and missing artifacts."
+    },
+    "recommended_rerun": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Narrow local command to rerun when validation is incomplete."
+    },
+    "copyable_summary": {
+      "type": "string",
+      "minLength": 1,
+      "description": "One-paragraph human handoff suitable for PR, issue, or chat review."
+    },
+    "missing_expected": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Expected outputs missing according to artifact-manifest.json."
+    },
+    "missing_key_artifacts": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Reviewer-critical artifacts missing from the generated bundle."
+    },
+    "key_artifacts": {
+      "type": "array",
+      "description": "Reviewer-critical artifacts, presence, size, hashes, and purpose.",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["path", "present", "purpose"],
+        "properties": {
+          "path": {"type": "string", "minLength": 1},
+          "purpose": {"type": "string", "minLength": 1},
+          "present": {"type": "boolean"},
+          "size_bytes": {"type": ["integer", "null"], "minimum": 0},
+          "sha256": {
+            "type": ["string", "null"],
+            "pattern": "^[a-fA-F0-9]{64}$"
+          }
+        }
+      }
+    },
+    "review_order": {
+      "type": "array",
+      "description": "Machine-readable checklist matching the release bundle index review sequence.",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["action", "artifact", "detail", "present", "status", "step"],
+        "properties": {
+          "step": {"type": "integer", "minimum": 1},
+          "action": {"type": "string", "minLength": 1},
+          "artifact": {"type": "string", "minLength": 1},
+          "detail": {"type": "string", "minLength": 1},
+          "present": {"type": "boolean"},
+          "status": {"type": "string", "enum": ["present", "missing"]}
+        }
+      }
+    },
+    "release_health_preview": {
+      "type": ["string", "null"],
+      "description": "Short Markdown/text preview of release-health.md when present."
+    },
+    "triage_preview": {
+      "type": ["string", "null"],
+      "description": "Short Markdown/text preview of triage-summary.md when present."
+    }
+  }
+}
