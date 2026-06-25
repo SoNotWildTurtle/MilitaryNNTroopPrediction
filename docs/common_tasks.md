@@ -49,7 +49,13 @@ After it completes, open `ci_artifacts/release-bundle-index.html` first. That st
 
 ## CI failure triage
 
-Use `docs/ci_troubleshooting.md` when a hosted workflow fails. The short path is:
+Use `docs/ci_troubleshooting.md` when a hosted workflow fails. To print the guide path, exact local reproduction command, expected artifact landing page, and narrow rerun targets without opening the docs first, run:
+
+```bash
+make ci-triage
+```
+
+The short manual path is:
 
 ```bash
 make install-core
@@ -109,6 +115,7 @@ This removes generated local artifacts, Python bytecode caches, and `.pytest_cac
 | `make doctor` | Run minimal read-only diagnostics. |
 | `make test` | Run the local smoke checks and standard-library test suite. |
 | `make verify` | Run doctor, tests, and diagnostics bundle generation in one pre-PR command; CI uses this same target. |
+| `make ci-triage` | Print the CI troubleshooting guide path, local reproduction command, artifact page, and narrow rerun targets. |
 | `make ci-report` | Build the same diagnostics bundle used by CI artifacts. |
 | `make openapi` | Export OpenAPI JSON and Markdown summaries. |
 | `make examples` | Export synthetic API response examples. |
