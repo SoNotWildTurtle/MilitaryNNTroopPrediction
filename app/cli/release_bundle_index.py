@@ -12,6 +12,8 @@ from app.cli.artifact_manifest import DEFAULT_ARTIFACT_DIR, build_manifest
 
 DEFAULT_HTML_NAME = "release-bundle-index.html"
 HIGHLIGHTED_ARTIFACTS: Mapping[str, str] = {
+    "reviewer-handoff.md": "Copyable reviewer handoff and review order",
+    "reviewer-handoff.json": "Machine-readable reviewer handoff",
     "release-health.md": "Release readiness summary",
     "triage-summary.md": "CI triage summary and rerun targets",
     "triage-summary.json": "Machine-readable CI triage summary",
@@ -128,6 +130,21 @@ def _triage_summary_html(artifact_dir: Path) -> str:
     )
 
 
+def _reviewer_handoff_html(artifact_dir: Path) -> str:
+    """Render a compact reviewer handoff preview when present."""
+
+    handoff_preview = _read_preview(artifact_dir / "reviewer-handoff.md", max_chars=1100)
+    if not handoff_preview:
+        return ""
+    return (
+        "<section>"
+        "<h2>Reviewer handoff</h2>"
+        "<p class=\"muted\">Copy this into an issue, PR, or chat when handing the bundle to another reviewer.</p>"
+        "<pre>" + html.escape(handoff_preview) + "</pre>"
+        "</section>"
+    )
+
+
 def render_html(artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> str:
     """Render the release bundle index as standalone HTML."""
 
@@ -165,6 +182,7 @@ def render_html(artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> str:
     if summary_preview:
         summary_html = "<section><h2>Bundle summary</h2><pre>" + html.escape(summary_preview) + "</pre></section>"
 
+    reviewer_handoff_html = _reviewer_handoff_html(artifact_dir)
     triage_html = _triage_summary_html(artifact_dir)
 
     return f"""<!doctype html>
@@ -199,7 +217,7 @@ def render_html(artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> str:
   <main>
     <header>
       <h1>Release bundle index</h1>
-      <p class="muted">Self-contained reviewer landing page for generated diagnostics, API contracts, examples, dashboard previews, and CI triage artifacts.</p>
+      <p class="muted">Self-contained reviewer landing page for generated diagnostics, API contracts, examples, dashboard previews, reviewer handoffs, and CI triage artifacts.</p>
       <p class="muted">Generated at <code>{html.escape(str(manifest['generated_at']))}</code> from <code>{html.escape(str(manifest['artifact_dir']))}</code>.</p>
     </header>
 
@@ -215,6 +233,7 @@ def render_html(artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> str:
       </table>
     </section>
 
+    {reviewer_handoff_html}
     {triage_html}
     {summary_html}
     {missing_html}
