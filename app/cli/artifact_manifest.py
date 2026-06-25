@@ -26,6 +26,8 @@ EXPECTED_ARTIFACTS: Dict[str, str] = {
     "reviewer-handoff.json": "Machine-readable reviewer handoff generated from diagnostics and manifests.",
     "triage-summary.md": "Human-readable CI failure triage summary with narrow rerun targets.",
     "triage-summary.json": "Machine-readable CI failure triage summary with narrow rerun targets.",
+    "operator-artifact-guide.md": "Operator-friendly menu explaining which diagnostic artifacts to open first.",
+    "operator-artifact-guide.json": "Machine-readable operator artifact guide for dashboards and automation.",
     "openapi.json": "Machine-readable FastAPI OpenAPI contract.",
     "openapi-summary.md": "Human-readable API contract summary.",
     "api-response-examples.json": "Synthetic JSON responses for dashboards and client builders.",
@@ -41,6 +43,7 @@ EXPECTED_ARTIFACTS: Dict[str, str] = {
     "release-notes-help.txt": "Current release notes CLI options.",
     "reviewer-handoff-help.txt": "Current reviewer handoff CLI options.",
     "triage-summary-help.txt": "Current CI triage summary CLI options.",
+    "operator-artifact-guide-help.txt": "Current operator artifact guide CLI options.",
     "export-openapi-help.txt": "Current OpenAPI export CLI options.",
     "export-api-examples-help.txt": "Current API example export CLI options.",
     "export-dashboard-mockup-help.txt": "Current dashboard mockup export CLI options.",
@@ -123,64 +126,49 @@ def _markdown_lines(manifest: Dict[str, Any]) -> Iterable[str]:
     yield "| Path | Size | SHA-256 | Description |"
     yield "| --- | ---: | --- | --- |"
     for entry in manifest["files"]:
-        yield (
-            f"| `{entry['path']}` | {entry['size_bytes']} | "
-            f"`{entry['sha256']}` | {entry['description']} |"
-        )
+        description = str(entry["description"]).replace("|", "\\|")
+        yield f"| `{entry['path']}` | {entry['size_bytes']} | `{entry['sha256']}` | {description} |"
+
+
+def render_markdown(manifest: Dict[str, Any]) -> str:
+    """Render a human-readable manifest."""
+
+    return "\n".join(_markdown_lines(manifest)).rstrip() + "\n"
 
 
 def write_markdown(manifest: Dict[str, Any], path: Path) -> None:
-    """Write a human-readable manifest summary to ``path``."""
+    """Write manifest Markdown to ``path``."""
 
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("\n".join(_markdown_lines(manifest)).rstrip() + "\n", encoding="utf-8")
+    path.write_text(render_markdown(manifest), encoding="utf-8")
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Create the command-line parser."""
-
-    parser = argparse.ArgumentParser(
-        description="Generate JSON and Markdown manifests for diagnostic artifact bundles."
-    )
+    parser = argparse.ArgumentParser(description="Generate a diagnostic artifact manifest.")
     parser.add_argument(
         "--artifact-dir",
         type=Path,
         default=DEFAULT_ARTIFACT_DIR,
-        help=f"Directory containing generated artifacts. Default: {DEFAULT_ARTIFACT_DIR}",
+        help=f"artifact directory to index; default: {DEFAULT_ARTIFACT_DIR}",
     )
-    parser.add_argument(
-        "--json-path",
-        type=Path,
-        default=None,
-        help="Path for JSON output. Default: <artifact-dir>/artifact-manifest.json",
-    )
-    parser.add_argument(
-        "--markdown-path",
-        type=Path,
-        default=None,
-        help="Path for Markdown output. Default: <artifact-dir>/artifact-manifest.md",
-    )
-    parser.add_argument("--no-json", action="store_true", help="Skip JSON output.")
-    parser.add_argument("--no-markdown", action="store_true", help="Skip Markdown output.")
+    parser.add_argument("--json-path", type=Path, default=None, help="manifest JSON output path")
+    parser.add_argument("--markdown-path", type=Path, default=None, help="manifest Markdown output path")
+    parser.add_argument("--no-markdown", action="store_true", help="only write JSON output")
     return parser
 
 
 def main() -> int:
-    """CLI entry point."""
-
     args = build_parser().parse_args()
-    manifest = build_manifest(args.artifact_dir)
-    json_path = args.json_path or args.artifact_dir / DEFAULT_JSON_NAME
-    markdown_path = args.markdown_path or args.artifact_dir / DEFAULT_MARKDOWN_NAME
+    artifact_dir = args.artifact_dir
+    json_path = args.json_path or artifact_dir / DEFAULT_JSON_NAME
+    markdown_path = None if args.no_markdown else (args.markdown_path or artifact_dir / DEFAULT_MARKDOWN_NAME)
 
-    if not args.no_json:
-        write_json(manifest, json_path)
-        print(f"Wrote artifact manifest JSON to {json_path}")
-    if not args.no_markdown:
+    manifest = build_manifest(artifact_dir)
+    write_json(manifest, json_path)
+    print(f"Wrote artifact manifest JSON to {json_path}")
+    if markdown_path is not None:
         write_markdown(manifest, markdown_path)
         print(f"Wrote artifact manifest Markdown to {markdown_path}")
-    if args.no_json and args.no_markdown:
-        print("No outputs requested; remove --no-json or --no-markdown to write manifest files.")
     return 0
 
 
