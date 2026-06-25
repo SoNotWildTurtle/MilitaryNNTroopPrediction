@@ -97,6 +97,8 @@ make openapi ARTIFACT_DIR=ci_artifacts/api-contract-review
 
 Open `ci_artifacts/release-bundle-index.html` first when reviewing a generated diagnostics bundle. It links the reviewer handoff, health report, release notes, triage summary, OpenAPI contract, synthetic API examples, static dashboard mockup, HTML previews, and manifest from one dependency-free page. The companion guide at `docs/release_bundle_review.md` gives the quick reviewer handoff flow.
 
+`reviewer-handoff.md` now includes a normalized review status, a copyable summary, missing expected outputs, missing key artifacts, and the recommended narrow rerun command. Use that file when sending a diagnostics bundle to another maintainer because it summarizes whether the bundle is ready, needs warning review, or needs attention before deeper inspection.
+
 ## Cleanup
 
 ```bash
@@ -126,7 +128,7 @@ This removes generated local artifacts, Python bytecode caches, and `.pytest_cac
 | `make previews` | Export SVG previews for static HTML outputs. |
 | `make manifest` | Export artifact manifest JSON and Markdown with SHA-256 hashes. |
 | `make release-notes` | Export manager-friendly release notes from diagnostics. |
-| `make reviewer-handoff` | Export copyable reviewer handoff Markdown/JSON from diagnostics. |
+| `make reviewer-handoff` | Export actionable reviewer handoff Markdown/JSON with review status, copyable summary, missing artifacts, and rerun guidance. |
 | `make triage-summary` | Export CI triage Markdown/JSON with failing checks, missing artifacts, and narrow rerun targets. |
 | `make api` | Start the FastAPI server. |
 | `make clean` | Remove generated local artifacts and caches. |
