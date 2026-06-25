@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping
 
 from app.cli.artifact_manifest import DEFAULT_ARTIFACT_DIR
+from app.cli.release_bundle_index import REVIEW_ORDER_STEPS
 
 DEFAULT_MARKDOWN_NAME = "reviewer-handoff.md"
 DEFAULT_JSON_NAME = "reviewer-handoff.json"
@@ -109,6 +110,25 @@ def _copyable_summary(handoff: Mapping[str, Any]) -> str:
     )
 
 
+def _review_order(files_by_path: Mapping[str, Mapping[str, Any]]) -> List[Dict[str, Any]]:
+    """Return the same review-order checklist data used by the HTML index."""
+
+    steps: List[Dict[str, Any]] = []
+    for index, (action, artifact_path, detail) in enumerate(REVIEW_ORDER_STEPS, start=1):
+        present = artifact_path in files_by_path
+        steps.append(
+            {
+                "step": index,
+                "action": action,
+                "artifact": artifact_path,
+                "present": present,
+                "status": "present" if present else "missing",
+                "detail": detail,
+            }
+        )
+    return steps
+
+
 def build_handoff(artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> Dict[str, Any]:
     """Build a deterministic reviewer handoff summary for a diagnostics bundle."""
 
@@ -143,6 +163,7 @@ def build_handoff(artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> Dict[str, Any]:
         "missing_expected": [str(name) for name in missing_expected],
         "missing_key_artifacts": missing_key_artifacts,
         "key_artifacts": key_artifacts,
+        "review_order": _review_order(files_by_path),
         "release_health_preview": _read_text(artifact_dir / "release-health.md"),
         "triage_preview": _read_text(artifact_dir / "triage-summary.md"),
     }
@@ -174,11 +195,23 @@ def _markdown_lines(handoff: Mapping[str, Any]) -> Iterable[str]:
     yield ""
     yield "## Review order"
     yield ""
-    yield "1. Open `release-bundle-index.html`."
-    yield "2. Check `release-health.md` for readiness status."
-    yield "3. Check `triage-summary.md` if anything is missing or failing."
-    yield "4. Use `artifact-manifest.md` to confirm file hashes and expected outputs."
-    yield "5. Review `openapi-summary.md`, `api-response-examples.md`, and `dashboard-mockup.html` for user-facing behavior."
+    review_order = handoff.get("review_order", [])
+    if isinstance(review_order, list) and review_order:
+        for step in review_order:
+            if not isinstance(step, Mapping):
+                continue
+            status = str(step.get("status", "unknown"))
+            step_number = str(step.get("step", "?"))
+            action = str(step.get("action", "Review artifact"))
+            artifact = str(step.get("artifact", "unknown"))
+            detail = str(step.get("detail", ""))
+            yield f"{step_number}. **{action}** — `{artifact}` ({status}). {detail}"
+    else:
+        yield "1. Open `release-bundle-index.html`."
+        yield "2. Check `release-health.md` for readiness status."
+        yield "3. Check `triage-summary.md` if anything is missing or failing."
+        yield "4. Use `artifact-manifest.md` to confirm file hashes and expected outputs."
+        yield "5. Review `openapi-summary.md`, `api-response-examples.md`, and `dashboard-mockup.html` for user-facing behavior."
     yield ""
     missing_expected = handoff.get("missing_expected", [])
     if missing_expected:
