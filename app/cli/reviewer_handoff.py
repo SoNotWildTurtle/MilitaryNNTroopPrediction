@@ -24,6 +24,9 @@ KEY_ARTIFACTS: Mapping[str, str] = {
     "dashboard-mockup.html": "Static dashboard preview generated from safe synthetic examples.",
 }
 
+PASS_STATUSES = {"ok", "pass", "passed", "ready", "success", "healthy"}
+WARN_STATUSES = {"warn", "warning", "degraded", "partial"}
+
 
 def _load_json(path: Path) -> Dict[str, Any] | None:
     try:
@@ -70,6 +73,42 @@ def _recommended_rerun(triage: Mapping[str, Any] | None) -> str:
     return "make verify"
 
 
+def _missing_key_artifacts(key_artifacts: Iterable[Mapping[str, Any]]) -> List[str]:
+    return [str(artifact.get("path")) for artifact in key_artifacts if not artifact.get("present")]
+
+
+def _review_status(
+    release_status: str,
+    missing_expected: Iterable[str],
+    missing_key_artifacts: Iterable[str],
+) -> str:
+    """Return a reviewer-facing bundle status with clear next-action semantics."""
+
+    missing_expected_items = list(missing_expected)
+    missing_key_items = list(missing_key_artifacts)
+    normalized_status = release_status.lower().strip()
+    if missing_expected_items or missing_key_items:
+        return "needs_attention"
+    if normalized_status in PASS_STATUSES:
+        return "ready"
+    if normalized_status in WARN_STATUSES:
+        return "review_warnings"
+    return "needs_review"
+
+
+def _copyable_summary(handoff: Mapping[str, Any]) -> str:
+    missing_expected = handoff.get("missing_expected", [])
+    missing_key_artifacts = handoff.get("missing_key_artifacts", [])
+    missing_count = len(missing_expected) if isinstance(missing_expected, list) else 0
+    missing_key_count = len(missing_key_artifacts) if isinstance(missing_key_artifacts, list) else 0
+    return (
+        f"Reviewer handoff for `{handoff['artifact_dir']}`: "
+        f"status `{handoff['review_status']}`, release health `{handoff['release_status']}`, "
+        f"{missing_count} missing expected output(s), {missing_key_count} missing key artifact(s). "
+        f"Open `release-bundle-index.html` first and rerun `{handoff['recommended_rerun']}` if validation is incomplete."
+    )
+
+
 def build_handoff(artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> Dict[str, Any]:
     """Build a deterministic reviewer handoff summary for a diagnostics bundle."""
 
@@ -94,16 +133,26 @@ def build_handoff(artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> Dict[str, Any]:
             }
         )
 
-    return {
+    release_status = _release_status(health)
+    missing_key_artifacts = _missing_key_artifacts(key_artifacts)
+    handoff: Dict[str, Any] = {
         "generated_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
         "artifact_dir": artifact_dir.as_posix(),
-        "release_status": _release_status(health),
+        "release_status": release_status,
         "recommended_rerun": _recommended_rerun(triage),
         "missing_expected": [str(name) for name in missing_expected],
+        "missing_key_artifacts": missing_key_artifacts,
         "key_artifacts": key_artifacts,
         "release_health_preview": _read_text(artifact_dir / "release-health.md"),
         "triage_preview": _read_text(artifact_dir / "triage-summary.md"),
     }
+    handoff["review_status"] = _review_status(
+        release_status,
+        handoff["missing_expected"],
+        missing_key_artifacts,
+    )
+    handoff["copyable_summary"] = _copyable_summary(handoff)
+    return handoff
 
 
 def _markdown_lines(handoff: Mapping[str, Any]) -> Iterable[str]:
@@ -113,8 +162,15 @@ def _markdown_lines(handoff: Mapping[str, Any]) -> Iterable[str]:
     yield ""
     yield f"Generated at: `{handoff['generated_at']}`"
     yield f"Artifact directory: `{handoff['artifact_dir']}`"
+    yield f"Review status: **{str(handoff['review_status']).upper()}**"
     yield f"Release status: **{str(handoff['release_status']).upper()}**"
     yield f"Recommended local rerun: `{handoff['recommended_rerun']}`"
+    yield ""
+    yield "## Copyable summary"
+    yield ""
+    yield "```text"
+    yield str(handoff["copyable_summary"])
+    yield "```"
     yield ""
     yield "## Review order"
     yield ""
@@ -129,6 +185,13 @@ def _markdown_lines(handoff: Mapping[str, Any]) -> Iterable[str]:
         yield "## Missing expected outputs"
         yield ""
         for name in missing_expected:
+            yield f"- `{name}`"
+        yield ""
+    missing_key_artifacts = handoff.get("missing_key_artifacts", [])
+    if missing_key_artifacts:
+        yield "## Missing key artifacts"
+        yield ""
+        for name in missing_key_artifacts:
             yield f"- `{name}`"
         yield ""
     yield "## Key artifacts"
