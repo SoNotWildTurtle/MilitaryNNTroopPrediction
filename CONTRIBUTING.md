@@ -44,6 +44,8 @@ make ci-report
 
 Open `ci_artifacts/release-bundle-index.html` first when reviewing the generated bundle locally. It links health reports, release notes, OpenAPI summaries, API examples, dashboard mockups, previews, and manifests from one static page.
 
+If hosted CI fails, use `docs/ci_troubleshooting.md` to reproduce the same `make verify` path locally and triage the uploaded diagnostics bundle before changing workflow code.
+
 ## Change checklist
 
 Before committing, verify that your change:
@@ -59,6 +61,7 @@ Before committing, verify that your change:
 
 - `README.md` is the first-run and feature overview.
 - `docs/common_tasks.md` explains Makefile targets and task-runner workflows.
+- `docs/ci_troubleshooting.md` explains how to reproduce hosted CI failures locally and inspect diagnostic artifacts.
 - `.env.example` documents local configuration values.
 - `scripts/ci_report.sh` builds the local equivalent of the CI diagnostics bundle.
 - `tests/` contains standard-library smoke tests that should stay fast and deterministic.
