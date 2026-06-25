@@ -49,6 +49,8 @@ Files:
 - release-notes.json: machine-readable release notes generated from diagnostics.
 - reviewer-handoff.md: copyable reviewer handoff generated from diagnostics.
 - reviewer-handoff.json: machine-readable reviewer handoff generated from diagnostics.
+- reviewer-handoff-validation.txt: human-readable reviewer handoff contract validation result.
+- reviewer-handoff-validation.json: machine-readable reviewer handoff contract validation result.
 - triage-summary.md: CI failure triage summary with narrow rerun targets.
 - triage-summary.json: machine-readable CI failure triage summary.
 - openapi.json: machine-readable FastAPI OpenAPI contract.
@@ -125,6 +127,12 @@ SUMMARY
   --artifact-dir "${ARTIFACT_DIR}" \
   --markdown-path "${ARTIFACT_DIR}/reviewer-handoff.md" \
   --json-path "${ARTIFACT_DIR}/reviewer-handoff.json"
+"${PYTHON_BIN}" scripts/validate_reviewer_handoff.py \
+  "${ARTIFACT_DIR}/reviewer-handoff.json" \
+  > "${ARTIFACT_DIR}/reviewer-handoff-validation.txt"
+"${PYTHON_BIN}" scripts/validate_reviewer_handoff.py \
+  "${ARTIFACT_DIR}/reviewer-handoff.json" \
+  --json > "${ARTIFACT_DIR}/reviewer-handoff-validation.json"
 "${PYTHON_BIN}" -m app.cli.artifact_manifest \
   --artifact-dir "${ARTIFACT_DIR}" \
   --json-path "${ARTIFACT_DIR}/artifact-manifest.json" \
