@@ -7,7 +7,7 @@ HOST ?= 127.0.0.1
 PORT ?= 8000
 ARTIFACT_DIR ?= ci_artifacts
 
-.PHONY: help install-core install-optional configure doctor quickstart api test ci-report openapi examples dashboard bundle-index previews manifest release-notes clean
+.PHONY: help install-core install-optional configure doctor quickstart api test verify ci-report openapi examples dashboard bundle-index previews manifest release-notes clean
 
 help:
 	@printf 'MilitaryNNTroopPrediction common tasks\n\n'
@@ -19,6 +19,7 @@ help:
 	@printf 'Validation:\n'
 	@printf '  make doctor            Run minimal read-only setup diagnostics\n'
 	@printf '  make test              Run local smoke checks and unit tests\n'
+	@printf '  make verify            Run doctor, tests, and diagnostics bundle generation\n'
 	@printf '  make ci-report         Build the local CI diagnostics bundle\n\n'
 	@printf 'Artifacts:\n'
 	@printf '  make openapi           Export OpenAPI JSON and Markdown summaries\n'
@@ -53,6 +54,9 @@ api:
 
 test:
 	bash scripts/test.sh
+
+verify: doctor test ci-report
+	@printf '\nVerification complete. Review $(ARTIFACT_DIR)/release-bundle-index.html for generated diagnostics.\n'
 
 ci-report:
 	ARTIFACT_DIR=$(ARTIFACT_DIR) bash scripts/ci_report.sh
