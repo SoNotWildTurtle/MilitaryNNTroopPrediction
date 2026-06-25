@@ -8,7 +8,7 @@ PORT ?= 8000
 ARTIFACT_DIR ?= ci_artifacts
 TRIAGE_ARTIFACT_DIR ?= ci_artifacts/local-ci
 
-.PHONY: help install-core install-optional configure doctor quickstart api test verify ci-triage ci-report openapi examples dashboard bundle-index previews manifest release-notes clean
+.PHONY: help install-core install-optional configure doctor quickstart api test verify ci-triage ci-report openapi examples dashboard bundle-index previews manifest release-notes triage-summary clean
 
 help:
 	@printf 'MilitaryNNTroopPrediction common tasks\n\n'
@@ -30,7 +30,8 @@ help:
 	@printf '  make bundle-index      Export release bundle landing page\n'
 	@printf '  make previews          Export lightweight SVG HTML previews\n'
 	@printf '  make manifest          Export artifact manifest with SHA-256 hashes\n'
-	@printf '  make release-notes     Export manager-friendly release notes\n\n'
+	@printf '  make release-notes     Export manager-friendly release notes\n'
+	@printf '  make triage-summary    Export CI triage summary and narrow rerun targets\n\n'
 	@printf 'Runtime:\n'
 	@printf '  make api               Launch FastAPI on HOST=$(HOST) PORT=$(PORT)\n\n'
 	@printf 'Cleanup:\n'
@@ -69,9 +70,10 @@ ci-triage:
 	@printf '   make verify ARTIFACT_DIR=$(TRIAGE_ARTIFACT_DIR)\n\n'
 	@printf '3. Open the reviewer landing page first:\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/release-bundle-index.html\n\n'
-	@printf '4. If the bundle is incomplete, inspect the manifest and rerun the narrow target:\n'
+	@printf '4. If the bundle is incomplete, inspect the generated triage summary and rerun the narrow target:\n'
+	@printf '   $(TRIAGE_ARTIFACT_DIR)/triage-summary.md\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/artifact-manifest.md\n'
-	@printf '   make doctor | make test | make ci-report | make openapi | make examples | make dashboard | make previews | make manifest | make release-notes\n\n'
+	@printf '   make doctor | make test | make ci-report | make openapi | make examples | make dashboard | make previews | make manifest | make release-notes | make triage-summary\n\n'
 	@printf 'Safe-scope reminder: keep triage limited to local setup, deterministic tests, synthetic examples, API contracts, generated artifacts, and documentation.\n'
 
 ci-report:
@@ -115,7 +117,12 @@ release-notes:
 		--markdown-path $(ARTIFACT_DIR)/release-notes.md \
 		--json-path $(ARTIFACT_DIR)/release-notes.json
 
+triage-summary:
+	$(PYTHON_BIN) -m app.cli.triage_summary \
+		--artifact-dir $(ARTIFACT_DIR) \
+		--markdown-path $(ARTIFACT_DIR)/triage-summary.md \
+		--json-path $(ARTIFACT_DIR)/triage-summary.json
+
 clean:
 	rm -rf $(ARTIFACT_DIR) .pytest_cache
 	find . -type d -name __pycache__ -prune -exec rm -rf {} +
-	find . -type f -name '*.pyc' -delete
