@@ -43,11 +43,15 @@ class ReviewerHandoffTests(unittest.TestCase):
             markdown = render_markdown(handoff)
 
         self.assertEqual(handoff["release_status"], "warn")
+        self.assertEqual(handoff["review_status"], "needs_attention")
         self.assertEqual(handoff["recommended_rerun"], "make openapi")
         self.assertIn("openapi.json", handoff["missing_expected"])
+        self.assertIn("artifact-manifest.md", handoff["missing_key_artifacts"])
         self.assertIn("release-bundle-index.html", markdown)
+        self.assertIn("Copyable summary", markdown)
         self.assertIn("Safe review scope", markdown)
         self.assertIn("make openapi", markdown)
+        self.assertIn("needs_attention", handoff["copyable_summary"])
         self.assertIn("yes", markdown)
 
     def test_build_handoff_has_safe_defaults_without_inputs(self) -> None:
@@ -56,16 +60,59 @@ class ReviewerHandoffTests(unittest.TestCase):
             markdown = render_markdown(handoff)
 
         self.assertEqual(handoff["release_status"], "unknown")
+        self.assertEqual(handoff["review_status"], "needs_attention")
         self.assertEqual(handoff["recommended_rerun"], "make verify")
         self.assertIn("UNKNOWN", markdown)
+        self.assertIn("NEEDS_ATTENTION", markdown)
         self.assertIn("make verify", markdown)
+        self.assertIn("missing key artifact", handoff["copyable_summary"])
+
+    def test_build_handoff_marks_complete_pass_bundle_ready(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            artifact_dir = Path(temp_dir)
+            manifest = {
+                "missing_expected": [],
+                "files": [
+                    {"path": name, "size_bytes": 1, "sha256": "c" * 64}
+                    for name in [
+                        "release-bundle-index.html",
+                        "release-health.md",
+                        "triage-summary.md",
+                        "release-notes.md",
+                        "artifact-manifest.md",
+                        "openapi-summary.md",
+                        "api-response-examples.md",
+                        "dashboard-mockup.html",
+                    ]
+                ],
+            }
+            (artifact_dir / "artifact-manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+            (artifact_dir / "release-health.json").write_text('{"status":"pass"}\n', encoding="utf-8")
+
+            handoff = build_handoff(artifact_dir)
+            markdown = render_markdown(handoff)
+
+        self.assertEqual(handoff["review_status"], "ready")
+        self.assertEqual(handoff["missing_key_artifacts"], [])
+        self.assertIn("READY", markdown)
+        self.assertIn("0 missing expected output", handoff["copyable_summary"])
 
     def test_writers_create_parent_directories(self) -> None:
         with TemporaryDirectory() as temp_dir:
             output_dir = Path(temp_dir) / "nested"
             markdown_path = output_dir / "reviewer-handoff.md"
             json_path = output_dir / "reviewer-handoff.json"
-            handoff = {"generated_at": "now", "artifact_dir": "ci_artifacts", "release_status": "pass", "recommended_rerun": "make verify", "missing_expected": [], "key_artifacts": []}
+            handoff = {
+                "generated_at": "now",
+                "artifact_dir": "ci_artifacts",
+                "review_status": "ready",
+                "release_status": "pass",
+                "recommended_rerun": "make verify",
+                "missing_expected": [],
+                "missing_key_artifacts": [],
+                "key_artifacts": [],
+                "copyable_summary": "ready",
+            }
 
             write_markdown("# Handoff\n", markdown_path)
             write_json(handoff, json_path)
