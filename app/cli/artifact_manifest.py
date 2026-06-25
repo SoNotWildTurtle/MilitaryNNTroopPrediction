@@ -26,6 +26,8 @@ EXPECTED_ARTIFACTS: Dict[str, str] = {
     "reviewer-handoff.json": "Machine-readable reviewer handoff generated from diagnostics and manifests.",
     "triage-summary.md": "Human-readable CI failure triage summary with narrow rerun targets.",
     "triage-summary.json": "Machine-readable CI failure triage summary with narrow rerun targets.",
+    "operator-runbook-index.md": "Operator command, documentation, artifact, and safe-scope map.",
+    "operator-runbook-index.json": "Machine-readable operator runbook index.",
     "openapi.json": "Machine-readable FastAPI OpenAPI contract.",
     "openapi-summary.md": "Human-readable API contract summary.",
     "api-response-examples.json": "Synthetic JSON responses for dashboards and client builders.",
@@ -41,6 +43,7 @@ EXPECTED_ARTIFACTS: Dict[str, str] = {
     "release-notes-help.txt": "Current release notes CLI options.",
     "reviewer-handoff-help.txt": "Current reviewer handoff CLI options.",
     "triage-summary-help.txt": "Current CI triage summary CLI options.",
+    "operator-runbook-index-help.txt": "Current operator runbook index CLI options.",
     "export-openapi-help.txt": "Current OpenAPI export CLI options.",
     "export-api-examples-help.txt": "Current API example export CLI options.",
     "export-dashboard-mockup-help.txt": "Current dashboard mockup export CLI options.",
@@ -129,58 +132,42 @@ def _markdown_lines(manifest: Dict[str, Any]) -> Iterable[str]:
         )
 
 
+def render_markdown(manifest: Dict[str, Any]) -> str:
+    """Render a human-readable Markdown manifest."""
+
+    return "\n".join(_markdown_lines(manifest)).rstrip() + "\n"
+
+
 def write_markdown(manifest: Dict[str, Any], path: Path) -> None:
-    """Write a human-readable manifest summary to ``path``."""
+    """Write manifest Markdown to ``path``."""
 
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("\n".join(_markdown_lines(manifest)).rstrip() + "\n", encoding="utf-8")
+    path.write_text(render_markdown(manifest), encoding="utf-8")
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Create the command-line parser."""
-
-    parser = argparse.ArgumentParser(
-        description="Generate JSON and Markdown manifests for diagnostic artifact bundles."
-    )
+    parser = argparse.ArgumentParser(description="Generate a diagnostic artifact manifest.")
     parser.add_argument(
         "--artifact-dir",
         type=Path,
         default=DEFAULT_ARTIFACT_DIR,
-        help=f"Directory containing generated artifacts. Default: {DEFAULT_ARTIFACT_DIR}",
+        help=f"artifact directory to index; default: {DEFAULT_ARTIFACT_DIR}",
     )
-    parser.add_argument(
-        "--json-path",
-        type=Path,
-        default=None,
-        help="Path for JSON output. Default: <artifact-dir>/artifact-manifest.json",
-    )
-    parser.add_argument(
-        "--markdown-path",
-        type=Path,
-        default=None,
-        help="Path for Markdown output. Default: <artifact-dir>/artifact-manifest.md",
-    )
-    parser.add_argument("--no-json", action="store_true", help="Skip JSON output.")
-    parser.add_argument("--no-markdown", action="store_true", help="Skip Markdown output.")
+    parser.add_argument("--json-path", type=Path, default=None, help="manifest JSON output path")
+    parser.add_argument("--markdown-path", type=Path, default=None, help="manifest Markdown output path")
     return parser
 
 
-def main() -> int:
-    """CLI entry point."""
-
-    args = build_parser().parse_args()
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
     manifest = build_manifest(args.artifact_dir)
     json_path = args.json_path or args.artifact_dir / DEFAULT_JSON_NAME
     markdown_path = args.markdown_path or args.artifact_dir / DEFAULT_MARKDOWN_NAME
 
-    if not args.no_json:
-        write_json(manifest, json_path)
-        print(f"Wrote artifact manifest JSON to {json_path}")
-    if not args.no_markdown:
-        write_markdown(manifest, markdown_path)
-        print(f"Wrote artifact manifest Markdown to {markdown_path}")
-    if args.no_json and args.no_markdown:
-        print("No outputs requested; remove --no-json or --no-markdown to write manifest files.")
+    write_json(manifest, json_path)
+    write_markdown(manifest, markdown_path)
+    print(f"Wrote artifact manifest JSON to {json_path}")
+    print(f"Wrote artifact manifest Markdown to {markdown_path}")
     return 0
 
 
