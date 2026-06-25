@@ -47,6 +47,17 @@ That keeps local and pull-request validation aligned. When CI fails, reproduce t
 
 After it completes, open `ci_artifacts/release-bundle-index.html` first. That static page links the health report, release notes, OpenAPI contract, synthetic examples, dashboard preview, HTML previews, and artifact manifest.
 
+## CI failure triage
+
+Use `docs/ci_troubleshooting.md` when a hosted workflow fails. The short path is:
+
+```bash
+make install-core
+make verify ARTIFACT_DIR=ci_artifacts/local-ci
+```
+
+Then open `ci_artifacts/local-ci/release-bundle-index.html` and check `artifact-manifest.md` for missing generated outputs. The troubleshooting guide maps common symptoms to the narrow target to rerun, such as `make doctor`, `make test`, `make ci-report`, `make openapi`, `make examples`, `make dashboard`, `make previews`, `make manifest`, or `make release-notes`.
+
 ## Runtime
 
 ```bash
