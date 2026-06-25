@@ -115,6 +115,32 @@ def _all_file_rows(files: List[Dict[str, Any]]) -> Iterable[str]:
         )
 
 
+def _count_list(value: Any) -> int:
+    """Return a safe count for list-like JSON fields used in summaries."""
+
+    return len(value) if isinstance(value, list) else 0
+
+
+def _reviewer_handoff_card(handoff: Mapping[str, Any] | None) -> str:
+    """Return a top-level status card for the reviewer handoff artifact."""
+
+    if not handoff:
+        return _status_card(
+            "Reviewer handoff",
+            "MISSING",
+            "Generate reviewer-handoff.json so reviewers can see bundle readiness at a glance.",
+        )
+    review_status = str(handoff.get("review_status", "needs_review")).replace("_", " ").upper()
+    recommended_rerun = str(handoff.get("recommended_rerun", "make verify"))
+    missing_expected = _count_list(handoff.get("missing_expected"))
+    missing_key_artifacts = _count_list(handoff.get("missing_key_artifacts"))
+    detail = (
+        f"Rerun {recommended_rerun}; "
+        f"{missing_expected} missing expected output(s), {missing_key_artifacts} missing key artifact(s)."
+    )
+    return _status_card("Reviewer handoff", review_status, detail)
+
+
 def _triage_summary_html(artifact_dir: Path) -> str:
     """Render a compact CI triage summary preview when present."""
 
@@ -130,17 +156,47 @@ def _triage_summary_html(artifact_dir: Path) -> str:
     )
 
 
-def _reviewer_handoff_html(artifact_dir: Path) -> str:
+def _reviewer_handoff_summary(handoff: Mapping[str, Any] | None) -> str:
+    """Render structured reviewer handoff status details when JSON is available."""
+
+    if not handoff:
+        return ""
+    review_status = str(handoff.get("review_status", "needs_review")).replace("_", " ").upper()
+    release_status = str(handoff.get("release_status", "unknown")).upper()
+    recommended_rerun = str(handoff.get("recommended_rerun", "make verify"))
+    copyable_summary = str(handoff.get("copyable_summary", ""))
+    missing_expected = _count_list(handoff.get("missing_expected"))
+    missing_key_artifacts = _count_list(handoff.get("missing_key_artifacts"))
+    summary_block = f"<pre>{html.escape(copyable_summary)}</pre>" if copyable_summary else ""
+    return (
+        '<div class="handoff-status">'
+        "<h3>Handoff status</h3>"
+        "<dl>"
+        f"<dt>Review status</dt><dd><strong>{html.escape(review_status)}</strong></dd>"
+        f"<dt>Release status</dt><dd>{html.escape(release_status)}</dd>"
+        f"<dt>Recommended rerun</dt><dd><code>{html.escape(recommended_rerun)}</code></dd>"
+        f"<dt>Missing expected outputs</dt><dd>{missing_expected}</dd>"
+        f"<dt>Missing key artifacts</dt><dd>{missing_key_artifacts}</dd>"
+        "</dl>"
+        f"{summary_block}"
+        "</div>"
+    )
+
+
+def _reviewer_handoff_html(artifact_dir: Path, handoff: Mapping[str, Any] | None = None) -> str:
     """Render a compact reviewer handoff preview when present."""
 
     handoff_preview = _read_preview(artifact_dir / "reviewer-handoff.md", max_chars=1100)
-    if not handoff_preview:
+    handoff_summary = _reviewer_handoff_summary(handoff)
+    if not handoff_preview and not handoff_summary:
         return ""
+    preview_html = f"<pre>{html.escape(handoff_preview)}</pre>" if handoff_preview else ""
     return (
         "<section>"
         "<h2>Reviewer handoff</h2>"
         "<p class=\"muted\">Copy this into an issue, PR, or chat when handing the bundle to another reviewer.</p>"
-        "<pre>" + html.escape(handoff_preview) + "</pre>"
+        f"{handoff_summary}"
+        f"{preview_html}"
         "</section>"
     )
 
@@ -151,6 +207,7 @@ def render_html(artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> str:
     manifest = build_manifest(artifact_dir)
     entries_by_path = _artifact_lookup(manifest)
     release_health = _load_json(artifact_dir / "release-health.json") or {}
+    reviewer_handoff = _load_json(artifact_dir / "reviewer-handoff.json")
     doctor = _load_json(artifact_dir / "doctor-minimal.json") or {}
     summary_preview = _read_preview(artifact_dir / "summary.txt")
 
@@ -168,6 +225,7 @@ def render_html(artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> str:
 
     cards = [
         _status_card("Release health", status.upper(), f"{passed_checks}/{total_checks} readiness checks passed."),
+        _reviewer_handoff_card(reviewer_handoff),
         _status_card("Doctor failures", str(doctor_failures), "Core setup diagnostics from the minimal CI doctor run."),
         _status_card("Artifacts indexed", str(manifest["file_count"]), f"Total size {_format_bytes(int(manifest['total_size_bytes']))}."),
         _status_card("Missing expected", str(len(missing)), "Expected files absent from this bundle."),
@@ -182,7 +240,7 @@ def render_html(artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> str:
     if summary_preview:
         summary_html = "<section><h2>Bundle summary</h2><pre>" + html.escape(summary_preview) + "</pre></section>"
 
-    reviewer_handoff_html = _reviewer_handoff_html(artifact_dir)
+    reviewer_handoff_html = _reviewer_handoff_html(artifact_dir, reviewer_handoff)
     triage_html = _triage_summary_html(artifact_dir)
 
     return f"""<!doctype html>
@@ -203,6 +261,10 @@ def render_html(artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> str:
     .grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }}
     .card, section {{ background: #111827; border: 1px solid #334155; border-radius: 16px; padding: 1rem; margin-bottom: 1rem; box-shadow: 0 16px 40px rgba(0,0,0,.18); }}
     .metric {{ font-size: 2rem; font-weight: 800; margin: .25rem 0; }}
+    .handoff-status {{ border: 1px solid #334155; border-radius: 12px; padding: 1rem; margin-bottom: 1rem; background: #0b1220; }}
+    .handoff-status dl {{ display: grid; grid-template-columns: minmax(160px, max-content) 1fr; gap: .4rem 1rem; margin: 0 0 1rem; }}
+    .handoff-status dt {{ color: #cbd5e1; font-weight: 700; }}
+    .handoff-status dd {{ margin: 0; }}
     table {{ width: 100%; border-collapse: collapse; font-size: .95rem; }}
     th, td {{ border-bottom: 1px solid #334155; padding: .7rem; text-align: left; vertical-align: top; }}
     th {{ color: #cbd5e1; }}
