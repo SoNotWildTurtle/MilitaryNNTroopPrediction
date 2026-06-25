@@ -45,7 +45,7 @@ make verify ARTIFACT_DIR=ci_artifacts
 
 That keeps local and pull-request validation aligned. When CI fails, reproduce the run locally with the same command, then open `ci_artifacts/release-bundle-index.html` first to inspect generated health reports, release notes, triage guidance, API contracts, examples, previews, and manifests.
 
-After it completes, open `ci_artifacts/release-bundle-index.html` first. That static page links the health report, release notes, triage summary, OpenAPI contract, synthetic examples, dashboard preview, HTML previews, and artifact manifest.
+After it completes, open `ci_artifacts/release-bundle-index.html` first. That static page links the health report, release notes, triage summary, OpenAPI contract, synthetic examples, dashboard preview, HTML previews, and artifact manifest. Use `docs/release_bundle_review.md` as the reviewer checklist before sharing or summarizing the bundle.
 
 ## CI failure triage
 
@@ -94,7 +94,7 @@ make ci-report ARTIFACT_DIR=ci_artifacts/local-smoke
 make openapi ARTIFACT_DIR=ci_artifacts/api-contract-review
 ```
 
-Open `ci_artifacts/release-bundle-index.html` first when reviewing a generated diagnostics bundle. It links the health report, release notes, triage summary, OpenAPI contract, synthetic API examples, static dashboard mockup, HTML previews, and manifest from one dependency-free page.
+Open `ci_artifacts/release-bundle-index.html` first when reviewing a generated diagnostics bundle. It links the health report, release notes, triage summary, OpenAPI contract, synthetic API examples, static dashboard mockup, HTML previews, and manifest from one dependency-free page. The companion guide at `docs/release_bundle_review.md` gives the quick reviewer handoff flow.
 
 ## Cleanup
 
