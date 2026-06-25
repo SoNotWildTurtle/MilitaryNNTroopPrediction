@@ -13,6 +13,8 @@ from app.cli.artifact_manifest import DEFAULT_ARTIFACT_DIR, build_manifest
 DEFAULT_HTML_NAME = "release-bundle-index.html"
 HIGHLIGHTED_ARTIFACTS: Mapping[str, str] = {
     "release-health.md": "Release readiness summary",
+    "triage-summary.md": "CI triage summary and rerun targets",
+    "triage-summary.json": "Machine-readable CI triage summary",
     "openapi-summary.md": "Human-readable API contract",
     "openapi.json": "Machine-readable OpenAPI contract",
     "api-response-examples.md": "Synthetic API examples",
@@ -111,6 +113,21 @@ def _all_file_rows(files: List[Dict[str, Any]]) -> Iterable[str]:
         )
 
 
+def _triage_summary_html(artifact_dir: Path) -> str:
+    """Render a compact CI triage summary preview when present."""
+
+    triage_preview = _read_preview(artifact_dir / "triage-summary.md", max_chars=1100)
+    if not triage_preview:
+        return ""
+    return (
+        "<section>"
+        "<h2>CI triage summary</h2>"
+        "<p class=\"muted\">Use this first when a hosted CI run fails or an expected artifact is missing.</p>"
+        "<pre>" + html.escape(triage_preview) + "</pre>"
+        "</section>"
+    )
+
+
 def render_html(artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> str:
     """Render the release bundle index as standalone HTML."""
 
@@ -148,6 +165,8 @@ def render_html(artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> str:
     if summary_preview:
         summary_html = "<section><h2>Bundle summary</h2><pre>" + html.escape(summary_preview) + "</pre></section>"
 
+    triage_html = _triage_summary_html(artifact_dir)
+
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -180,7 +199,7 @@ def render_html(artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> str:
   <main>
     <header>
       <h1>Release bundle index</h1>
-      <p class="muted">Self-contained reviewer landing page for generated diagnostics, API contracts, examples, and dashboard previews.</p>
+      <p class="muted">Self-contained reviewer landing page for generated diagnostics, API contracts, examples, dashboard previews, and CI triage artifacts.</p>
       <p class="muted">Generated at <code>{html.escape(str(manifest['generated_at']))}</code> from <code>{html.escape(str(manifest['artifact_dir']))}</code>.</p>
     </header>
 
@@ -196,6 +215,7 @@ def render_html(artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> str:
       </table>
     </section>
 
+    {triage_html}
     {summary_html}
     {missing_html}
 
