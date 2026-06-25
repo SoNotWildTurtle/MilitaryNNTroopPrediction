@@ -28,6 +28,7 @@ mkdir -p "${ARTIFACT_DIR}"
 "${PYTHON_BIN}" -m app.cli.release_notes --help > "${ARTIFACT_DIR}/release-notes-help.txt"
 "${PYTHON_BIN}" -m app.cli.reviewer_handoff --help > "${ARTIFACT_DIR}/reviewer-handoff-help.txt"
 "${PYTHON_BIN}" -m app.cli.triage_summary --help > "${ARTIFACT_DIR}/triage-summary-help.txt"
+"${PYTHON_BIN}" -m app.cli.operator_runbook_index --help > "${ARTIFACT_DIR}/operator-runbook-index-help.txt"
 "${PYTHON_BIN}" -m app.cli.export_openapi --help > "${ARTIFACT_DIR}/export-openapi-help.txt"
 "${PYTHON_BIN}" -m app.cli.export_api_examples --help > "${ARTIFACT_DIR}/export-api-examples-help.txt"
 "${PYTHON_BIN}" -m app.cli.export_dashboard_mockup --help > "${ARTIFACT_DIR}/export-dashboard-mockup-help.txt"
@@ -53,6 +54,8 @@ Files:
 - reviewer-handoff-validation.json: machine-readable reviewer handoff contract validation result.
 - triage-summary.md: CI failure triage summary with narrow rerun targets.
 - triage-summary.json: machine-readable CI failure triage summary.
+- operator-runbook-index.md: operator command, documentation, artifact, and safe-scope map.
+- operator-runbook-index.json: machine-readable operator runbook index.
 - openapi.json: machine-readable FastAPI OpenAPI contract.
 - openapi-summary.md: human-readable API contract summary.
 - api-response-examples.json: synthetic JSON responses for dashboard and client builders.
@@ -68,6 +71,7 @@ Files:
 - release-notes-help.txt: current release notes CLI options.
 - reviewer-handoff-help.txt: current reviewer handoff CLI options.
 - triage-summary-help.txt: current CI triage summary CLI options.
+- operator-runbook-index-help.txt: current operator runbook index CLI options.
 - export-openapi-help.txt: current OpenAPI export CLI options.
 - export-api-examples-help.txt: current API example export CLI options.
 - export-dashboard-mockup-help.txt: current dashboard mockup export CLI options.
@@ -84,11 +88,15 @@ SUMMARY
 "${PYTHON_BIN}" -m app.cli.export_html_previews \
   --artifact-dir "${ARTIFACT_DIR}" \
   --markdown-path "${ARTIFACT_DIR}/html-previews.md"
+"${PYTHON_BIN}" -m app.cli.operator_runbook_index \
+  --artifact-dir "${ARTIFACT_DIR}" \
+  --markdown-path "${ARTIFACT_DIR}/operator-runbook-index.md" \
+  --json-path "${ARTIFACT_DIR}/operator-runbook-index.json"
 
-# Release notes, triage summaries, and reviewer handoffs read the manifest, while
-# the manifest must also include their final outputs. A multi-pass handoff keeps
-# human notes, narrow rerun guidance, copyable review context, and the final
-# machine-readable manifest useful without requiring any network calls.
+# Release notes, triage summaries, runbook indexes, and reviewer handoffs read
+# the manifest, while the manifest must also include their final outputs. A
+# multi-pass handoff keeps human notes, narrow rerun guidance, copyable review
+# context, and the final machine-readable manifest useful without network calls.
 "${PYTHON_BIN}" -m app.cli.artifact_manifest \
   --artifact-dir "${ARTIFACT_DIR}" \
   --json-path "${ARTIFACT_DIR}/artifact-manifest.json" \
@@ -123,6 +131,10 @@ SUMMARY
   --manifest-json "${ARTIFACT_DIR}/artifact-manifest.json" \
   --markdown-path "${ARTIFACT_DIR}/triage-summary.md" \
   --json-path "${ARTIFACT_DIR}/triage-summary.json"
+"${PYTHON_BIN}" -m app.cli.operator_runbook_index \
+  --artifact-dir "${ARTIFACT_DIR}" \
+  --markdown-path "${ARTIFACT_DIR}/operator-runbook-index.md" \
+  --json-path "${ARTIFACT_DIR}/operator-runbook-index.json"
 "${PYTHON_BIN}" -m app.cli.reviewer_handoff \
   --artifact-dir "${ARTIFACT_DIR}" \
   --markdown-path "${ARTIFACT_DIR}/reviewer-handoff.md" \
