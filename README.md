@@ -17,6 +17,7 @@ This repository provides a starting point for a machine vision application that 
 - `CONTRIBUTING.md` – safe contribution scope, PR checklist, and reviewer guidance
 - `docs/common_tasks.md` – examples for common `make` workflows
 - `docs/ci_troubleshooting.md` – local reproduction and diagnostics guide for CI failures
+- `docs/release_bundle_review.md` – reviewer checklist for generated diagnostics bundles
 - `.env.example` – copyable first-run configuration template
 - `.github/workflows/ci.yml` – GitHub Actions smoke checks for pushes and pull requests
 - `requirements-core.txt` – minimal packages for API, doctor, and CI smoke checks
@@ -38,7 +39,7 @@ make configure
 make verify
 ```
 
-`make verify` runs the minimal setup doctor, local smoke/unit tests, and the diagnostics bundle generator in one safe pre-PR pass. See `docs/common_tasks.md` for the full target map, `CONTRIBUTING.md` for the safe contribution checklist, and `docs/ci_troubleshooting.md` when a hosted CI run needs local reproduction.
+`make verify` runs the minimal setup doctor, local smoke/unit tests, and the diagnostics bundle generator in one safe pre-PR pass. See `docs/common_tasks.md` for the full target map, `CONTRIBUTING.md` for the safe contribution checklist, `docs/ci_troubleshooting.md` when a hosted CI run needs local reproduction, and `docs/release_bundle_review.md` when reviewing generated bundles.
 
 For a guided local setup path that installs the small core dependency set, creates
 `.env` when needed, runs diagnostics, and prints the next command to run:
@@ -229,7 +230,8 @@ make ci-report
 Open `ci_artifacts/release-bundle-index.html` first when reviewing a local or CI
 bundle. It links the release health summary, OpenAPI contract, synthetic examples,
 dashboard mockup, artifact manifest, and all indexed bundle files from one static,
-dependency-free page.
+dependency-free page. Use `docs/release_bundle_review.md` as the checklist for
+confirming the bundle is complete before handing it to another reviewer.
 
 If hosted CI fails, follow `docs/ci_troubleshooting.md` or run the short helper:
 
