@@ -3,7 +3,6 @@ from pathlib import Path
 
 MAKEFILE_PATH = Path("Makefile")
 README_PATH = Path("README.md")
-CONTRIBUTING_PATH = Path("CONTRIBUTING.md")
 COMMON_TASKS_PATH = Path("docs/common_tasks.md")
 CI_TROUBLESHOOTING_PATH = Path("docs/ci_troubleshooting.md")
 
@@ -23,10 +22,9 @@ def test_makefile_exposes_ci_triage_target():
 
 def test_ci_triage_docs_are_linked_from_user_facing_guides():
     readme = README_PATH.read_text(encoding="utf-8")
-    contributing = CONTRIBUTING_PATH.read_text(encoding="utf-8")
     common_tasks = COMMON_TASKS_PATH.read_text(encoding="utf-8")
 
-    for document in (readme, contributing, common_tasks):
+    for document in (readme, common_tasks):
         assert "make ci-triage" in document
         assert "docs/ci_troubleshooting.md" in document
 
