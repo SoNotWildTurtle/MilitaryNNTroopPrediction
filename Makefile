@@ -6,8 +6,9 @@ PIP_BIN ?= $(PYTHON_BIN) -m pip
 HOST ?= 127.0.0.1
 PORT ?= 8000
 ARTIFACT_DIR ?= ci_artifacts
+TRIAGE_ARTIFACT_DIR ?= ci_artifacts/local-ci
 
-.PHONY: help install-core install-optional configure doctor quickstart api test verify ci-report openapi examples dashboard bundle-index previews manifest release-notes clean
+.PHONY: help install-core install-optional configure doctor quickstart api test verify ci-triage ci-report openapi examples dashboard bundle-index previews manifest release-notes clean
 
 help:
 	@printf 'MilitaryNNTroopPrediction common tasks\n\n'
@@ -20,6 +21,7 @@ help:
 	@printf '  make doctor            Run minimal read-only setup diagnostics\n'
 	@printf '  make test              Run local smoke checks and unit tests\n'
 	@printf '  make verify            Run doctor, tests, and diagnostics bundle generation\n'
+	@printf '  make ci-triage         Print CI failure reproduction and artifact review steps\n'
 	@printf '  make ci-report         Build the local CI diagnostics bundle\n\n'
 	@printf 'Artifacts:\n'
 	@printf '  make openapi           Export OpenAPI JSON and Markdown summaries\n'
@@ -57,6 +59,20 @@ test:
 
 verify: doctor test ci-report
 	@printf '\nVerification complete. Review $(ARTIFACT_DIR)/release-bundle-index.html for generated diagnostics.\n'
+
+ci-triage:
+	@printf 'CI triage quick path\n\n'
+	@printf 'Guide: docs/ci_troubleshooting.md\n\n'
+	@printf '1. Install the same lightweight dependency profile used by CI:\n'
+	@printf '   make install-core\n\n'
+	@printf '2. Reproduce hosted validation locally with an isolated artifact directory:\n'
+	@printf '   make verify ARTIFACT_DIR=$(TRIAGE_ARTIFACT_DIR)\n\n'
+	@printf '3. Open the reviewer landing page first:\n'
+	@printf '   $(TRIAGE_ARTIFACT_DIR)/release-bundle-index.html\n\n'
+	@printf '4. If the bundle is incomplete, inspect the manifest and rerun the narrow target:\n'
+	@printf '   $(TRIAGE_ARTIFACT_DIR)/artifact-manifest.md\n'
+	@printf '   make doctor | make test | make ci-report | make openapi | make examples | make dashboard | make previews | make manifest | make release-notes\n\n'
+	@printf 'Safe-scope reminder: keep triage limited to local setup, deterministic tests, synthetic examples, API contracts, generated artifacts, and documentation.\n'
 
 ci-report:
 	ARTIFACT_DIR=$(ARTIFACT_DIR) bash scripts/ci_report.sh
