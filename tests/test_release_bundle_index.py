@@ -23,6 +23,7 @@ class ReleaseBundleIndexTests(unittest.TestCase):
                 '{"checks":[{"name":"python","status":"pass"}]}\n',
                 encoding="utf-8",
             )
+            (artifact_dir / "release-health.md").write_text("# Release health\n", encoding="utf-8")
             (artifact_dir / "openapi-summary.md").write_text("# API\n", encoding="utf-8")
             (artifact_dir / "dashboard-mockup.html").write_text("<h1>Mockup</h1>\n", encoding="utf-8")
             (artifact_dir / "reviewer-handoff.md").write_text(
@@ -48,6 +49,7 @@ class ReleaseBundleIndexTests(unittest.TestCase):
                 '{"recommended_rerun":"make verify"}\n',
                 encoding="utf-8",
             )
+            (artifact_dir / "artifact-manifest.md").write_text("# Manifest\n", encoding="utf-8")
             (artifact_dir / "summary.txt").write_text("bundle summary\n", encoding="utf-8")
 
             html_text = render_html(artifact_dir)
@@ -76,6 +78,41 @@ class ReleaseBundleIndexTests(unittest.TestCase):
         self.assertIn('href="dashboard-mockup.html"', html_text)
         self.assertIn("bundle summary", html_text)
         self.assertIn("PASS", html_text)
+
+    def test_render_html_includes_review_order_checklist(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            artifact_dir = Path(temp_dir)
+            for name in (
+                "release-health.md",
+                "reviewer-handoff.md",
+                "triage-summary.md",
+                "artifact-manifest.md",
+                "openapi-summary.md",
+            ):
+                (artifact_dir / name).write_text(f"# {name}\n", encoding="utf-8")
+
+            html_text = render_html(artifact_dir)
+
+        self.assertIn("Review order checklist", html_text)
+        self.assertIn("Confirm bundle readiness", html_text)
+        self.assertIn("Use the reviewer handoff", html_text)
+        self.assertIn("Triage failures next", html_text)
+        self.assertIn("Verify artifact inventory", html_text)
+        self.assertIn("Review user-facing contracts", html_text)
+        self.assertIn('href="release-health.md"', html_text)
+        self.assertIn('href="artifact-manifest.md"', html_text)
+
+    def test_render_html_flags_missing_review_order_artifacts(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            artifact_dir = Path(temp_dir)
+            (artifact_dir / "release-health.md").write_text("# Release health\n", encoding="utf-8")
+
+            html_text = render_html(artifact_dir)
+
+        self.assertIn("Review order checklist", html_text)
+        self.assertIn("PRESENT", html_text)
+        self.assertIn("MISSING", html_text)
+        self.assertIn('class="badge status-attention"', html_text)
 
     def test_render_html_flags_missing_reviewer_handoff_json(self) -> None:
         with TemporaryDirectory() as temp_dir:
