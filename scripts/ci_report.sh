@@ -26,6 +26,7 @@ mkdir -p "${ARTIFACT_DIR}"
 "${PYTHON_BIN}" -m app.cli.doctor --help > "${ARTIFACT_DIR}/doctor-help.txt"
 "${PYTHON_BIN}" -m app.cli.release_health --help > "${ARTIFACT_DIR}/release-health-help.txt"
 "${PYTHON_BIN}" -m app.cli.release_notes --help > "${ARTIFACT_DIR}/release-notes-help.txt"
+"${PYTHON_BIN}" -m app.cli.triage_summary --help > "${ARTIFACT_DIR}/triage-summary-help.txt"
 "${PYTHON_BIN}" -m app.cli.export_openapi --help > "${ARTIFACT_DIR}/export-openapi-help.txt"
 "${PYTHON_BIN}" -m app.cli.export_api_examples --help > "${ARTIFACT_DIR}/export-api-examples-help.txt"
 "${PYTHON_BIN}" -m app.cli.export_dashboard_mockup --help > "${ARTIFACT_DIR}/export-dashboard-mockup-help.txt"
@@ -45,6 +46,8 @@ Files:
 - release-health.json: machine-readable release readiness summary.
 - release-notes.md: manager-friendly release notes generated from diagnostics.
 - release-notes.json: machine-readable release notes generated from diagnostics.
+- triage-summary.md: CI failure triage summary with narrow rerun targets.
+- triage-summary.json: machine-readable CI failure triage summary.
 - openapi.json: machine-readable FastAPI OpenAPI contract.
 - openapi-summary.md: human-readable API contract summary.
 - api-response-examples.json: synthetic JSON responses for dashboard and client builders.
@@ -58,6 +61,7 @@ Files:
 - doctor-help.txt: current doctor CLI options.
 - release-health-help.txt: current release health CLI options.
 - release-notes-help.txt: current release notes CLI options.
+- triage-summary-help.txt: current CI triage summary CLI options.
 - export-openapi-help.txt: current OpenAPI export CLI options.
 - export-api-examples-help.txt: current API example export CLI options.
 - export-dashboard-mockup-help.txt: current dashboard mockup export CLI options.
@@ -75,9 +79,10 @@ SUMMARY
   --artifact-dir "${ARTIFACT_DIR}" \
   --markdown-path "${ARTIFACT_DIR}/html-previews.md"
 
-# Release notes summarize the manifest, while the manifest must also include the
-# final release-note files. A two-pass handoff keeps both human notes and the
-# final machine-readable manifest useful without requiring any network calls.
+# Release notes and triage summaries read the manifest, while the manifest must
+# also include their final outputs. A multi-pass handoff keeps human notes,
+# narrow rerun guidance, and the final machine-readable manifest useful without
+# requiring any network calls.
 "${PYTHON_BIN}" -m app.cli.artifact_manifest \
   --artifact-dir "${ARTIFACT_DIR}" \
   --json-path "${ARTIFACT_DIR}/artifact-manifest.json" \
@@ -87,6 +92,12 @@ SUMMARY
   --manifest-json "${ARTIFACT_DIR}/artifact-manifest.json" \
   --markdown-path "${ARTIFACT_DIR}/release-notes.md" \
   --json-path "${ARTIFACT_DIR}/release-notes.json"
+"${PYTHON_BIN}" -m app.cli.triage_summary \
+  --artifact-dir "${ARTIFACT_DIR}" \
+  --health-json "${ARTIFACT_DIR}/release-health.json" \
+  --manifest-json "${ARTIFACT_DIR}/artifact-manifest.json" \
+  --markdown-path "${ARTIFACT_DIR}/triage-summary.md" \
+  --json-path "${ARTIFACT_DIR}/triage-summary.json"
 "${PYTHON_BIN}" -m app.cli.artifact_manifest \
   --artifact-dir "${ARTIFACT_DIR}" \
   --json-path "${ARTIFACT_DIR}/artifact-manifest.json" \
@@ -96,6 +107,12 @@ SUMMARY
   --manifest-json "${ARTIFACT_DIR}/artifact-manifest.json" \
   --markdown-path "${ARTIFACT_DIR}/release-notes.md" \
   --json-path "${ARTIFACT_DIR}/release-notes.json"
+"${PYTHON_BIN}" -m app.cli.triage_summary \
+  --artifact-dir "${ARTIFACT_DIR}" \
+  --health-json "${ARTIFACT_DIR}/release-health.json" \
+  --manifest-json "${ARTIFACT_DIR}/artifact-manifest.json" \
+  --markdown-path "${ARTIFACT_DIR}/triage-summary.md" \
+  --json-path "${ARTIFACT_DIR}/triage-summary.json"
 "${PYTHON_BIN}" -m app.cli.artifact_manifest \
   --artifact-dir "${ARTIFACT_DIR}" \
   --json-path "${ARTIFACT_DIR}/artifact-manifest.json" \
