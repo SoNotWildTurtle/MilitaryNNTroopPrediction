@@ -14,6 +14,20 @@ make test
 
 Use `make install-core` for the lightweight API, doctor, and CI smoke-test environment. Use `make install-optional` only when you need the heavier ML, dashboard, mapping, and training packages.
 
+## First-time contributor workflow
+
+Start with the safe, minimal path before installing heavier optional dependencies:
+
+```bash
+make help
+make install-core
+make configure
+make doctor
+make test
+```
+
+Then review `CONTRIBUTING.md` before opening a pull request. It summarizes the lawful defensive scope, test expectations, documentation checklist, and PR summary format.
+
 ## Runtime
 
 ```bash
@@ -42,6 +56,8 @@ By default, artifact targets write into `ci_artifacts/`. Override the output dir
 make ci-report ARTIFACT_DIR=ci_artifacts/local-smoke
 make openapi ARTIFACT_DIR=ci_artifacts/api-contract-review
 ```
+
+Open `ci_artifacts/release-bundle-index.html` first when reviewing a generated diagnostics bundle. It links the health report, release notes, OpenAPI contract, synthetic API examples, static dashboard mockup, HTML previews, and manifest from one dependency-free page.
 
 ## Cleanup
 
