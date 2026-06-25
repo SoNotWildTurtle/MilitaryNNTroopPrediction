@@ -12,7 +12,7 @@ Good first contributions include:
 - Synthetic fixtures, static mockups, and examples that do not depend on live conflict data.
 - Error handling and user-facing messages that make failures easier to fix.
 
-Do not add workflows that perform unauthorized collection, targeting, evasion, disruption, credential access, or operational deployment against real people or systems. Keep examples synthetic unless a maintainer explicitly adds a lawful dataset with clear provenance and usage rights.
+Keep examples synthetic unless a maintainer explicitly adds a lawful dataset with clear provenance and usage rights. Do not add unsafe workflows, destructive automation, or features that turn this project away from defensive analysis and reproducible software validation.
 
 ## Fast local path
 
@@ -42,7 +42,7 @@ When your change affects generated reviewer artifacts, also run:
 make ci-report
 ```
 
-Open `ci_artifacts/release-bundle-index.html` first when reviewing the generated bundle locally. It links health reports, release notes, OpenAPI summaries, API examples, dashboard mockups, previews, and manifests from one static page.
+Open `ci_artifacts/release-bundle-index.html` first when reviewing the generated bundle locally. It links health reports, release notes, OpenAPI summaries, API examples, dashboard mockups, previews, and manifests from one static page. Use `docs/release_bundle_review.md` as the handoff checklist before sharing a bundle with another reviewer.
 
 If hosted CI fails, use `docs/ci_troubleshooting.md` to reproduce the same `make verify` path locally and triage the uploaded diagnostics bundle before changing workflow code.
 
@@ -62,6 +62,7 @@ Before committing, verify that your change:
 - `README.md` is the first-run and feature overview.
 - `docs/common_tasks.md` explains Makefile targets and task-runner workflows.
 - `docs/ci_troubleshooting.md` explains how to reproduce hosted CI failures locally and inspect diagnostic artifacts.
+- `docs/release_bundle_review.md` explains how to review generated diagnostics bundles and summarize handoffs.
 - `.env.example` documents local configuration values.
 - `scripts/ci_report.sh` builds the local equivalent of the CI diagnostics bundle.
 - `tests/` contains standard-library smoke tests that should stay fast and deterministic.
