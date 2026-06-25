@@ -4,7 +4,13 @@ Use this guide when a pull request or push fails the lightweight GitHub Actions 
 
 ## Fast reproduce path
 
-Run the same command that hosted CI uses:
+Print the quick local triage checklist at any time:
+
+```bash
+make ci-triage
+```
+
+Then run the same command that hosted CI uses, with an isolated local artifact directory:
 
 ```bash
 make install-core
@@ -38,7 +44,7 @@ That landing page links the release health report, release notes, OpenAPI summar
 4. **Diagnostics bundle failed**
    - Run `make ci-report ARTIFACT_DIR=ci_artifacts/local-ci`.
    - Check for missing generated files in `artifact-manifest.md`.
-   - Re-run the narrow target that failed, such as `make openapi`, `make examples`, `make dashboard`, `make previews`, `make manifest`, or `make release-notes`.
+   - Re-run the narrow target that failed, such as `make doctor`, `make test`, `make ci-report`, `make openapi`, `make examples`, `make dashboard`, `make previews`, `make manifest`, or `make release-notes`.
 
 5. **Artifact upload failed**
    - Confirm `ci_artifacts/` exists after `make verify`.
