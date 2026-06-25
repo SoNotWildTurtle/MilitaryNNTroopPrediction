@@ -43,9 +43,9 @@ Hosted CI now runs the same entrypoint:
 make verify ARTIFACT_DIR=ci_artifacts
 ```
 
-That keeps local and pull-request validation aligned. When CI fails, reproduce the run locally with the same command, then open `ci_artifacts/release-bundle-index.html` first to inspect generated health reports, release notes, reviewer handoff notes, triage guidance, API contracts, examples, previews, manifests, and handoff validation results.
+That keeps local and pull-request validation aligned. When CI fails, reproduce the run locally with the same command, then open `ci_artifacts/operator-digest.md` first for a concise first-read summary before opening `ci_artifacts/release-bundle-index.html` to inspect generated health reports, release notes, reviewer handoff notes, triage guidance, API contracts, examples, previews, manifests, and handoff validation results.
 
-After it completes, open `ci_artifacts/release-bundle-index.html` first. That static page links the reviewer handoff, health report, release notes, triage summary, OpenAPI contract, synthetic examples, dashboard preview, HTML previews, and artifact manifest. Use `docs/release_bundle_review.md` as the reviewer checklist before sharing or summarizing the bundle.
+After it completes, open `ci_artifacts/operator-digest.md` first and `ci_artifacts/release-bundle-index.html` second. The digest gives the current status, next step, missing outputs, and top rerun actions. The static page links the reviewer handoff, health report, release notes, triage summary, OpenAPI contract, synthetic examples, dashboard preview, HTML previews, and artifact manifest. Use `docs/release_bundle_review.md` as the reviewer checklist before sharing or summarizing the bundle.
 
 ## CI failure triage
 
@@ -62,7 +62,7 @@ make install-core
 make verify ARTIFACT_DIR=ci_artifacts/local-ci
 ```
 
-Then open `ci_artifacts/local-ci/release-bundle-index.html` and check `reviewer-handoff.md` first when sharing context with another maintainer. Check `reviewer-handoff-validation.json` next when downstream automation rejects a bundle; it is produced by `scripts/validate_reviewer_handoff.py` and reports the exact contract errors. Check `triage-summary.md` when a run failed. It summarizes failing health checks, missing expected artifacts, and the narrow target to rerun, such as `make doctor`, `make test`, `make ci-report`, `make validate-handoff`, `make openapi`, `make examples`, `make dashboard`, `make previews`, `make manifest`, `make release-notes`, `make reviewer-handoff`, or `make triage-summary`.
+Then open `ci_artifacts/local-ci/operator-digest.md` first, `ci_artifacts/local-ci/release-bundle-index.html` second, and `reviewer-handoff.md` when sharing context with another maintainer. Check `reviewer-handoff-validation.json` next when downstream automation rejects a bundle; it is produced by `scripts/validate_reviewer_handoff.py` and reports the exact contract errors. Check `triage-summary.md` when a run failed. It summarizes failing health checks, missing expected artifacts, and the narrow target to rerun, such as `make doctor`, `make test`, `make ci-report`, `make validate-handoff`, `make openapi`, `make examples`, `make dashboard`, `make previews`, `make manifest`, `make release-notes`, `make reviewer-handoff`, `make operator-digest`, or `make triage-summary`.
 
 ## Runtime
 
@@ -85,6 +85,7 @@ make previews
 make manifest
 make release-notes
 make reviewer-handoff
+make operator-digest
 make validate-handoff
 make triage-summary
 ```
@@ -93,11 +94,12 @@ By default, artifact targets write into `ci_artifacts/`. Override the output dir
 
 ```bash
 make ci-report ARTIFACT_DIR=ci_artifacts/local-smoke
+make operator-digest ARTIFACT_DIR=ci_artifacts/local-smoke
 make validate-handoff ARTIFACT_DIR=ci_artifacts/local-smoke
 make openapi ARTIFACT_DIR=ci_artifacts/api-contract-review
 ```
 
-Open `ci_artifacts/release-bundle-index.html` first when reviewing a generated diagnostics bundle. It links the reviewer handoff, health report, release notes, triage summary, OpenAPI contract, synthetic API examples, static dashboard mockup, HTML previews, and manifest from one dependency-free page. The companion guide at `docs/release_bundle_review.md` gives the quick reviewer handoff flow.
+Open `ci_artifacts/operator-digest.md` first when reviewing a generated diagnostics bundle. It summarizes the current review status, release health status, indexed artifact count, blocking reasons, copyable summary, and the top narrow rerun command. Then open `ci_artifacts/release-bundle-index.html` for the full dependency-free landing page. The companion guide at `docs/release_bundle_review.md` gives the quick reviewer handoff flow.
 
 `reviewer-handoff.md` includes a normalized review status, a copyable summary, missing expected outputs, missing key artifacts, and the recommended narrow rerun command. Use that file when sending a diagnostics bundle to another maintainer because it summarizes whether the bundle is ready, needs warning review, or needs attention before deeper inspection. `reviewer-handoff-validation.json` and `reviewer-handoff-validation.txt` record the dependency-free validation result from `scripts/validate_reviewer_handoff.py` so reviewers and automation can confirm the machine-readable handoff follows `docs/reviewer_handoff_contract.md` before consuming it.
 
@@ -122,7 +124,7 @@ This removes generated local artifacts, Python bytecode caches, and `.pytest_cac
 | `make test` | Run the local smoke checks and standard-library test suite. |
 | `make verify` | Run doctor, tests, diagnostics bundle generation, and reviewer handoff contract validation in one pre-PR command; CI uses this same target. |
 | `make ci-triage` | Print the CI troubleshooting guide path, local reproduction command, artifact page, and narrow rerun targets. |
-| `make ci-report` | Build the same diagnostics bundle used by CI artifacts, including handoff validation outputs. |
+| `make ci-report` | Build the same diagnostics bundle used by CI artifacts, including handoff validation outputs and the operator digest. |
 | `make openapi` | Export OpenAPI JSON and Markdown summaries. |
 | `make examples` | Export synthetic API response examples. |
 | `make dashboard` | Export the static dashboard mockup. |
@@ -131,6 +133,7 @@ This removes generated local artifacts, Python bytecode caches, and `.pytest_cac
 | `make manifest` | Export artifact manifest JSON and Markdown with SHA-256 hashes. |
 | `make release-notes` | Export manager-friendly release notes from diagnostics. |
 | `make reviewer-handoff` | Export actionable reviewer handoff Markdown/JSON with review status, copyable summary, missing artifacts, and rerun guidance. |
+| `make operator-digest` | Export a concise operator-first Markdown/JSON digest with status, next step, blocking reasons, and top rerun actions. |
 | `make validate-handoff` | Validate `reviewer-handoff.json` against the stable contract using `scripts/validate_reviewer_handoff.py`. |
 | `make triage-summary` | Export CI triage Markdown/JSON with failing checks, missing artifacts, and narrow rerun targets. |
 | `make api` | Start the FastAPI server. |
