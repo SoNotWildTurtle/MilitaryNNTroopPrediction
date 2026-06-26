@@ -12,10 +12,12 @@ class OperatorReadinessTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             artifact_dir = Path(tmp)
             (artifact_dir / "release-health.json").write_text(
-                json.dumps([
-                    {"name": "python", "status": "ok", "detail": "Python available"},
-                    {"name": "api_contract", "status": "ok", "detail": "OpenAPI exported"},
-                ]),
+                json.dumps(
+                    [
+                        {"name": "python", "status": "ok", "detail": "Python available"},
+                        {"name": "api_contract", "status": "ok", "detail": "OpenAPI exported"},
+                    ]
+                ),
                 encoding="utf-8",
             )
             files = [
@@ -32,7 +34,9 @@ class OperatorReadinessTests(unittest.TestCase):
                 ]
             ]
             (artifact_dir / "artifact-manifest.json").write_text(
-                json.dumps({"file_count": len(files), "files": files, "missing_expected": []}),
+                json.dumps(
+                    {"file_count": len(files), "files": files, "missing_expected": []}
+                ),
                 encoding="utf-8",
             )
             (artifact_dir / "triage-summary.json").write_text(
@@ -54,11 +58,19 @@ class OperatorReadinessTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             artifact_dir = Path(tmp)
             (artifact_dir / "release-health.json").write_text(
-                json.dumps([{"name": "python", "status": "ok", "detail": "Python available"}]),
+                json.dumps(
+                    [{"name": "python", "status": "ok", "detail": "Python available"}]
+                ),
                 encoding="utf-8",
             )
             (artifact_dir / "artifact-manifest.json").write_text(
-                json.dumps({"file_count": 1, "files": [{"path": "release-health.json"}], "missing_expected": []}),
+                json.dumps(
+                    {
+                        "file_count": 1,
+                        "files": [{"path": "release-health.json"}],
+                        "missing_expected": [],
+                    }
+                ),
                 encoding="utf-8",
             )
             (artifact_dir / "triage-summary.json").write_text(
@@ -72,10 +84,64 @@ class OperatorReadinessTests(unittest.TestCase):
             self.assertIn("artifact-manifest.md", brief["missing_required_artifacts"])
             self.assertEqual(brief["next_step"], "make ci-report")
 
+    def test_prefixed_input_paths_are_used_for_smoke_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            artifact_dir = Path(tmp)
+            health_path = artifact_dir / "militarynntroopprediction-release-health.json"
+            manifest_path = artifact_dir / "militarynntroopprediction-artifact-manifest.json"
+            triage_path = artifact_dir / "militarynntroopprediction-triage-summary.json"
+            health_path.write_text(
+                json.dumps([{"name": "doctor", "status": "ok", "detail": "ready"}]),
+                encoding="utf-8",
+            )
+            required_paths = [
+                "release-health.json",
+                "release-health.md",
+                "artifact-manifest.json",
+                "artifact-manifest.md",
+                "triage-summary.json",
+                "triage-summary.md",
+                "reviewer-handoff.json",
+                "reviewer-handoff.md",
+            ]
+            manifest_path.write_text(
+                json.dumps(
+                    {
+                        "file_count": len(required_paths),
+                        "files": [{"path": path} for path in required_paths],
+                        "missing_expected": [],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            triage_path.write_text(
+                json.dumps({"next_step": "make test"}),
+                encoding="utf-8",
+            )
+
+            brief = build_readiness_brief(
+                artifact_dir=artifact_dir,
+                generated_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+                health_path=health_path,
+                manifest_path=manifest_path,
+                triage_path=triage_path,
+            )
+
+            self.assertEqual(brief["launch_status"], "ready")
+            self.assertEqual(
+                brief["input_paths"]["manifest_json"],
+                manifest_path.as_posix(),
+            )
+
     def test_markdown_contains_operator_decision_and_scope(self) -> None:
         brief = {
             "generated_at": "2026-01-01T00:00:00+00:00",
             "artifact_dir": "ci_artifacts",
+            "input_paths": {
+                "health_json": "ci_artifacts/release-health.json",
+                "manifest_json": "ci_artifacts/artifact-manifest.json",
+                "triage_json": "ci_artifacts/triage-summary.json",
+            },
             "launch_status": "review",
             "signal_status": "warn",
             "operator_decision": "Review warnings before launch.",
@@ -83,7 +149,9 @@ class OperatorReadinessTests(unittest.TestCase):
             "health_summary": {"ok": 1, "warn": 1, "fail": 0, "unknown": 0},
             "artifact_count": 8,
             "failing_checks": [],
-            "warning_checks": [{"name": "optional_deps", "detail": "Optional stack not installed"}],
+            "warning_checks": [
+                {"name": "optional_deps", "detail": "Optional stack not installed"}
+            ],
             "missing_expected": [],
             "missing_required_artifacts": [],
             "required_artifacts": [
@@ -97,6 +165,7 @@ class OperatorReadinessTests(unittest.TestCase):
         self.assertIn("Operator Readiness Brief", markdown)
         self.assertIn("Review warnings before launch.", markdown)
         self.assertIn("optional_deps", markdown)
+        self.assertIn("Input artifacts", markdown)
         self.assertIn("Summarizes local diagnostic artifacts only.", markdown)
 
     def test_cli_writes_markdown_and_json(self) -> None:
