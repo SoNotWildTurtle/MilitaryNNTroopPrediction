@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -28,6 +29,18 @@ class ArtifactManifestTests(unittest.TestCase):
         self.assertGreater(manifest["total_size_bytes"], 0)
         self.assertEqual(len(manifest["files"][0]["sha256"]), 64)
         self.assertIn("pip-version.txt", manifest["missing_expected"])
+
+    def test_manifest_hash_matches_sha256_digest(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            artifact_dir = Path(temp_dir)
+            payload = b"stable diagnostic bundle payload\n"
+            (artifact_dir / "summary.txt").write_bytes(payload)
+
+            manifest = build_manifest(artifact_dir)
+
+        self.assertEqual(manifest["files"][0]["path"], "summary.txt")
+        self.assertEqual(manifest["files"][0]["sha256"], hashlib.sha256(payload).hexdigest())
+        self.assertEqual(manifest["scan_warnings"], [])
 
     def test_manifest_writers_create_json_and_markdown(self) -> None:
         with TemporaryDirectory() as temp_dir:
