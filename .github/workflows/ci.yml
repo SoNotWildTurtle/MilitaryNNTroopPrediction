@@ -27,11 +27,97 @@ jobs:
       - name: Prepare diagnostic artifact directory
         run: mkdir -p ci_artifacts
 
+      - name: Compile Python sources
+        run: python -m compileall app tests
+
       - name: Run setup diagnostics
         run: make doctor ARTIFACT_DIR=ci_artifacts
 
-      - name: Run smoke and unit tests
-        run: make test ARTIFACT_DIR=ci_artifacts
+      - name: Run release health smoke check
+        run: |
+          python -m app.cli.release_health \
+            --markdown-path /tmp/militarynntroopprediction-release-health.md \
+            --json-path /tmp/militarynntroopprediction-release-health.json
+
+      - name: Export OpenAPI smoke artifact
+        run: |
+          python -m app.cli.export_openapi \
+            --json-path /tmp/militarynntroopprediction-openapi.json \
+            --markdown-path /tmp/militarynntroopprediction-openapi.md
+
+      - name: Export API example smoke artifact
+        run: |
+          python -m app.cli.export_api_examples \
+            --json-path /tmp/militarynntroopprediction-api-response-examples.json \
+            --markdown-path /tmp/militarynntroopprediction-api-response-examples.md
+
+      - name: Export dashboard smoke artifact
+        run: |
+          python -m app.cli.export_dashboard_mockup \
+            --html-path /tmp/militarynntroopprediction-dashboard-mockup.html
+
+      - name: Export release bundle index smoke artifact
+        run: |
+          python -m app.cli.release_bundle_index \
+            --artifact-dir /tmp \
+            --html-path /tmp/militarynntroopprediction-release-bundle-index.html
+
+      - name: Export HTML previews smoke artifact
+        run: |
+          python -m app.cli.export_html_previews \
+            --artifact-dir /tmp \
+            --output-dir /tmp/militarynntroopprediction-html-previews \
+            --markdown-path /tmp/militarynntroopprediction-html-previews.md
+
+      - name: Export artifact manifest smoke artifact
+        run: |
+          python -m app.cli.artifact_manifest \
+            --artifact-dir /tmp \
+            --json-path /tmp/militarynntroopprediction-artifact-manifest.json \
+            --markdown-path /tmp/militarynntroopprediction-artifact-manifest.md
+
+      - name: Export release notes smoke artifact
+        run: |
+          python -m app.cli.release_notes \
+            --health-json /tmp/militarynntroopprediction-release-health.json \
+            --manifest-json /tmp/militarynntroopprediction-artifact-manifest.json \
+            --markdown-path /tmp/militarynntroopprediction-release-notes.md \
+            --json-path /tmp/militarynntroopprediction-release-notes.json
+
+      - name: Export triage summary smoke artifact
+        run: |
+          python -m app.cli.triage_summary \
+            --artifact-dir /tmp \
+            --health-json /tmp/militarynntroopprediction-release-health.json \
+            --manifest-json /tmp/militarynntroopprediction-artifact-manifest.json \
+            --markdown-path /tmp/militarynntroopprediction-triage-summary.md \
+            --json-path /tmp/militarynntroopprediction-triage-summary.json
+
+      - name: Export reviewer handoff smoke artifact
+        run: |
+          python -m app.cli.reviewer_handoff \
+            --artifact-dir /tmp \
+            --markdown-path /tmp/militarynntroopprediction-reviewer-handoff.md \
+            --json-path /tmp/militarynntroopprediction-reviewer-handoff.json
+
+      - name: Export operator readiness smoke artifact
+        run: |
+          python -m app.cli.operator_readiness \
+            --artifact-dir /tmp \
+            --health-json /tmp/militarynntroopprediction-release-health.json \
+            --manifest-json /tmp/militarynntroopprediction-artifact-manifest.json \
+            --triage-json /tmp/militarynntroopprediction-triage-summary.json \
+            --markdown-path /tmp/militarynntroopprediction-operator-readiness.md \
+            --json-path /tmp/militarynntroopprediction-operator-readiness.json
+
+      - name: Validate reviewer handoff smoke artifact
+        run: |
+          python scripts/validate_reviewer_handoff.py \
+            /tmp/militarynntroopprediction-reviewer-handoff.json \
+            --json
+
+      - name: Run unit test discovery
+        run: python -m unittest discover -s tests -p 'test_*.py'
 
       - name: Build diagnostic bundle
         if: always()
