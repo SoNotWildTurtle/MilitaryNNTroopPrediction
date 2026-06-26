@@ -61,8 +61,8 @@ class OperatorRunbookIndexTests(unittest.TestCase):
             write_markdown("# Runbook\n", markdown_path)
             write_json(index, json_path)
 
-        self.assertEqual(markdown_path.read_text(encoding="utf-8"), "# Runbook\n")
-        self.assertEqual(json.loads(json_path.read_text(encoding="utf-8"))["schema_version"], index["schema_version"])
+            self.assertEqual(markdown_path.read_text(encoding="utf-8"), "# Runbook\n")
+            self.assertEqual(json.loads(json_path.read_text(encoding="utf-8"))["schema_version"], index["schema_version"])
 
 
 if __name__ == "__main__":
