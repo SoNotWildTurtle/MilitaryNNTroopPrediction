@@ -9,7 +9,7 @@ ARTIFACT_DIR ?= ci_artifacts
 TRIAGE_ARTIFACT_DIR ?= ci_artifacts/local-ci
 FIXTURE_DIR ?= data/fixtures
 
-.PHONY: help install-core install-optional configure doctor quickstart api test verify ci-triage ci-report openapi examples dashboard bundle-index previews manifest artifact-gap-report provenance-ledger release-notes reviewer-handoff operator-readiness operator-status-board operator-session-plan automation-plan validate-handoff triage-summary synthetic-fixtures clean
+.PHONY: help install-core install-optional configure doctor quickstart api test verify ci-triage ci-report openapi examples dashboard bundle-index previews manifest artifact-gap-report provenance-ledger release-notes reviewer-handoff operator-readiness operator-status-board operator-session-plan operator-runbook-index automation-plan validate-handoff triage-summary synthetic-fixtures clean
 
 help:
 	@printf 'MilitaryNNTroopPrediction common tasks\n\n'
@@ -39,6 +39,7 @@ help:
 	@printf '  make operator-readiness Export operator launch/no-launch readiness brief\n'
 	@printf '  make operator-status-board Export quick non-technical operator status board\n'
 	@printf '  make operator-session-plan Export ranked next-session operator checklist\n'
+	@printf '  make operator-runbook-index Export safe command, doc, and artifact map\n'
 	@printf '  make automation-plan   Export safe additive next-run plan\n'
 	@printf '  make triage-summary    Export CI triage summary and narrow rerun targets\n'
 	@printf '  make synthetic-fixtures Export safe JSONL/CSV fixtures for demos and clients\n\n'
@@ -80,7 +81,7 @@ ci-triage:
 	@printf '   make verify ARTIFACT_DIR=$(TRIAGE_ARTIFACT_DIR)\n\n'
 	@printf '3. Open the reviewer landing page first:\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/release-bundle-index.html\n\n'
-	@printf '4. If the bundle is incomplete, inspect the generated handoff, its validation result, gap report, provenance ledger, operator status, operator session plan, and triage summary, then rerun the narrow target:\n'
+	@printf '4. If the bundle is incomplete, inspect the generated handoff, its validation result, gap report, provenance ledger, operator status, operator session plan, operator runbook index, and triage summary, then rerun the narrow target:\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/reviewer-handoff.md\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/reviewer-handoff-validation.json\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/artifact-gap-report.md\n'
@@ -88,10 +89,11 @@ ci-triage:
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/operator-readiness.md\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/operator-status-board.md\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/operator-session-plan.md\n'
+	@printf '   $(TRIAGE_ARTIFACT_DIR)/operator-runbook-index.md\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/triage-summary.md\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/automation-plan.md\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/artifact-manifest.md\n'
-	@printf '   make doctor | make test | make ci-report | make validate-handoff | make openapi | make examples | make dashboard | make previews | make manifest | make artifact-gap-report | make provenance-ledger | make release-notes | make reviewer-handoff | make operator-readiness | make operator-status-board | make operator-session-plan | make automation-plan | make triage-summary | make synthetic-fixtures\n\n'
+	@printf '   make doctor | make test | make ci-report | make validate-handoff | make openapi | make examples | make dashboard | make previews | make manifest | make artifact-gap-report | make provenance-ledger | make release-notes | make reviewer-handoff | make operator-readiness | make operator-status-board | make operator-session-plan | make operator-runbook-index | make automation-plan | make triage-summary | make synthetic-fixtures\n\n'
 	@printf 'Safe-scope reminder: keep triage limited to local setup, deterministic tests, synthetic examples, API contracts, generated artifacts, and documentation.\n'
 
 ci-report:
@@ -170,6 +172,12 @@ operator-session-plan:
 		--artifact-dir $(ARTIFACT_DIR) \
 		--markdown-path $(ARTIFACT_DIR)/operator-session-plan.md \
 		--json-path $(ARTIFACT_DIR)/operator-session-plan.json
+
+operator-runbook-index:
+	$(PYTHON_BIN) -m app.cli.operator_runbook_index \
+		--artifact-dir $(ARTIFACT_DIR) \
+		--markdown-path $(ARTIFACT_DIR)/operator-runbook-index.md \
+		--json-path $(ARTIFACT_DIR)/operator-runbook-index.json
 
 automation-plan:
 	$(PYTHON_BIN) -m app.cli.automation_plan \
