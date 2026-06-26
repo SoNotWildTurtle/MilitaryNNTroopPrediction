@@ -27,7 +27,15 @@ class MakefileWorkflowTests(unittest.TestCase):
 
         self.assertIn("make verify", content)
         self.assertRegex(content, r"(?m)^\.PHONY: .*\bverify\b")
-        self.assertRegex(content, r"(?m)^verify: doctor test ci-report$")
+
+        verify_match = re.search(r"(?m)^verify:\s*(?P<deps>.+)$", content)
+        self.assertIsNotNone(verify_match)
+        assert verify_match is not None
+        verify_deps = verify_match.group("deps").split()
+        self.assertEqual(
+            verify_deps,
+            ["doctor", "test", "ci-report", "validate-handoff"],
+        )
 
     def test_verify_target_points_reviewers_to_release_bundle_index(self) -> None:
         content = read_makefile()
