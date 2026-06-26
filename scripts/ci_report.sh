@@ -12,20 +12,11 @@ mkdir -p "${ARTIFACT_DIR}"
 "${PYTHON_BIN}" -m pip --version > "${ARTIFACT_DIR}/pip-version.txt"
 "${PYTHON_BIN}" -m pip freeze > "${ARTIFACT_DIR}/pip-freeze.txt"
 "${PYTHON_BIN}" -m app.cli.doctor --skip-optional --skip-mongo --skip-env-files --json > "${ARTIFACT_DIR}/doctor-minimal.json"
-"${PYTHON_BIN}" -m app.cli.release_health \
-  --markdown-path "${ARTIFACT_DIR}/release-health.md" \
-  --json-path "${ARTIFACT_DIR}/release-health.json"
-"${PYTHON_BIN}" -m app.cli.export_openapi \
-  --json-path "${ARTIFACT_DIR}/openapi.json" \
-  --markdown-path "${ARTIFACT_DIR}/openapi-summary.md"
-"${PYTHON_BIN}" -m app.cli.export_api_examples \
-  --json-path "${ARTIFACT_DIR}/api-response-examples.json" \
-  --markdown-path "${ARTIFACT_DIR}/api-response-examples.md"
-"${PYTHON_BIN}" -m app.cli.export_dashboard_mockup \
-  --html-path "${ARTIFACT_DIR}/dashboard-mockup.html"
-"${PYTHON_BIN}" -m app.cli.synthetic_data_fixtures \
-  --output-dir "${ARTIFACT_DIR}/synthetic-fixtures" \
-  --json > "${ARTIFACT_DIR}/synthetic-fixtures-summary.json"
+"${PYTHON_BIN}" -m app.cli.release_health --markdown-path "${ARTIFACT_DIR}/release-health.md" --json-path "${ARTIFACT_DIR}/release-health.json"
+"${PYTHON_BIN}" -m app.cli.export_openapi --json-path "${ARTIFACT_DIR}/openapi.json" --markdown-path "${ARTIFACT_DIR}/openapi-summary.md"
+"${PYTHON_BIN}" -m app.cli.export_api_examples --json-path "${ARTIFACT_DIR}/api-response-examples.json" --markdown-path "${ARTIFACT_DIR}/api-response-examples.md"
+"${PYTHON_BIN}" -m app.cli.export_dashboard_mockup --html-path "${ARTIFACT_DIR}/dashboard-mockup.html"
+"${PYTHON_BIN}" -m app.cli.synthetic_data_fixtures --output-dir "${ARTIFACT_DIR}/synthetic-fixtures" --json > "${ARTIFACT_DIR}/synthetic-fixtures-summary.json"
 "${PYTHON_BIN}" -m app.cli.quickstart --help > "${ARTIFACT_DIR}/quickstart-help.txt"
 "${PYTHON_BIN}" -m app.cli.doctor --help > "${ARTIFACT_DIR}/doctor-help.txt"
 "${PYTHON_BIN}" -m app.cli.release_health --help > "${ARTIFACT_DIR}/release-health-help.txt"
@@ -33,9 +24,11 @@ mkdir -p "${ARTIFACT_DIR}"
 "${PYTHON_BIN}" -m app.cli.reviewer_handoff --help > "${ARTIFACT_DIR}/reviewer-handoff-help.txt"
 "${PYTHON_BIN}" -m app.cli.operator_readiness --help > "${ARTIFACT_DIR}/operator-readiness-help.txt"
 "${PYTHON_BIN}" -m app.cli.operator_status_board --help > "${ARTIFACT_DIR}/operator-status-board-help.txt"
+"${PYTHON_BIN}" -m app.cli.operator_session_plan --help > "${ARTIFACT_DIR}/operator-session-plan-help.txt"
 "${PYTHON_BIN}" -m app.cli.automation_plan --help > "${ARTIFACT_DIR}/automation-plan-help.txt"
 "${PYTHON_BIN}" -m app.cli.triage_summary --help > "${ARTIFACT_DIR}/triage-summary-help.txt"
 "${PYTHON_BIN}" -m app.cli.artifact_gap_report --help > "${ARTIFACT_DIR}/artifact-gap-report-help.txt"
+"${PYTHON_BIN}" -m app.cli.artifact_provenance_ledger --help > "${ARTIFACT_DIR}/artifact-provenance-ledger-help.txt"
 "${PYTHON_BIN}" -m app.cli.synthetic_data_fixtures --help > "${ARTIFACT_DIR}/synthetic-data-fixtures-help.txt"
 "${PYTHON_BIN}" -m app.cli.export_openapi --help > "${ARTIFACT_DIR}/export-openapi-help.txt"
 "${PYTHON_BIN}" -m app.cli.export_api_examples --help > "${ARTIFACT_DIR}/export-api-examples-help.txt"
@@ -52,10 +45,11 @@ Files:
 - pip-version.txt: pip version used by CI.
 - pip-freeze.txt: installed package versions for reproducibility.
 - doctor-minimal.json: machine-readable core setup diagnostics.
-- release health/release notes/reviewer handoff/operator readiness/operator status board/automation plan artifacts: generated local readiness, review, and next-run guidance.
+- release health/release notes/reviewer handoff/operator readiness/operator status board/operator session plan/automation plan artifacts: generated local readiness, review, and next-run guidance.
 - reviewer-handoff-validation.txt/json: reviewer handoff contract validation results.
 - triage-summary.md/json: CI failure triage summary with narrow rerun targets.
 - artifact-gap-report.md/json: diagnostic bundle completeness and suspicious-artifact report.
+- artifact-provenance-ledger.md/json: diagnostic bundle provenance labels for generated, synthetic, preview, and review artifacts.
 - openapi.json/openapi-summary.md: API contract exports.
 - api-response-examples.json/md: synthetic API response examples.
 - dashboard-mockup.html: self-contained static dashboard preview.
@@ -65,130 +59,25 @@ Files:
 - *-help.txt: current CLI help output for supported operator and artifact commands.
 SUMMARY
 
-"${PYTHON_BIN}" -m app.cli.release_bundle_index \
-  --artifact-dir "${ARTIFACT_DIR}" \
-  --html-path "${ARTIFACT_DIR}/release-bundle-index.html"
-"${PYTHON_BIN}" -m app.cli.export_html_previews \
-  --artifact-dir "${ARTIFACT_DIR}" \
-  --markdown-path "${ARTIFACT_DIR}/html-previews.md"
-
-# Release notes, triage summaries, automation plans, reviewer handoffs, operator
-# readiness/status boards, and artifact gap reports read the manifest, while the
-# manifest must also include their final outputs. Multi-pass generation keeps
-# human notes, launch/no-launch guidance, bundle gap evidence, narrow rerun
-# guidance, additive next-run planning, copyable review context, quick status
-# boards, and final hashes useful without any network calls.
-"${PYTHON_BIN}" -m app.cli.artifact_manifest \
-  --artifact-dir "${ARTIFACT_DIR}" \
-  --json-path "${ARTIFACT_DIR}/artifact-manifest.json" \
-  --markdown-path "${ARTIFACT_DIR}/artifact-manifest.md"
-"${PYTHON_BIN}" -m app.cli.release_notes \
-  --health-json "${ARTIFACT_DIR}/release-health.json" \
-  --manifest-json "${ARTIFACT_DIR}/artifact-manifest.json" \
-  --markdown-path "${ARTIFACT_DIR}/release-notes.md" \
-  --json-path "${ARTIFACT_DIR}/release-notes.json"
-"${PYTHON_BIN}" -m app.cli.triage_summary \
-  --artifact-dir "${ARTIFACT_DIR}" \
-  --health-json "${ARTIFACT_DIR}/release-health.json" \
-  --manifest-json "${ARTIFACT_DIR}/artifact-manifest.json" \
-  --markdown-path "${ARTIFACT_DIR}/triage-summary.md" \
-  --json-path "${ARTIFACT_DIR}/triage-summary.json"
-"${PYTHON_BIN}" -m app.cli.reviewer_handoff \
-  --artifact-dir "${ARTIFACT_DIR}" \
-  --markdown-path "${ARTIFACT_DIR}/reviewer-handoff.md" \
-  --json-path "${ARTIFACT_DIR}/reviewer-handoff.json"
-"${PYTHON_BIN}" -m app.cli.operator_readiness \
-  --artifact-dir "${ARTIFACT_DIR}" \
-  --markdown-path "${ARTIFACT_DIR}/operator-readiness.md" \
-  --json-path "${ARTIFACT_DIR}/operator-readiness.json"
-"${PYTHON_BIN}" -m app.cli.automation_plan \
-  --artifact-dir "${ARTIFACT_DIR}" \
-  --markdown-path "${ARTIFACT_DIR}/automation-plan.md" \
-  --json-path "${ARTIFACT_DIR}/automation-plan.json"
-"${PYTHON_BIN}" -m app.cli.artifact_manifest \
-  --artifact-dir "${ARTIFACT_DIR}" \
-  --json-path "${ARTIFACT_DIR}/artifact-manifest.json" \
-  --markdown-path "${ARTIFACT_DIR}/artifact-manifest.md"
-"${PYTHON_BIN}" -m app.cli.artifact_gap_report \
-  --artifact-dir "${ARTIFACT_DIR}" \
-  --json-path "${ARTIFACT_DIR}/artifact-gap-report.json" \
-  --markdown-path "${ARTIFACT_DIR}/artifact-gap-report.md"
-"${PYTHON_BIN}" -m app.cli.artifact_manifest \
-  --artifact-dir "${ARTIFACT_DIR}" \
-  --json-path "${ARTIFACT_DIR}/artifact-manifest.json" \
-  --markdown-path "${ARTIFACT_DIR}/artifact-manifest.md"
-"${PYTHON_BIN}" -m app.cli.artifact_gap_report \
-  --artifact-dir "${ARTIFACT_DIR}" \
-  --json-path "${ARTIFACT_DIR}/artifact-gap-report.json" \
-  --markdown-path "${ARTIFACT_DIR}/artifact-gap-report.md"
-"${PYTHON_BIN}" -m app.cli.operator_status_board \
-  --artifact-dir "${ARTIFACT_DIR}" \
-  --markdown-path "${ARTIFACT_DIR}/operator-status-board.md" \
-  --json-path "${ARTIFACT_DIR}/operator-status-board.json"
-"${PYTHON_BIN}" -m app.cli.artifact_manifest \
-  --artifact-dir "${ARTIFACT_DIR}" \
-  --json-path "${ARTIFACT_DIR}/artifact-manifest.json" \
-  --markdown-path "${ARTIFACT_DIR}/artifact-manifest.md"
-"${PYTHON_BIN}" -m app.cli.release_notes \
-  --health-json "${ARTIFACT_DIR}/release-health.json" \
-  --manifest-json "${ARTIFACT_DIR}/artifact-manifest.json" \
-  --markdown-path "${ARTIFACT_DIR}/release-notes.md" \
-  --json-path "${ARTIFACT_DIR}/release-notes.json"
-"${PYTHON_BIN}" -m app.cli.triage_summary \
-  --artifact-dir "${ARTIFACT_DIR}" \
-  --health-json "${ARTIFACT_DIR}/release-health.json" \
-  --manifest-json "${ARTIFACT_DIR}/artifact-manifest.json" \
-  --markdown-path "${ARTIFACT_DIR}/triage-summary.md" \
-  --json-path "${ARTIFACT_DIR}/triage-summary.json"
-"${PYTHON_BIN}" -m app.cli.reviewer_handoff \
-  --artifact-dir "${ARTIFACT_DIR}" \
-  --markdown-path "${ARTIFACT_DIR}/reviewer-handoff.md" \
-  --json-path "${ARTIFACT_DIR}/reviewer-handoff.json"
-"${PYTHON_BIN}" -m app.cli.operator_readiness \
-  --artifact-dir "${ARTIFACT_DIR}" \
-  --markdown-path "${ARTIFACT_DIR}/operator-readiness.md" \
-  --json-path "${ARTIFACT_DIR}/operator-readiness.json"
-"${PYTHON_BIN}" -m app.cli.automation_plan \
-  --artifact-dir "${ARTIFACT_DIR}" \
-  --markdown-path "${ARTIFACT_DIR}/automation-plan.md" \
-  --json-path "${ARTIFACT_DIR}/automation-plan.json"
-"${PYTHON_BIN}" -m app.cli.operator_status_board \
-  --artifact-dir "${ARTIFACT_DIR}" \
-  --markdown-path "${ARTIFACT_DIR}/operator-status-board.md" \
-  --json-path "${ARTIFACT_DIR}/operator-status-board.json"
-"${PYTHON_BIN}" scripts/validate_reviewer_handoff.py \
-  "${ARTIFACT_DIR}/reviewer-handoff.json" \
-  > "${ARTIFACT_DIR}/reviewer-handoff-validation.txt"
-"${PYTHON_BIN}" scripts/validate_reviewer_handoff.py \
-  "${ARTIFACT_DIR}/reviewer-handoff.json" \
-  --json > "${ARTIFACT_DIR}/reviewer-handoff-validation.json"
-"${PYTHON_BIN}" -m app.cli.artifact_manifest \
-  --artifact-dir "${ARTIFACT_DIR}" \
-  --json-path "${ARTIFACT_DIR}/artifact-manifest.json" \
-  --markdown-path "${ARTIFACT_DIR}/artifact-manifest.md"
-"${PYTHON_BIN}" -m app.cli.artifact_gap_report \
-  --artifact-dir "${ARTIFACT_DIR}" \
-  --json-path "${ARTIFACT_DIR}/artifact-gap-report.json" \
-  --markdown-path "${ARTIFACT_DIR}/artifact-gap-report.md"
-"${PYTHON_BIN}" -m app.cli.operator_status_board \
-  --artifact-dir "${ARTIFACT_DIR}" \
-  --markdown-path "${ARTIFACT_DIR}/operator-status-board.md" \
-  --json-path "${ARTIFACT_DIR}/operator-status-board.json"
-"${PYTHON_BIN}" -m app.cli.artifact_manifest \
-  --artifact-dir "${ARTIFACT_DIR}" \
-  --json-path "${ARTIFACT_DIR}/artifact-manifest.json" \
-  --markdown-path "${ARTIFACT_DIR}/artifact-manifest.md"
-"${PYTHON_BIN}" -m app.cli.operator_readiness \
-  --artifact-dir "${ARTIFACT_DIR}" \
-  --markdown-path "${ARTIFACT_DIR}/operator-readiness.md" \
-  --json-path "${ARTIFACT_DIR}/operator-readiness.json"
-"${PYTHON_BIN}" -m app.cli.automation_plan \
-  --artifact-dir "${ARTIFACT_DIR}" \
-  --markdown-path "${ARTIFACT_DIR}/automation-plan.md" \
-  --json-path "${ARTIFACT_DIR}/automation-plan.json"
-"${PYTHON_BIN}" -m app.cli.operator_status_board \
-  --artifact-dir "${ARTIFACT_DIR}" \
-  --markdown-path "${ARTIFACT_DIR}/operator-status-board.md" \
-  --json-path "${ARTIFACT_DIR}/operator-status-board.json"
+"${PYTHON_BIN}" -m app.cli.release_bundle_index --artifact-dir "${ARTIFACT_DIR}" --html-path "${ARTIFACT_DIR}/release-bundle-index.html"
+"${PYTHON_BIN}" -m app.cli.export_html_previews --artifact-dir "${ARTIFACT_DIR}" --markdown-path "${ARTIFACT_DIR}/html-previews.md"
+"${PYTHON_BIN}" -m app.cli.artifact_manifest --artifact-dir "${ARTIFACT_DIR}" --json-path "${ARTIFACT_DIR}/artifact-manifest.json" --markdown-path "${ARTIFACT_DIR}/artifact-manifest.md"
+"${PYTHON_BIN}" -m app.cli.artifact_provenance_ledger --artifact-dir "${ARTIFACT_DIR}" --json-path "${ARTIFACT_DIR}/artifact-provenance-ledger.json" --markdown-path "${ARTIFACT_DIR}/artifact-provenance-ledger.md"
+"${PYTHON_BIN}" -m app.cli.release_notes --health-json "${ARTIFACT_DIR}/release-health.json" --manifest-json "${ARTIFACT_DIR}/artifact-manifest.json" --markdown-path "${ARTIFACT_DIR}/release-notes.md" --json-path "${ARTIFACT_DIR}/release-notes.json"
+"${PYTHON_BIN}" -m app.cli.triage_summary --artifact-dir "${ARTIFACT_DIR}" --health-json "${ARTIFACT_DIR}/release-health.json" --manifest-json "${ARTIFACT_DIR}/artifact-manifest.json" --markdown-path "${ARTIFACT_DIR}/triage-summary.md" --json-path "${ARTIFACT_DIR}/triage-summary.json"
+"${PYTHON_BIN}" -m app.cli.reviewer_handoff --artifact-dir "${ARTIFACT_DIR}" --markdown-path "${ARTIFACT_DIR}/reviewer-handoff.md" --json-path "${ARTIFACT_DIR}/reviewer-handoff.json"
+"${PYTHON_BIN}" -m app.cli.operator_readiness --artifact-dir "${ARTIFACT_DIR}" --markdown-path "${ARTIFACT_DIR}/operator-readiness.md" --json-path "${ARTIFACT_DIR}/operator-readiness.json"
+"${PYTHON_BIN}" -m app.cli.automation_plan --artifact-dir "${ARTIFACT_DIR}" --markdown-path "${ARTIFACT_DIR}/automation-plan.md" --json-path "${ARTIFACT_DIR}/automation-plan.json"
+"${PYTHON_BIN}" -m app.cli.operator_status_board --artifact-dir "${ARTIFACT_DIR}" --markdown-path "${ARTIFACT_DIR}/operator-status-board.md" --json-path "${ARTIFACT_DIR}/operator-status-board.json"
+"${PYTHON_BIN}" -m app.cli.operator_session_plan --artifact-dir "${ARTIFACT_DIR}" --markdown-path "${ARTIFACT_DIR}/operator-session-plan.md" --json-path "${ARTIFACT_DIR}/operator-session-plan.json"
+"${PYTHON_BIN}" scripts/validate_reviewer_handoff.py "${ARTIFACT_DIR}/reviewer-handoff.json" > "${ARTIFACT_DIR}/reviewer-handoff-validation.txt"
+"${PYTHON_BIN}" scripts/validate_reviewer_handoff.py "${ARTIFACT_DIR}/reviewer-handoff.json" --json > "${ARTIFACT_DIR}/reviewer-handoff-validation.json"
+"${PYTHON_BIN}" -m app.cli.artifact_manifest --artifact-dir "${ARTIFACT_DIR}" --json-path "${ARTIFACT_DIR}/artifact-manifest.json" --markdown-path "${ARTIFACT_DIR}/artifact-manifest.md"
+"${PYTHON_BIN}" -m app.cli.artifact_provenance_ledger --artifact-dir "${ARTIFACT_DIR}" --json-path "${ARTIFACT_DIR}/artifact-provenance-ledger.json" --markdown-path "${ARTIFACT_DIR}/artifact-provenance-ledger.md"
+"${PYTHON_BIN}" -m app.cli.artifact_gap_report --artifact-dir "${ARTIFACT_DIR}" --json-path "${ARTIFACT_DIR}/artifact-gap-report.json" --markdown-path "${ARTIFACT_DIR}/artifact-gap-report.md"
+"${PYTHON_BIN}" -m app.cli.operator_status_board --artifact-dir "${ARTIFACT_DIR}" --markdown-path "${ARTIFACT_DIR}/operator-status-board.md" --json-path "${ARTIFACT_DIR}/operator-status-board.json"
+"${PYTHON_BIN}" -m app.cli.operator_session_plan --artifact-dir "${ARTIFACT_DIR}" --markdown-path "${ARTIFACT_DIR}/operator-session-plan.md" --json-path "${ARTIFACT_DIR}/operator-session-plan.json"
+"${PYTHON_BIN}" -m app.cli.artifact_manifest --artifact-dir "${ARTIFACT_DIR}" --json-path "${ARTIFACT_DIR}/artifact-manifest.json" --markdown-path "${ARTIFACT_DIR}/artifact-manifest.md"
+"${PYTHON_BIN}" -m app.cli.artifact_provenance_ledger --artifact-dir "${ARTIFACT_DIR}" --json-path "${ARTIFACT_DIR}/artifact-provenance-ledger.json" --markdown-path "${ARTIFACT_DIR}/artifact-provenance-ledger.md"
 
 printf 'Wrote CI diagnostics to %s\n' "${ARTIFACT_DIR}"
