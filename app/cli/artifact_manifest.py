@@ -28,6 +28,10 @@ EXPECTED_ARTIFACTS: Dict[str, str] = {
     "operator-readiness.json": "Machine-readable operator readiness brief generated from diagnostics.",
     "operator-status-board.md": "Quick non-technical operator readiness board generated from diagnostics.",
     "operator-status-board.json": "Machine-readable operator status board generated from diagnostics.",
+    "operator-session-plan.md": "Ranked next-session operator checklist generated from diagnostics.",
+    "operator-session-plan.json": "Machine-readable ranked next-session operator checklist.",
+    "operator-runbook-index.md": "Operator command, documentation, artifact, and safe-scope map.",
+    "operator-runbook-index.json": "Machine-readable operator runbook index.",
     "automation-plan.md": "Safe additive next-run plan generated from goals and diagnostics.",
     "automation-plan.json": "Machine-readable safe additive next-run plan.",
     "triage-summary.md": "Human-readable CI failure triage summary with narrow rerun targets.",
@@ -57,6 +61,8 @@ EXPECTED_ARTIFACTS: Dict[str, str] = {
     "reviewer-handoff-help.txt": "Current reviewer handoff CLI options.",
     "operator-readiness-help.txt": "Current operator readiness CLI options.",
     "operator-status-board-help.txt": "Current operator status board CLI options.",
+    "operator-session-plan-help.txt": "Current operator session plan CLI options.",
+    "operator-runbook-index-help.txt": "Current operator runbook index CLI options.",
     "automation-plan-help.txt": "Current automation plan CLI options.",
     "triage-summary-help.txt": "Current CI triage summary CLI options.",
     "artifact-gap-report-help.txt": "Current artifact gap report CLI options.",
@@ -82,42 +88,49 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _file_entry(path: Path, artifact_dir: Path) -> Dict[str, Any]:
+def _file_entry(root: Path, path: Path) -> Dict[str, Any]:
+    relative_path = path.relative_to(root).as_posix()
     stat = path.stat()
-    relative_path = path.relative_to(artifact_dir).as_posix()
     return {
         "path": relative_path,
         "size_bytes": stat.st_size,
         "sha256": _sha256(path),
         "description": EXPECTED_ARTIFACTS.get(relative_path, "Generated diagnostic artifact."),
+        "expected": relative_path in EXPECTED_ARTIFACTS,
     }
 
 
+def _iter_files(root: Path) -> Iterable[Path]:
+    if not root.exists():
+        return []
+    return sorted(path for path in root.rglob("*") if path.is_file())
+
+
 def build_manifest(artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> Dict[str, Any]:
-    """Build a deterministic manifest for files in ``artifact_dir``."""
+    """Build a machine-readable manifest for files below ``artifact_dir``."""
 
-    files: List[Dict[str, Any]] = []
-    if artifact_dir.exists():
-        for path in sorted(p for p in artifact_dir.rglob("*") if p.is_file()):
-            if path.name in GENERATED_MANIFEST_NAMES:
-                continue
-            files.append(_file_entry(path, artifact_dir))
-
-    present_paths = {entry["path"] for entry in files}
-    missing_expected = sorted(name for name in EXPECTED_ARTIFACTS if name not in present_paths)
-
+    files = [
+        _file_entry(artifact_dir, path)
+        for path in _iter_files(artifact_dir)
+        if path.relative_to(artifact_dir).as_posix() not in GENERATED_MANIFEST_NAMES
+    ]
+    present = {entry["path"] for entry in files}
+    missing_expected = sorted(path for path in EXPECTED_ARTIFACTS if path not in present and path not in GENERATED_MANIFEST_NAMES)
+    unexpected = sorted(path for path in present if path not in EXPECTED_ARTIFACTS)
     return {
+        "schema_version": "militarynntroopprediction.artifact_manifest.v1",
         "generated_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
         "artifact_dir": artifact_dir.as_posix(),
+        "expected_count": len(EXPECTED_ARTIFACTS),
         "file_count": len(files),
-        "total_size_bytes": sum(int(entry["size_bytes"]) for entry in files),
         "missing_expected": missing_expected,
+        "unexpected": unexpected,
         "files": files,
     }
 
 
 def write_json(manifest: Dict[str, Any], path: Path) -> None:
-    """Write manifest JSON to ``path``."""
+    """Write the JSON manifest to ``path``."""
 
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -128,33 +141,45 @@ def _markdown_lines(manifest: Dict[str, Any]) -> Iterable[str]:
     yield ""
     yield f"Generated at: `{manifest['generated_at']}`"
     yield f"Artifact directory: `{manifest['artifact_dir']}`"
-    yield f"Files indexed: {manifest['file_count']}"
-    yield f"Total size: {manifest['total_size_bytes']} bytes"
+    yield f"Files indexed: **{manifest['file_count']}**"
+    yield f"Expected artifact definitions: **{manifest['expected_count']}**"
     yield ""
-
-    if manifest["missing_expected"]:
-        yield "## Missing expected files"
+    missing = manifest.get("missing_expected", [])
+    if missing:
+        yield "## Missing expected artifacts"
         yield ""
-        for name in manifest["missing_expected"]:
-            yield f"- `{name}` - {EXPECTED_ARTIFACTS[name]}"
+        for path in missing:
+            yield f"- `{path}` - {EXPECTED_ARTIFACTS.get(path, 'Expected diagnostic artifact.')}"
         yield ""
-
+    unexpected = manifest.get("unexpected", [])
+    if unexpected:
+        yield "## Unexpected artifacts"
+        yield ""
+        for path in unexpected:
+            yield f"- `{path}`"
+        yield ""
     yield "## Files"
     yield ""
-    yield "| Path | Size | SHA-256 | Description |"
-    yield "| --- | ---: | --- | --- |"
-    for entry in manifest["files"]:
+    yield "| Path | Size | SHA-256 | Expected | Description |"
+    yield "| --- | ---: | --- | --- | --- |"
+    for entry in manifest.get("files", []):
         yield (
-            f"| `{entry['path']}` | {entry['size_bytes']} | "
-            f"`{entry['sha256']}` | {entry['description']} |"
+            f"| `{entry['path']}` | {entry['size_bytes']} | `{entry['sha256']}` | "
+            f"{entry['expected']} | {entry['description']} |"
         )
+
+
+def render_markdown(manifest: Dict[str, Any]) -> str:
+    """Render a human-readable Markdown manifest."""
+
+    return "\n".join(_markdown_lines(manifest)).rstrip() + "\n"
 
 
 def write_markdown(manifest: Dict[str, Any], path: Path) -> None:
     """Write a human-readable manifest summary to ``path``."""
 
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("\n".join(_markdown_lines(manifest)).rstrip() + "\n", encoding="utf-8")
+    path.write_text(render_markdown(manifest), encoding="utf-8")
 
 
 def build_parser() -> argparse.ArgumentParser:
