@@ -7,8 +7,9 @@ HOST ?= 127.0.0.1
 PORT ?= 8000
 ARTIFACT_DIR ?= ci_artifacts
 TRIAGE_ARTIFACT_DIR ?= ci_artifacts/local-ci
+FIXTURE_DIR ?= data/fixtures
 
-.PHONY: help install-core install-optional configure doctor quickstart api test verify ci-triage ci-report openapi examples dashboard bundle-index previews manifest release-notes reviewer-handoff operator-readiness automation-plan validate-handoff triage-summary clean
+.PHONY: help install-core install-optional configure doctor quickstart api test verify ci-triage ci-report openapi examples dashboard bundle-index previews manifest release-notes reviewer-handoff operator-readiness automation-plan validate-handoff triage-summary synthetic-fixtures clean
 
 help:
 	@printf 'MilitaryNNTroopPrediction common tasks\n\n'
@@ -35,7 +36,8 @@ help:
 	@printf '  make reviewer-handoff  Export copyable reviewer handoff notes\n'
 	@printf '  make operator-readiness Export operator launch/no-launch readiness brief\n'
 	@printf '  make automation-plan   Export safe additive next-run plan\n'
-	@printf '  make triage-summary    Export CI triage summary and narrow rerun targets\n\n'
+	@printf '  make triage-summary    Export CI triage summary and narrow rerun targets\n'
+	@printf '  make synthetic-fixtures Export safe JSONL/CSV fixtures for demos and clients\n\n'
 	@printf 'Runtime:\n'
 	@printf '  make api               Launch FastAPI on HOST=$(HOST) PORT=$(PORT)\n\n'
 	@printf 'Cleanup:\n'
@@ -81,7 +83,7 @@ ci-triage:
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/triage-summary.md\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/automation-plan.md\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/artifact-manifest.md\n'
-	@printf '   make doctor | make test | make ci-report | make validate-handoff | make openapi | make examples | make dashboard | make previews | make manifest | make release-notes | make reviewer-handoff | make operator-readiness | make automation-plan | make triage-summary\n\n'
+	@printf '   make doctor | make test | make ci-report | make validate-handoff | make openapi | make examples | make dashboard | make previews | make manifest | make release-notes | make reviewer-handoff | make operator-readiness | make automation-plan | make triage-summary | make synthetic-fixtures\n\n'
 	@printf 'Safe-scope reminder: keep triage limited to local setup, deterministic tests, synthetic examples, API contracts, generated artifacts, and documentation.\n'
 
 ci-report:
@@ -152,6 +154,9 @@ triage-summary:
 		--markdown-path $(ARTIFACT_DIR)/triage-summary.md \
 		--json-path $(ARTIFACT_DIR)/triage-summary.json
 
+synthetic-fixtures:
+	$(PYTHON_BIN) -m app.cli.synthetic_data_fixtures --output-dir $(FIXTURE_DIR)
+
 clean:
-	rm -rf $(ARTIFACT_DIR) .pytest_cache
+	rm -rf $(ARTIFACT_DIR) $(FIXTURE_DIR) .pytest_cache
 	find . -type d -name __pycache__ -prune -exec rm -rf {} +
