@@ -24,6 +24,8 @@ EXPECTED_ARTIFACTS: Dict[str, str] = {
     "release-notes.json": "Machine-readable release notes generated from diagnostics.",
     "reviewer-handoff.md": "Copyable reviewer handoff generated from diagnostics and manifests.",
     "reviewer-handoff.json": "Machine-readable reviewer handoff generated from diagnostics and manifests.",
+    "operator-digest.md": "Concise first-read operator digest generated from health, manifest, triage, and handoff artifacts.",
+    "operator-digest.json": "Machine-readable first-read operator digest.",
     "operator-readiness.md": "Launch/no-launch readiness brief generated from diagnostics.",
     "operator-readiness.json": "Machine-readable operator readiness brief generated from diagnostics.",
     "operator-status-board.md": "Quick non-technical operator readiness board generated from diagnostics.",
@@ -59,6 +61,7 @@ EXPECTED_ARTIFACTS: Dict[str, str] = {
     "release-health-help.txt": "Current release health CLI options.",
     "release-notes-help.txt": "Current release notes CLI options.",
     "reviewer-handoff-help.txt": "Current reviewer handoff CLI options.",
+    "operator-digest-help.txt": "Current operator digest CLI options.",
     "operator-readiness-help.txt": "Current operator readiness CLI options.",
     "operator-status-board-help.txt": "Current operator status board CLI options.",
     "operator-session-plan-help.txt": "Current operator session plan CLI options.",
@@ -83,7 +86,7 @@ GENERATED_MANIFEST_NAMES = {DEFAULT_JSON_NAME, DEFAULT_MARKDOWN_NAME}
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+        for chunk in iter(lambda: handle.read(1024 * 1024), b=""):
             digest.update(chunk)
     return digest.hexdigest()
 
