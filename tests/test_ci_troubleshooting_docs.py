@@ -34,7 +34,8 @@ class CITroubleshootingDocsTests(unittest.TestCase):
         workflow = WORKFLOW.read_text(encoding="utf-8")
         guide = CI_TROUBLESHOOTING.read_text(encoding="utf-8")
 
-        self.assertIn("make verify ARTIFACT_DIR=ci_artifacts", workflow)
+        self.assertIn("python -m unittest discover -s tests -p 'test_*.py'", workflow)
+        self.assertIn("make ci-report ARTIFACT_DIR=ci_artifacts", workflow)
         self.assertIn("make verify", guide)
 
     def test_primary_contributor_docs_link_to_troubleshooting_guide(self) -> None:
