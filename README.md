@@ -18,6 +18,7 @@ This repository provides a starting point for a machine vision application that 
 - `docs/common_tasks.md` – examples for common `make` workflows
 - `docs/ci_troubleshooting.md` – local reproduction and diagnostics guide for CI failures
 - `docs/release_bundle_review.md` – reviewer checklist for generated diagnostics bundles
+- `docs/artifact_gap_report.md` – bundle completeness and suspicious-artifact audit workflow
 - `docs/synthetic_data_fixtures.md` – safe local fixture workflow for demos and client tests
 - `.env.example` – copyable first-run configuration template
 - `.github/workflows/ci.yml` – GitHub Actions smoke checks for pushes and pull requests
@@ -40,7 +41,7 @@ make configure
 make verify
 ```
 
-`make verify` runs the minimal setup doctor, local smoke/unit tests, and the diagnostics bundle generator in one safe pre-PR pass. See `docs/common_tasks.md` for the full target map, `CONTRIBUTING.md` for the safe contribution checklist, `docs/ci_troubleshooting.md` when a hosted CI run needs local reproduction, `docs/release_bundle_review.md` when reviewing generated bundles, and `docs/synthetic_data_fixtures.md` when you need safe demo records without live data sources.
+`make verify` runs the minimal setup doctor, local smoke/unit tests, and the diagnostics bundle generator in one safe pre-PR pass. See `docs/common_tasks.md` for the full target map, `CONTRIBUTING.md` for the safe contribution checklist, `docs/ci_troubleshooting.md` when a hosted CI run needs local reproduction, `docs/release_bundle_review.md` when reviewing generated bundles, `docs/artifact_gap_report.md` when checking bundle completeness, and `docs/synthetic_data_fixtures.md` when you need safe demo records without live data sources.
 
 For a guided local setup path that installs the small core dependency set, creates
 `.env` when needed, runs diagnostics, and prints the next command to run:
@@ -198,7 +199,8 @@ doctor in minimal mode, validates the lightweight API health layer, exports the
 OpenAPI contract, exports synthetic API response examples, exports the static
 dashboard mockup, exports safe synthetic data fixtures, exports a release bundle
 index page, exports lightweight SVG previews for static HTML artifacts, exports a
-diagnostic artifact manifest, and executes the standard-library unit tests:
+diagnostic artifact manifest, exports a diagnostic artifact gap report, and
+executes the standard-library unit tests:
 
 ```bash
 python -m pip install -r requirements-core.txt
@@ -211,6 +213,7 @@ python -m app.cli.synthetic_data_fixtures --output-dir /tmp/militarynntrooppredi
 python -m app.cli.release_bundle_index --artifact-dir /tmp --html-path /tmp/militarynntroopprediction-release-bundle-index.html
 python -m app.cli.export_html_previews --artifact-dir /tmp --output-dir /tmp/militarynntroopprediction-html-previews --markdown-path /tmp/militarynntroopprediction-html-previews.md
 python -m app.cli.artifact_manifest --artifact-dir /tmp --json-path /tmp/militarynntroopprediction-artifact-manifest.json --markdown-path /tmp/militarynntroopprediction-artifact-manifest.md
+python -m app.cli.artifact_gap_report --artifact-dir /tmp --manifest-path /tmp/militarynntroopprediction-artifact-manifest.json --json-path /tmp/militarynntroopprediction-artifact-gap-report.json --markdown-path /tmp/militarynntroopprediction-artifact-gap-report.md
 python -m app.cli.release_notes --health-json /tmp/militarynntroopprediction-release-health.json --manifest-json /tmp/militarynntroopprediction-artifact-manifest.json --markdown-path /tmp/militarynntroopprediction-release-notes.md --json-path /tmp/militarynntroopprediction-release-notes.json
 python -m unittest discover -s tests -p 'test_*.py'
 ```
@@ -236,10 +239,11 @@ release health reports, generated release notes, the generated FastAPI OpenAPI
 contract, synthetic API response examples, safe JSONL/CSV synthetic data fixtures,
 a self-contained static dashboard mockup, a reviewer-friendly release bundle
 index page, lightweight SVG previews for static HTML outputs, SHA-256 artifact
-manifests, and the current help output for the doctor, quickstart, release
-health, release notes, OpenAPI export, API example export, dashboard mockup export,
-synthetic fixture export, release bundle index, HTML preview export, and artifact
-manifest CLIs. To build the same bundle locally:
+manifests, diagnostic artifact gap reports, and the current help output for the
+doctor, quickstart, release health, release notes, OpenAPI export, API example
+export, dashboard mockup export, synthetic fixture export, release bundle index,
+HTML preview export, artifact manifest, and artifact gap report CLIs. To build
+the same bundle locally:
 
 ```bash
 bash scripts/ci_report.sh
@@ -249,8 +253,8 @@ make ci-report
 
 Open `ci_artifacts/release-bundle-index.html` first when reviewing a local or CI
 bundle. It links the release health summary, OpenAPI contract, synthetic examples,
-dashboard mockup, synthetic data fixtures, artifact manifest, and all indexed
-bundle files from one static, dependency-free page. Use
+dashboard mockup, synthetic data fixtures, artifact manifest, artifact gap report,
+and all indexed bundle files from one static, dependency-free page. Use
 `docs/release_bundle_review.md` as the checklist for confirming the bundle is
 complete before handing it to another reviewer.
 
@@ -351,6 +355,20 @@ python -m app.cli.artifact_manifest --artifact-dir ci_artifacts --json-path mani
 # or
 make manifest
 ```
+
+To audit a generated diagnostics directory for missing, empty, or suspiciously
+small expected outputs:
+
+```bash
+python -m app.cli.artifact_gap_report --artifact-dir ci_artifacts
+python -m app.cli.artifact_gap_report --artifact-dir ci_artifacts --fail-on-gap
+# or
+make artifact-gap-report
+```
+
+This report is a safe local completeness check for reviewer handoff bundles. It
+reads only the generated manifest and artifact metadata; it does not run live data
+collection, model inference, prediction, deployment, or network workflows.
 
 To turn a release health JSON file plus an artifact manifest into manager-friendly
 release notes:
