@@ -15,6 +15,17 @@ from bson import ObjectId
 from app.api import main
 
 
+def _query_bounds(field_info: object) -> tuple[int | None, int | None]:
+    """Return inclusive lower/upper bounds across FastAPI/Pydantic releases."""
+
+    lower = getattr(field_info, "ge", None)
+    upper = getattr(field_info, "le", None)
+    for metadata in getattr(field_info, "metadata", ()):
+        lower = getattr(metadata, "ge", lower)
+        upper = getattr(metadata, "le", upper)
+    return lower, upper
+
+
 class ApiRecordEndpointTests(unittest.TestCase):
     """Verify analytical record routes return JSON-safe, public API payloads."""
 
@@ -84,7 +95,7 @@ class ApiRecordEndpointTests(unittest.TestCase):
                 limit_param = next(
                     param for param in route.dependant.query_params if param.name == "limit"
                 )
-                route_limits[path] = (limit_param.field_info.ge, limit_param.field_info.le)
+                route_limits[path] = _query_bounds(limit_param.field_info)
 
         self.assertEqual(route_limits["/detections/{area}"], (1, 100))
         self.assertEqual(route_limits["/predictions/{area}"], (1, 100))

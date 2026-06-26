@@ -48,6 +48,23 @@ class ReleaseNotesTests(unittest.TestCase):
         self.assertIn("release-bundle-index.html", markdown)
         self.assertIn("Publish or attach", notes["next_step"])
 
+    def test_aggregate_health_payload_summarizes_checks(self) -> None:
+        notes = build_release_notes(
+            health_results={
+                "status": "review_warnings",
+                "checks": [
+                    {"name": "python", "status": "pass", "detail": "Python works", "remediation": ""},
+                    {"name": "optional", "status": "warn", "detail": "Optional missing", "remediation": "Install it"},
+                ],
+            },
+            manifest={"file_count": 0, "total_size_bytes": 0, "missing_expected": [], "files": []},
+            generated_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        )
+
+        self.assertEqual(notes["readiness"], "review")
+        self.assertEqual(notes["health_summary"], {"ok": 1, "warn": 1, "fail": 0})
+        self.assertEqual(notes["priority_checks"][0]["name"], "optional")
+
     def test_notes_prioritize_failures_over_warnings(self) -> None:
         notes = build_release_notes(
             health_results=[

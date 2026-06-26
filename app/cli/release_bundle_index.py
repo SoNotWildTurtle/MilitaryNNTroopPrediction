@@ -85,13 +85,49 @@ def _format_bytes(size_bytes: int) -> str:
     return f"{size_bytes / (1024 * 1024):.1f} MiB"
 
 
-def _load_json(path: Path) -> Dict[str, Any] | None:
+def _load_json(path: Path) -> Any | None:
     """Best-effort JSON loader used for richer index summaries."""
 
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError, OSError):
         return None
+
+
+def _as_mapping(value: Any) -> Mapping[str, Any]:
+    """Return mapping-shaped payloads while tolerating schema-compatible lists."""
+
+    return value if isinstance(value, Mapping) else {}
+
+
+def _check_items(value: Any) -> list[Mapping[str, Any]]:
+    """Normalize diagnostics checks from either aggregate objects or raw check lists."""
+
+    if isinstance(value, Mapping):
+        checks = value.get("checks", [])
+    else:
+        checks = value
+    if not isinstance(checks, list):
+        return []
+    return [check for check in checks if isinstance(check, Mapping)]
+
+
+def _aggregate_status(value: Any, default: str = "unknown") -> str:
+    """Return a stable overall status for object- or list-shaped diagnostics payloads."""
+
+    if isinstance(value, Mapping):
+        return str(value.get("status", default))
+    checks = _check_items(value)
+    statuses = {str(check.get("status", "unknown")).lower() for check in checks}
+    if not statuses:
+        return default
+    if statuses & {"fail", "failed", "error"}:
+        return "fail"
+    if statuses & {"warning", "warnings", "review_warnings", "needs_review", "needs_attention"}:
+        return "review_warnings"
+    if statuses <= {"pass", "passed", "ok", "success", "ready"}:
+        return "pass"
+    return default
 
 
 def _read_preview(path: Path, max_chars: int = 700) -> str | None:
@@ -299,21 +335,18 @@ def render_html(artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> str:
 
     manifest = build_manifest(artifact_dir)
     entries_by_path = _artifact_lookup(manifest)
-    release_health = _load_json(artifact_dir / "release-health.json") or {}
-    reviewer_handoff = _load_json(artifact_dir / "reviewer-handoff.json")
-    doctor = _load_json(artifact_dir / "doctor-minimal.json") or {}
+    release_health_payload = _load_json(artifact_dir / "release-health.json")
+    release_health = _as_mapping(release_health_payload)
+    reviewer_handoff = _as_mapping(_load_json(artifact_dir / "reviewer-handoff.json")) or None
+    doctor_payload = _load_json(artifact_dir / "doctor-minimal.json")
     summary_preview = _read_preview(artifact_dir / "summary.txt")
 
-    status = str(release_health.get("status", "unknown"))
-    checks = release_health.get("checks", [])
-    passed_checks = sum(1 for check in checks if check.get("status") == "pass") if isinstance(checks, list) else 0
-    total_checks = len(checks) if isinstance(checks, list) else 0
-    doctor_checks = doctor.get("checks", [])
-    doctor_failures = (
-        sum(1 for check in doctor_checks if check.get("status") == "fail")
-        if isinstance(doctor_checks, list)
-        else 0
-    )
+    status = _aggregate_status(release_health_payload)
+    checks = _check_items(release_health_payload)
+    passed_checks = sum(1 for check in checks if str(check.get("status", "")).lower() == "pass")
+    total_checks = len(checks)
+    doctor_checks = _check_items(doctor_payload)
+    doctor_failures = sum(1 for check in doctor_checks if str(check.get("status", "")).lower() in {"fail", "failed", "error"})
     missing = manifest.get("missing_expected", [])
 
     cards = [

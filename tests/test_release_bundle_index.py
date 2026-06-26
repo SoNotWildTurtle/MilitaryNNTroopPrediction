@@ -155,6 +155,26 @@ class ReleaseBundleIndexTests(unittest.TestCase):
         self.assertIn('class="badge status-warning"', html_text)
         self.assertIn('class="handoff-status status-attention-panel"', html_text)
 
+    def test_render_html_accepts_list_shaped_doctor_diagnostics(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            artifact_dir = Path(temp_dir)
+            (artifact_dir / "release-health.json").write_text(
+                '[{"name":"doctor","status":"pass"}]\n',
+                encoding="utf-8",
+            )
+            (artifact_dir / "doctor-minimal.json").write_text(
+                '[{"name":"python","status":"pass"},{"name":"optional-db","status":"fail"}]\n',
+                encoding="utf-8",
+            )
+
+            html_text = render_html(artifact_dir)
+
+        self.assertIn("Release bundle index", html_text)
+        self.assertIn("1/1 readiness checks passed", html_text)
+        self.assertIn("Doctor failures", html_text)
+        self.assertIn("FAIL", html_text)
+        self.assertIn('class="card status-attention-card"', html_text)
+
     def test_write_html_creates_parent_directories(self) -> None:
         with TemporaryDirectory() as temp_dir:
             output_path = Path(temp_dir) / "nested" / "index.html"

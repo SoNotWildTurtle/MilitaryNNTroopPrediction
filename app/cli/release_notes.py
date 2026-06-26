@@ -1,10 +1,4 @@
-"""Generate reviewer-friendly release notes from diagnostic artifacts.
-
-The command reads the existing release-health JSON and artifact manifest JSON that are
-already produced by CI. It does not run ingestion, detection, prediction, network calls,
-or any destructive workflow. The goal is to give maintainers, managers, and downstream
-integrators a compact handoff summary for each diagnostic bundle.
-"""
+"""Generate reviewer-friendly release notes from diagnostic artifacts."""
 
 from __future__ import annotations
 
@@ -32,17 +26,35 @@ _IMPORTANT_ARTIFACTS = [
 
 
 def _load_json(path: Path, fallback: Any) -> Any:
-    """Load JSON from ``path`` and return ``fallback`` when the file is absent."""
-
     if not path.exists():
         return fallback
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _normalize_health_results(health_payload: Any) -> list[Mapping[str, Any]]:
+    if isinstance(health_payload, Mapping):
+        checks = health_payload.get("checks", [])
+        if isinstance(checks, list):
+            return [check for check in checks if isinstance(check, Mapping)]
+        return []
+    if isinstance(health_payload, list):
+        return [check for check in health_payload if isinstance(check, Mapping)]
+    return []
+
+
+def _normalize_status(status: Any) -> str:
+    normalized = str(status).lower()
+    if normalized == "pass":
+        return "ok"
+    if normalized == "warning":
+        return "warn"
+    return normalized
+
+
 def _health_counts(health_results: Sequence[Mapping[str, Any]]) -> dict[str, int]:
     counts = {"ok": 0, "warn": 0, "fail": 0}
     for result in health_results:
-        status = str(result.get("status", "")).lower()
+        status = _normalize_status(result.get("status", ""))
         if status in counts:
             counts[status] += 1
     return counts
@@ -51,7 +63,7 @@ def _health_counts(health_results: Sequence[Mapping[str, Any]]) -> dict[str, int
 def _checks_by_priority(health_results: Sequence[Mapping[str, Any]]) -> list[dict[str, str]]:
     checks: list[dict[str, str]] = []
     for result in health_results:
-        status = str(result.get("status", "unknown")).lower()
+        status = _normalize_status(result.get("status", "unknown"))
         checks.append(
             {
                 "status": status,
@@ -80,17 +92,17 @@ def _select_artifacts(manifest: Mapping[str, Any]) -> list[dict[str, Any]]:
 
 
 def build_release_notes(
-    health_results: Sequence[Mapping[str, Any]],
+    health_results: Sequence[Mapping[str, Any]] | Mapping[str, Any],
     manifest: Mapping[str, Any],
     generated_at: datetime | None = None,
 ) -> dict[str, Any]:
-    """Build a structured release-notes summary from health and manifest inputs."""
-
     generated_at = generated_at or datetime.now(timezone.utc).replace(microsecond=0)
-    counts = _health_counts(health_results)
+    normalized_health = _normalize_health_results(health_results)
+    counts = _health_counts(normalized_health)
     missing_expected = list(manifest.get("missing_expected", []))
-    failures = [check for check in _checks_by_priority(health_results) if check["status"] == "fail"]
-    warnings = [check for check in _checks_by_priority(health_results) if check["status"] == "warn"]
+    prioritized = _checks_by_priority(normalized_health)
+    failures = [check for check in prioritized if check["status"] == "fail"]
+    warnings = [check for check in prioritized if check["status"] == "warn"]
 
     if failures:
         readiness = "blocked"
@@ -196,14 +208,10 @@ def _markdown_lines(notes: Mapping[str, Any]) -> Iterable[str]:
 
 
 def render_markdown(notes: Mapping[str, Any]) -> str:
-    """Render structured release notes as Markdown."""
-
     return "\n".join(_markdown_lines(notes)).rstrip() + "\n"
 
 
 def write_outputs(notes: Mapping[str, Any], markdown_path: Path | None, json_path: Path | None) -> None:
-    """Write requested release notes outputs."""
-
     if markdown_path is not None:
         markdown_path.parent.mkdir(parents=True, exist_ok=True)
         markdown_path.write_text(render_markdown(notes), encoding="utf-8")

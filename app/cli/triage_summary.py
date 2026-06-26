@@ -1,9 +1,4 @@
-"""Generate a concise CI triage summary from local diagnostic artifacts.
-
-The summary is intended for maintainers reviewing failed or incomplete CI runs. It
-only reads local JSON/manifest files and writes Markdown/JSON guidance; it does
-not run collection, prediction, ingestion, network, or deployment workflows.
-"""
+"""Generate a concise CI triage summary from local diagnostic artifacts."""
 
 from __future__ import annotations
 
@@ -59,10 +54,30 @@ def _load_json(path: Path, fallback: Any) -> Any:
         return fallback
 
 
+def _normalize_health_results(health_payload: Any) -> list[Mapping[str, Any]]:
+    if isinstance(health_payload, Mapping):
+        checks = health_payload.get("checks", [])
+        if isinstance(checks, list):
+            return [check for check in checks if isinstance(check, Mapping)]
+        return []
+    if isinstance(health_payload, list):
+        return [check for check in health_payload if isinstance(check, Mapping)]
+    return []
+
+
+def _normalize_status(status: Any) -> str:
+    normalized = str(status).lower()
+    if normalized == "pass":
+        return "ok"
+    if normalized == "warning":
+        return "warn"
+    return normalized
+
+
 def _count_statuses(health_results: Sequence[Mapping[str, Any]]) -> Dict[str, int]:
     summary = {"ok": 0, "warn": 0, "fail": 0}
     for result in health_results:
-        status = str(result.get("status", "")).lower()
+        status = _normalize_status(result.get("status", ""))
         if status in summary:
             summary[status] += 1
     return summary
@@ -77,16 +92,17 @@ def _target_for_artifact(path: str) -> str:
 
 
 def build_triage_summary(
-    health_results: Sequence[Mapping[str, Any]],
+    health_results: Sequence[Mapping[str, Any]] | Mapping[str, Any],
     manifest: Mapping[str, Any],
     generated_at: datetime | None = None,
 ) -> Dict[str, Any]:
     """Build a deterministic triage summary from health checks and manifest data."""
 
     generated_at = generated_at or datetime.now(timezone.utc).replace(microsecond=0)
-    status_counts = _count_statuses(health_results)
-    failing_checks = [dict(item) for item in health_results if str(item.get("status", "")).lower() == "fail"]
-    warning_checks = [dict(item) for item in health_results if str(item.get("status", "")).lower() == "warn"]
+    normalized_health = _normalize_health_results(health_results)
+    status_counts = _count_statuses(normalized_health)
+    failing_checks = [dict(item) for item in normalized_health if _normalize_status(item.get("status", "")) == "fail"]
+    warning_checks = [dict(item) for item in normalized_health if _normalize_status(item.get("status", "")) == "warn"]
     missing_artifacts = [str(item) for item in manifest.get("missing_expected", [])]
 
     recommended_actions: List[Dict[str, str]] = []

@@ -27,9 +27,10 @@ KEY_ARTIFACTS: Mapping[str, str] = {
 
 PASS_STATUSES = {"ok", "pass", "passed", "ready", "success", "healthy"}
 WARN_STATUSES = {"warn", "warning", "degraded", "partial"}
+FAIL_STATUSES = {"fail", "failed", "blocked", "error", "missing"}
 
 
-def _load_json(path: Path) -> Dict[str, Any] | None:
+def _load_json(path: Path) -> Any | None:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError, OSError):
@@ -53,10 +54,26 @@ def _manifest_files(manifest: Mapping[str, Any]) -> Dict[str, Mapping[str, Any]]
     return {str(entry.get("path")): entry for entry in files if isinstance(entry, Mapping)}
 
 
-def _release_status(health: Mapping[str, Any] | None) -> str:
+def _release_status(health: Any | None) -> str:
+    """Return a compact status from either current or legacy health JSON shapes."""
+
     if not health:
         return "unknown"
-    return str(health.get("status", "unknown"))
+    if isinstance(health, Mapping):
+        return str(health.get("status", "unknown"))
+    if isinstance(health, list):
+        statuses = [
+            str(item.get("status", "unknown")).lower().strip()
+            for item in health
+            if isinstance(item, Mapping)
+        ]
+        if any(status in FAIL_STATUSES for status in statuses):
+            return "failed"
+        if any(status in WARN_STATUSES for status in statuses):
+            return "warning"
+        if statuses and all(status in PASS_STATUSES for status in statuses):
+            return "ready"
+    return "unknown"
 
 
 def _recommended_rerun(triage: Mapping[str, Any] | None) -> str:
@@ -159,7 +176,7 @@ def build_handoff(artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> Dict[str, Any]:
         "generated_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
         "artifact_dir": artifact_dir.as_posix(),
         "release_status": release_status,
-        "recommended_rerun": _recommended_rerun(triage),
+        "recommended_rerun": _recommended_rerun(triage if isinstance(triage, Mapping) else None),
         "missing_expected": [str(name) for name in missing_expected],
         "missing_key_artifacts": missing_key_artifacts,
         "key_artifacts": key_artifacts,
@@ -281,39 +298,25 @@ def build_parser() -> argparse.ArgumentParser:
         "--artifact-dir",
         type=Path,
         default=DEFAULT_ARTIFACT_DIR,
-        help=f"Directory containing generated artifacts. Default: {DEFAULT_ARTIFACT_DIR}",
+        help=f"diagnostic artifact directory; default: {DEFAULT_ARTIFACT_DIR}",
     )
-    parser.add_argument(
-        "--markdown-path",
-        type=Path,
-        default=None,
-        help="Path for Markdown output. Default: <artifact-dir>/reviewer-handoff.md",
-    )
-    parser.add_argument(
-        "--json-path",
-        type=Path,
-        default=None,
-        help="Path for JSON output. Default: <artifact-dir>/reviewer-handoff.json",
-    )
-    parser.add_argument("--no-markdown", action="store_true", help="Skip Markdown output.")
-    parser.add_argument("--no-json", action="store_true", help="Skip JSON output.")
+    parser.add_argument("--markdown-path", type=Path, default=None, help="Markdown output path")
+    parser.add_argument("--json-path", type=Path, default=None, help="JSON output path")
+    parser.add_argument("--no-json", action="store_true", help="only write Markdown output")
     return parser
 
 
-def main() -> int:
-    args = build_parser().parse_args()
-    handoff = build_handoff(args.artifact_dir)
-    markdown_path = args.markdown_path or args.artifact_dir / DEFAULT_MARKDOWN_NAME
-    json_path = args.json_path or args.artifact_dir / DEFAULT_JSON_NAME
-
-    if not args.no_markdown:
-        write_markdown(render_markdown(handoff), markdown_path)
-        print(f"Wrote reviewer handoff Markdown to {markdown_path}")
-    if not args.no_json:
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    artifact_dir = args.artifact_dir
+    markdown_path = args.markdown_path or artifact_dir / DEFAULT_MARKDOWN_NAME
+    json_path = None if args.no_json else (args.json_path or artifact_dir / DEFAULT_JSON_NAME)
+    handoff = build_handoff(artifact_dir)
+    write_markdown(render_markdown(handoff), markdown_path)
+    print(f"Wrote reviewer handoff Markdown to {markdown_path}")
+    if json_path is not None:
         write_json(handoff, json_path)
         print(f"Wrote reviewer handoff JSON to {json_path}")
-    if args.no_markdown and args.no_json:
-        print("No outputs requested; remove --no-markdown or --no-json to write handoff files.")
     return 0
 
 
