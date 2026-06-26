@@ -17,7 +17,6 @@ This repository provides a starting point for a machine vision application that 
 - `CONTRIBUTING.md` – safe contribution scope, PR checklist, and reviewer guidance
 - `docs/common_tasks.md` – examples for common `make` workflows
 - `docs/ci_troubleshooting.md` – local reproduction and diagnostics guide for CI failures
-- `docs/operator_readiness.md` – launch/no-launch readiness brief for generated diagnostics bundles
 - `docs/release_bundle_review.md` – reviewer checklist for generated diagnostics bundles
 - `.env.example` – copyable first-run configuration template
 - `.github/workflows/ci.yml` – GitHub Actions smoke checks for pushes and pull requests
@@ -40,7 +39,7 @@ make configure
 make verify
 ```
 
-`make verify` runs the minimal setup doctor, local smoke/unit tests, and the diagnostics bundle generator in one safe pre-PR pass. See `docs/common_tasks.md` for the full target map, `CONTRIBUTING.md` for the safe contribution checklist, `docs/ci_troubleshooting.md` when a hosted CI run needs local reproduction, `docs/operator_readiness.md` when a manager or operator needs a launch/no-launch bundle summary, and `docs/release_bundle_review.md` when reviewing generated bundles.
+`make verify` runs the minimal setup doctor, local smoke/unit tests, and the diagnostics bundle generator in one safe pre-PR pass. See `docs/common_tasks.md` for the full target map, `CONTRIBUTING.md` for the safe contribution checklist, `docs/ci_troubleshooting.md` when a hosted CI run needs local reproduction, and `docs/release_bundle_review.md` when reviewing generated bundles.
 
 For a guided local setup path that installs the small core dependency set, creates
 `.env` when needed, runs diagnostics, and prints the next command to run:
@@ -180,9 +179,8 @@ core requirements file, compiles the Python package and tests, runs the setup
 doctor in minimal mode, validates the lightweight API health layer, exports the
 OpenAPI contract, exports synthetic API response examples, exports the static
 dashboard mockup, exports a release bundle index page, exports lightweight SVG
-previews for static HTML artifacts, exports a diagnostic artifact manifest,
-exports operator readiness and reviewer handoff summaries, and executes the
-standard-library unit tests:
+previews for static HTML artifacts, exports a diagnostic artifact manifest, and
+executes the standard-library unit tests:
 
 ```bash
 python -m pip install -r requirements-core.txt
@@ -195,7 +193,6 @@ python -m app.cli.release_bundle_index --artifact-dir /tmp --html-path /tmp/mili
 python -m app.cli.export_html_previews --artifact-dir /tmp --output-dir /tmp/militarynntroopprediction-html-previews --markdown-path /tmp/militarynntroopprediction-html-previews.md
 python -m app.cli.artifact_manifest --artifact-dir /tmp --json-path /tmp/militarynntroopprediction-artifact-manifest.json --markdown-path /tmp/militarynntroopprediction-artifact-manifest.md
 python -m app.cli.release_notes --health-json /tmp/militarynntroopprediction-release-health.json --manifest-json /tmp/militarynntroopprediction-artifact-manifest.json --markdown-path /tmp/militarynntroopprediction-release-notes.md --json-path /tmp/militarynntroopprediction-release-notes.json
-python -m app.cli.operator_readiness --artifact-dir /tmp --markdown-path /tmp/militarynntroopprediction-operator-readiness.md --json-path /tmp/militarynntroopprediction-operator-readiness.json
 python -m unittest discover -s tests -p 'test_*.py'
 ```
 
@@ -219,7 +216,7 @@ runs. The bundle includes the Python and pip versions, `pip freeze`, doctor JSON
 release health reports, generated release notes, the generated FastAPI OpenAPI
 contract, synthetic API response examples, a self-contained static dashboard
 mockup, a reviewer-friendly release bundle index page, lightweight SVG previews
-for static HTML outputs, SHA-256 artifact manifests, operator launch/no-launch
-readiness briefs, and the current help output for the doctor, quickstart, release
-health, release notes, OpenAPI export, API examples, dashboard mockup, artifact
-manifest, reviewer handoff, and operator readiness commands.
+for static HTML outputs, SHA-256 artifact manifests, and the current help output
+for the doctor, quickstart, release health, release notes, OpenAPI export, API
+examples, dashboard mockup, artifact manifest, release bundle index, and HTML
+preview commands.
