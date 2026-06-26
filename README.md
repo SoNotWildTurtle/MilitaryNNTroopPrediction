@@ -18,6 +18,7 @@ This repository provides a starting point for a machine vision application that 
 - `docs/common_tasks.md` – examples for common `make` workflows
 - `docs/ci_troubleshooting.md` – local reproduction and diagnostics guide for CI failures
 - `docs/release_bundle_review.md` – reviewer checklist for generated diagnostics bundles
+- `docs/synthetic_data_fixtures.md` – safe local fixture workflow for demos and client tests
 - `.env.example` – copyable first-run configuration template
 - `.github/workflows/ci.yml` – GitHub Actions smoke checks for pushes and pull requests
 - `requirements-core.txt` – minimal packages for API, doctor, and CI smoke checks
@@ -39,7 +40,7 @@ make configure
 make verify
 ```
 
-`make verify` runs the minimal setup doctor, local smoke/unit tests, and the diagnostics bundle generator in one safe pre-PR pass. See `docs/common_tasks.md` for the full target map, `CONTRIBUTING.md` for the safe contribution checklist, `docs/ci_troubleshooting.md` when a hosted CI run needs local reproduction, and `docs/release_bundle_review.md` when reviewing generated bundles.
+`make verify` runs the minimal setup doctor, local smoke/unit tests, and the diagnostics bundle generator in one safe pre-PR pass. See `docs/common_tasks.md` for the full target map, `CONTRIBUTING.md` for the safe contribution checklist, `docs/ci_troubleshooting.md` when a hosted CI run needs local reproduction, `docs/release_bundle_review.md` when reviewing generated bundles, and `docs/synthetic_data_fixtures.md` when you need safe demo records without live data sources.
 
 For a guided local setup path that installs the small core dependency set, creates
 `.env` when needed, runs diagnostics, and prints the next command to run:
@@ -171,6 +172,23 @@ short-lived write probe inside it. Warnings identify optional capabilities that
 are missing; failures identify core setup problems that should be fixed before
 running the API or automation pipeline.
 
+### 4. Generate safe local demo data
+
+When you need fixture records for dashboards, screenshots, client tests, or docs
+without connecting to live OSINT, imagery, database, or model workflows, run:
+
+```bash
+python -m app.cli.synthetic_data_fixtures
+python -m app.cli.synthetic_data_fixtures --output-dir data/fixtures --json
+# or
+make synthetic-fixtures
+```
+
+The exporter writes JSONL, CSV, Markdown, and summary JSON files under
+`data/fixtures/` by default. Use `--output-dir` for isolated CI or review
+artifacts. These records are analytical placeholders for reproducible demos and
+must not be presented as operational truth.
+
 ### Automated checks
 
 A lightweight GitHub Actions workflow runs on pushes and pull requests to catch
@@ -178,9 +196,9 @@ basic breakage before heavier ML workflows are attempted. It installs the shared
 core requirements file, compiles the Python package and tests, runs the setup
 doctor in minimal mode, validates the lightweight API health layer, exports the
 OpenAPI contract, exports synthetic API response examples, exports the static
-dashboard mockup, exports a release bundle index page, exports lightweight SVG
-previews for static HTML artifacts, exports a diagnostic artifact manifest, and
-executes the standard-library unit tests:
+dashboard mockup, exports safe synthetic data fixtures, exports a release bundle
+index page, exports lightweight SVG previews for static HTML artifacts, exports a
+diagnostic artifact manifest, and executes the standard-library unit tests:
 
 ```bash
 python -m pip install -r requirements-core.txt
@@ -189,6 +207,7 @@ python -m app.cli.doctor --skip-optional --skip-mongo --json
 python -m app.cli.export_openapi --json-path /tmp/militarynntroopprediction-openapi.json --markdown-path /tmp/militarynntroopprediction-openapi.md
 python -m app.cli.export_api_examples --json-path /tmp/militarynntroopprediction-api-response-examples.json --markdown-path /tmp/militarynntroopprediction-api-response-examples.md
 python -m app.cli.export_dashboard_mockup --html-path /tmp/militarynntroopprediction-dashboard-mockup.html
+python -m app.cli.synthetic_data_fixtures --output-dir /tmp/militarynntroopprediction-synthetic-fixtures --json
 python -m app.cli.release_bundle_index --artifact-dir /tmp --html-path /tmp/militarynntroopprediction-release-bundle-index.html
 python -m app.cli.export_html_previews --artifact-dir /tmp --output-dir /tmp/militarynntroopprediction-html-previews --markdown-path /tmp/militarynntroopprediction-html-previews.md
 python -m app.cli.artifact_manifest --artifact-dir /tmp --json-path /tmp/militarynntroopprediction-artifact-manifest.json --markdown-path /tmp/militarynntroopprediction-artifact-manifest.md
@@ -214,12 +233,13 @@ make verify
 CI also creates a `ci-diagnostics` artifact bundle on every run, even failed
 runs. The bundle includes the Python and pip versions, `pip freeze`, doctor JSON,
 release health reports, generated release notes, the generated FastAPI OpenAPI
-contract, synthetic API response examples, a self-contained static dashboard
-mockup, a reviewer-friendly release bundle index page, lightweight SVG previews
-for static HTML outputs, SHA-256 artifact manifests, and the current help output
-for the doctor, quickstart, release health, release notes, OpenAPI export, API
-example export, dashboard mockup, release bundle index, HTML preview export, and
-artifact manifest CLIs. To build the same bundle locally:
+contract, synthetic API response examples, safe JSONL/CSV synthetic data fixtures,
+a self-contained static dashboard mockup, a reviewer-friendly release bundle
+index page, lightweight SVG previews for static HTML outputs, SHA-256 artifact
+manifests, and the current help output for the doctor, quickstart, release
+health, release notes, OpenAPI export, API example export, dashboard mockup export,
+synthetic fixture export, release bundle index, HTML preview export, and artifact
+manifest CLIs. To build the same bundle locally:
 
 ```bash
 bash scripts/ci_report.sh
@@ -229,9 +249,10 @@ make ci-report
 
 Open `ci_artifacts/release-bundle-index.html` first when reviewing a local or CI
 bundle. It links the release health summary, OpenAPI contract, synthetic examples,
-dashboard mockup, artifact manifest, and all indexed bundle files from one static,
-dependency-free page. Use `docs/release_bundle_review.md` as the checklist for
-confirming the bundle is complete before handing it to another reviewer.
+dashboard mockup, synthetic data fixtures, artifact manifest, and all indexed
+bundle files from one static, dependency-free page. Use
+`docs/release_bundle_review.md` as the checklist for confirming the bundle is
+complete before handing it to another reviewer.
 
 If hosted CI fails, follow `docs/ci_troubleshooting.md` or run the short helper:
 
@@ -277,9 +298,22 @@ make dashboard
 The generated page is static and dependency-free. It is intended for user
 onboarding, dashboard prototyping, screenshots, and API client planning; it does
 not fetch live imagery, connect to MongoDB, or run prediction models. CI and
-`scripts/ci_report.sh` now include this HTML mockup in the `ci-diagnostics`
-artifact bundle so non-technical reviewers can inspect the analytical UI preview
-without cloning the repository or launching the API.
+`scripts/ci_report.sh` include this HTML mockup in the `ci-diagnostics` artifact
+bundle so non-technical reviewers can inspect the analytical UI preview without
+cloning the repository or launching the API.
+
+To export safe JSONL/CSV fixture records for data-loading demos or client tests:
+
+```bash
+python -m app.cli.synthetic_data_fixtures
+python -m app.cli.synthetic_data_fixtures --output-dir data/fixtures --json
+# or
+make synthetic-fixtures
+```
+
+These fixture files are generated from `app.api.examples`, so they stay aligned
+with the synthetic API response examples and dashboard mockups while remaining
+safe placeholders with no live data access.
 
 To generate a release bundle landing page for any diagnostics directory:
 
