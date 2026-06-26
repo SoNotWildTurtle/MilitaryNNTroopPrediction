@@ -34,6 +34,7 @@ mkdir -p "${ARTIFACT_DIR}"
 "${PYTHON_BIN}" -m app.cli.operator_readiness --help > "${ARTIFACT_DIR}/operator-readiness-help.txt"
 "${PYTHON_BIN}" -m app.cli.automation_plan --help > "${ARTIFACT_DIR}/automation-plan-help.txt"
 "${PYTHON_BIN}" -m app.cli.triage_summary --help > "${ARTIFACT_DIR}/triage-summary-help.txt"
+"${PYTHON_BIN}" -m app.cli.artifact_gap_report --help > "${ARTIFACT_DIR}/artifact-gap-report-help.txt"
 "${PYTHON_BIN}" -m app.cli.synthetic_data_fixtures --help > "${ARTIFACT_DIR}/synthetic-data-fixtures-help.txt"
 "${PYTHON_BIN}" -m app.cli.export_openapi --help > "${ARTIFACT_DIR}/export-openapi-help.txt"
 "${PYTHON_BIN}" -m app.cli.export_api_examples --help > "${ARTIFACT_DIR}/export-api-examples-help.txt"
@@ -50,51 +51,17 @@ Files:
 - pip-version.txt: pip version used by CI.
 - pip-freeze.txt: installed package versions for reproducibility.
 - doctor-minimal.json: machine-readable core setup diagnostics.
-- release-health.md: human-readable release readiness summary.
-- release-health.json: machine-readable release readiness summary.
-- release-notes.md: manager-friendly release notes generated from diagnostics.
-- release-notes.json: machine-readable release notes generated from diagnostics.
-- reviewer-handoff.md: copyable reviewer handoff generated from diagnostics.
-- reviewer-handoff.json: machine-readable reviewer handoff generated from diagnostics.
-- operator-readiness.md: launch/no-launch readiness brief generated from diagnostics.
-- operator-readiness.json: machine-readable operator readiness brief generated from diagnostics.
-- automation-plan.md: safe additive next-run plan generated from diagnostics and goals.
-- automation-plan.json: machine-readable safe additive next-run plan.
-- reviewer-handoff-validation.txt: human-readable reviewer handoff contract validation result.
-- reviewer-handoff-validation.json: machine-readable reviewer handoff contract validation result.
-- triage-summary.md: CI failure triage summary with narrow rerun targets.
-- triage-summary.json: machine-readable CI failure triage summary.
-- openapi.json: machine-readable FastAPI OpenAPI contract.
-- openapi-summary.md: human-readable API contract summary.
-- api-response-examples.json: synthetic JSON responses for dashboard and client builders.
-- api-response-examples.md: human-readable synthetic API response examples.
-- dashboard-mockup.html: self-contained static dashboard preview generated from synthetic examples.
-- synthetic-fixtures-summary.json: machine-readable summary of generated safe data fixtures.
-- synthetic-fixtures/synthetic-detections.jsonl: JSON Lines detection fixture records for local demos and client tests.
-- synthetic-fixtures/synthetic-predictions.jsonl: JSON Lines prediction fixture records for local demos and client tests.
-- synthetic-fixtures/synthetic-detections.csv: spreadsheet-friendly synthetic detection fixture records.
-- synthetic-fixtures/synthetic-fixtures.md: human-readable synthetic fixture summary.
-- release-bundle-index.html: self-contained reviewer landing page linking key bundle outputs.
-- html-previews.md: human-readable index of SVG previews for static HTML artifacts.
-- previews/dashboard-mockup.svg: lightweight browser-free visual preview of the dashboard mockup.
-- previews/release-bundle-index.svg: lightweight browser-free visual preview of the release bundle index.
-- quickstart-help.txt: current quickstart CLI options.
-- doctor-help.txt: current doctor CLI options.
-- release-health-help.txt: current release health CLI options.
-- release-notes-help.txt: current release notes CLI options.
-- reviewer-handoff-help.txt: current reviewer handoff CLI options.
-- operator-readiness-help.txt: current operator readiness CLI options.
-- automation-plan-help.txt: current automation plan CLI options.
-- triage-summary-help.txt: current CI triage summary CLI options.
-- synthetic-data-fixtures-help.txt: current synthetic fixture exporter CLI options.
-- export-openapi-help.txt: current OpenAPI export CLI options.
-- export-api-examples-help.txt: current API example export CLI options.
-- export-dashboard-mockup-help.txt: current dashboard mockup CLI options.
-- release-bundle-index-help.txt: current release bundle index CLI options.
-- artifact-manifest-help.txt: current artifact manifest CLI options.
-- export-html-previews-help.txt: current HTML preview export CLI options.
-- artifact-manifest.json: machine-readable index of generated artifacts with sizes and SHA-256 hashes.
-- artifact-manifest.md: human-readable index of generated artifacts with sizes and SHA-256 hashes.
+- release health/release notes/reviewer handoff/operator readiness/automation plan artifacts: generated local readiness, review, and next-run guidance.
+- reviewer-handoff-validation.txt/json: reviewer handoff contract validation results.
+- triage-summary.md/json: CI failure triage summary with narrow rerun targets.
+- artifact-gap-report.md/json: diagnostic bundle completeness and suspicious-artifact report.
+- openapi.json/openapi-summary.md: API contract exports.
+- api-response-examples.json/md: synthetic API response examples.
+- dashboard-mockup.html: self-contained static dashboard preview.
+- synthetic-fixtures/*: safe JSONL/CSV fixture records for local demos and client tests.
+- release-bundle-index.html/html-previews.md/previews/*.svg: dependency-free artifact landing page and static previews.
+- artifact-manifest.json/md: machine-readable and human-readable artifact manifests with sizes and SHA-256 hashes.
+- *-help.txt: current CLI help output for supported operator and artifact commands.
 SUMMARY
 
 "${PYTHON_BIN}" -m app.cli.release_bundle_index \
@@ -104,12 +71,12 @@ SUMMARY
   --artifact-dir "${ARTIFACT_DIR}" \
   --markdown-path "${ARTIFACT_DIR}/html-previews.md"
 
-# Release notes, triage summaries, automation plans, reviewer handoffs, and
-# operator readiness read the manifest, while the manifest must also include
-# their final outputs. A multi-pass handoff keeps human notes,
-# launch/no-launch guidance, narrow rerun guidance, additive next-run planning,
-# copyable review context, and the final machine-readable manifest useful
-# without requiring any network calls.
+# Release notes, triage summaries, automation plans, reviewer handoffs, operator
+# readiness, and artifact gap reports read the manifest, while the manifest must
+# also include their final outputs. Multi-pass generation keeps human notes,
+# launch/no-launch guidance, bundle gap evidence, narrow rerun guidance, additive
+# next-run planning, copyable review context, and final hashes useful without any
+# network calls.
 "${PYTHON_BIN}" -m app.cli.artifact_manifest \
   --artifact-dir "${ARTIFACT_DIR}" \
   --json-path "${ARTIFACT_DIR}/artifact-manifest.json" \
@@ -137,6 +104,22 @@ SUMMARY
   --artifact-dir "${ARTIFACT_DIR}" \
   --markdown-path "${ARTIFACT_DIR}/automation-plan.md" \
   --json-path "${ARTIFACT_DIR}/automation-plan.json"
+"${PYTHON_BIN}" -m app.cli.artifact_manifest \
+  --artifact-dir "${ARTIFACT_DIR}" \
+  --json-path "${ARTIFACT_DIR}/artifact-manifest.json" \
+  --markdown-path "${ARTIFACT_DIR}/artifact-manifest.md"
+"${PYTHON_BIN}" -m app.cli.artifact_gap_report \
+  --artifact-dir "${ARTIFACT_DIR}" \
+  --json-path "${ARTIFACT_DIR}/artifact-gap-report.json" \
+  --markdown-path "${ARTIFACT_DIR}/artifact-gap-report.md"
+"${PYTHON_BIN}" -m app.cli.artifact_manifest \
+  --artifact-dir "${ARTIFACT_DIR}" \
+  --json-path "${ARTIFACT_DIR}/artifact-manifest.json" \
+  --markdown-path "${ARTIFACT_DIR}/artifact-manifest.md"
+"${PYTHON_BIN}" -m app.cli.artifact_gap_report \
+  --artifact-dir "${ARTIFACT_DIR}" \
+  --json-path "${ARTIFACT_DIR}/artifact-gap-report.json" \
+  --markdown-path "${ARTIFACT_DIR}/artifact-gap-report.md"
 "${PYTHON_BIN}" -m app.cli.artifact_manifest \
   --artifact-dir "${ARTIFACT_DIR}" \
   --json-path "${ARTIFACT_DIR}/artifact-manifest.json" \
@@ -170,6 +153,14 @@ SUMMARY
 "${PYTHON_BIN}" scripts/validate_reviewer_handoff.py \
   "${ARTIFACT_DIR}/reviewer-handoff.json" \
   --json > "${ARTIFACT_DIR}/reviewer-handoff-validation.json"
+"${PYTHON_BIN}" -m app.cli.artifact_manifest \
+  --artifact-dir "${ARTIFACT_DIR}" \
+  --json-path "${ARTIFACT_DIR}/artifact-manifest.json" \
+  --markdown-path "${ARTIFACT_DIR}/artifact-manifest.md"
+"${PYTHON_BIN}" -m app.cli.artifact_gap_report \
+  --artifact-dir "${ARTIFACT_DIR}" \
+  --json-path "${ARTIFACT_DIR}/artifact-gap-report.json" \
+  --markdown-path "${ARTIFACT_DIR}/artifact-gap-report.md"
 "${PYTHON_BIN}" -m app.cli.artifact_manifest \
   --artifact-dir "${ARTIFACT_DIR}" \
   --json-path "${ARTIFACT_DIR}/artifact-manifest.json" \
