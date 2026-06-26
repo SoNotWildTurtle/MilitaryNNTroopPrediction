@@ -15,6 +15,21 @@ from bson import ObjectId
 from app.api import main
 
 
+def _constraint_value(field_info: object, name: str) -> int | None:
+    """Return a FastAPI/Pydantic numeric bound across supported versions."""
+
+    direct = getattr(field_info, name, None)
+    if direct is not None:
+        return direct
+
+    for metadata in getattr(field_info, "metadata", ()):  # Pydantic v2 stores bounds here.
+        value = getattr(metadata, name, None)
+        if value is not None:
+            return value
+
+    return None
+
+
 class ApiRecordEndpointTests(unittest.TestCase):
     """Verify analytical record routes return JSON-safe, public API payloads."""
 
@@ -84,7 +99,11 @@ class ApiRecordEndpointTests(unittest.TestCase):
                 limit_param = next(
                     param for param in route.dependant.query_params if param.name == "limit"
                 )
-                route_limits[path] = (limit_param.field_info.ge, limit_param.field_info.le)
+                field_info = limit_param.field_info
+                route_limits[path] = (
+                    _constraint_value(field_info, "ge"),
+                    _constraint_value(field_info, "le"),
+                )
 
         self.assertEqual(route_limits["/detections/{area}"], (1, 100))
         self.assertEqual(route_limits["/predictions/{area}"], (1, 100))
