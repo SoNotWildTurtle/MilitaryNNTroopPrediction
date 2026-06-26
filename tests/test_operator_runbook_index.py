@@ -38,7 +38,8 @@ class OperatorRunbookIndexTests(unittest.TestCase):
         self.assertIn("Operator runbook index", markdown)
         self.assertIn("make verify", markdown)
         self.assertIn("Safe operating scope", markdown)
-        self.assertIn("collection", markdown.lower())
+        self.assertIn("Local setup", markdown)
+        self.assertIn("generated artifacts", markdown)
 
     def test_missing_artifacts_are_not_failures(self) -> None:
         with TemporaryDirectory() as temp_dir:
@@ -60,8 +61,8 @@ class OperatorRunbookIndexTests(unittest.TestCase):
             write_markdown("# Runbook\n", markdown_path)
             write_json(index, json_path)
 
-            self.assertEqual(markdown_path.read_text(encoding="utf-8"), "# Runbook\n")
-            self.assertEqual(json.loads(json_path.read_text(encoding="utf-8"))["schema_version"], index["schema_version"])
+        self.assertEqual(markdown_path.read_text(encoding="utf-8"), "# Runbook\n")
+        self.assertEqual(json.loads(json_path.read_text(encoding="utf-8"))["schema_version"], index["schema_version"])
 
 
 if __name__ == "__main__":
