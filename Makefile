@@ -8,7 +8,7 @@ PORT ?= 8000
 ARTIFACT_DIR ?= ci_artifacts
 TRIAGE_ARTIFACT_DIR ?= ci_artifacts/local-ci
 
-.PHONY: help install-core install-optional configure doctor quickstart api test verify ci-triage ci-report openapi examples dashboard bundle-index previews manifest release-notes reviewer-handoff validate-handoff triage-summary clean
+.PHONY: help install-core install-optional configure doctor quickstart api test verify ci-triage ci-report openapi examples dashboard bundle-index previews manifest release-notes reviewer-handoff automation-plan validate-handoff triage-summary clean
 
 help:
 	@printf 'MilitaryNNTroopPrediction common tasks\n\n'
@@ -33,6 +33,7 @@ help:
 	@printf '  make manifest          Export artifact manifest with SHA-256 hashes\n'
 	@printf '  make release-notes     Export manager-friendly release notes\n'
 	@printf '  make reviewer-handoff  Export copyable reviewer handoff notes\n'
+	@printf '  make automation-plan   Export safe additive next-run plan\n'
 	@printf '  make triage-summary    Export CI triage summary and narrow rerun targets\n\n'
 	@printf 'Runtime:\n'
 	@printf '  make api               Launch FastAPI on HOST=$(HOST) PORT=$(PORT)\n\n'
@@ -76,8 +77,9 @@ ci-triage:
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/reviewer-handoff.md\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/reviewer-handoff-validation.json\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/triage-summary.md\n'
+	@printf '   $(TRIAGE_ARTIFACT_DIR)/automation-plan.md\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/artifact-manifest.md\n'
-	@printf '   make doctor | make test | make ci-report | make validate-handoff | make openapi | make examples | make dashboard | make previews | make manifest | make release-notes | make reviewer-handoff | make triage-summary\n\n'
+	@printf '   make doctor | make test | make ci-report | make validate-handoff | make openapi | make examples | make dashboard | make previews | make manifest | make release-notes | make reviewer-handoff | make automation-plan | make triage-summary\n\n'
 	@printf 'Safe-scope reminder: keep triage limited to local setup, deterministic tests, synthetic examples, API contracts, generated artifacts, and documentation.\n'
 
 ci-report:
@@ -126,6 +128,12 @@ reviewer-handoff:
 		--artifact-dir $(ARTIFACT_DIR) \
 		--markdown-path $(ARTIFACT_DIR)/reviewer-handoff.md \
 		--json-path $(ARTIFACT_DIR)/reviewer-handoff.json
+
+automation-plan:
+	$(PYTHON_BIN) -m app.cli.automation_plan \
+		--artifact-dir $(ARTIFACT_DIR) \
+		--markdown-path $(ARTIFACT_DIR)/automation-plan.md \
+		--json-path $(ARTIFACT_DIR)/automation-plan.json
 
 validate-handoff:
 	$(PYTHON_BIN) scripts/validate_reviewer_handoff.py $(ARTIFACT_DIR)/reviewer-handoff.json --json
