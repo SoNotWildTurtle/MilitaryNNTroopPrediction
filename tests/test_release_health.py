@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -27,6 +28,19 @@ class ReleaseHealthTests(unittest.TestCase):
         self.assertIn("`python`", report)
         self.assertIn("install optional deps", report)
 
+    def test_build_json_payload_includes_aggregate_status_and_checks(self) -> None:
+        results = [
+            doctor.CheckResult("python", "ok", "3.11.0"),
+            doctor.CheckResult("optional", "warn", "missing optional package", "install optional deps"),
+        ]
+
+        payload = release_health.build_json_payload(results)
+
+        self.assertEqual(payload["status"], "review_warnings")
+        self.assertEqual(payload["summary"], {"ok": 1, "warnings": 1, "failures": 0})
+        self.assertEqual(payload["checks"][0]["name"], "python")
+        self.assertEqual(payload["checks"][1]["status"], "warn")
+
     def test_write_reports_creates_markdown_and_json(self) -> None:
         fake_results = [doctor.CheckResult("python", "ok", "3.11.0")]
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -46,7 +60,9 @@ class ReleaseHealthTests(unittest.TestCase):
             self.assertTrue(markdown_path.exists())
             self.assertTrue(json_path.exists())
             self.assertIn("Release Health", markdown_path.read_text(encoding="utf-8"))
-            self.assertIn('"name": "python"', json_path.read_text(encoding="utf-8"))
+            payload = json.loads(json_path.read_text(encoding="utf-8"))
+            self.assertEqual(payload["status"], "pass")
+            self.assertEqual(payload["checks"][0]["name"], "python")
 
     def test_parser_defaults_to_ci_safe_checks(self) -> None:
         args = release_health.build_parser().parse_args([])
