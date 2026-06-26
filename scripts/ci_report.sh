@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Generate lightweight CI diagnostics and save them as workflow artifacts.
 set -euo pipefail
+trap 'status=$?; echo "::error::ci_report.sh failed at line ${LINENO}: ${BASH_COMMAND}" >&2; exit ${status}' ERR
 
 PYTHON_BIN=${PYTHON_BIN:-python3}
 ARTIFACT_DIR=${ARTIFACT_DIR:-ci_artifacts}
