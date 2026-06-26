@@ -218,5 +218,117 @@ contract, synthetic API response examples, a self-contained static dashboard
 mockup, a reviewer-friendly release bundle index page, lightweight SVG previews
 for static HTML outputs, SHA-256 artifact manifests, and the current help output
 for the doctor, quickstart, release health, release notes, OpenAPI export, API
-examples, dashboard mockup, artifact manifest, release bundle index, and HTML
-preview commands.
+example export, dashboard mockup, release bundle index, HTML preview export, and
+artifact manifest CLIs. To build the same bundle locally:
+
+```bash
+bash scripts/ci_report.sh
+# or
+make ci-report
+```
+
+Open `ci_artifacts/release-bundle-index.html` first when reviewing a local or CI
+bundle. It links the release health summary, OpenAPI contract, synthetic examples,
+dashboard mockup, artifact manifest, and all indexed bundle files from one static,
+dependency-free page. Use `docs/release_bundle_review.md` as the checklist for
+confirming the bundle is complete before handing it to another reviewer.
+
+If hosted CI fails, follow `docs/ci_troubleshooting.md` or run the short helper:
+
+```bash
+make ci-triage
+```
+
+It prints the exact local reproduction command, the expected artifact landing
+page, and the narrow targets to rerun when a generated artifact is missing.
+
+To export only the API contract without launching the server:
+
+```bash
+python -m app.cli.export_openapi
+python -m app.cli.export_openapi --json-path openapi.json --markdown-path openapi-summary.md
+# or
+make openapi
+```
+
+To export synthetic API response examples for dashboard mockups, docs, and
+client tests without MongoDB, Sentinel Hub, TensorFlow, YOLO, or live imagery:
+
+```bash
+python -m app.cli.export_api_examples
+python -m app.cli.export_api_examples --json-path api-response-examples.json --markdown-path api-response-examples.md
+# or
+bash scripts/export_api_examples.sh
+# or
+make examples
+```
+
+To turn those same safe examples into a self-contained HTML dashboard preview:
+
+```bash
+python -m app.cli.export_dashboard_mockup
+python -m app.cli.export_dashboard_mockup --html-path dashboard-mockup.html
+# or
+bash scripts/export_dashboard_mockup.sh
+# or
+make dashboard
+```
+
+The generated page is static and dependency-free. It is intended for user
+onboarding, dashboard prototyping, screenshots, and API client planning; it does
+not fetch live imagery, connect to MongoDB, or run prediction models. CI and
+`scripts/ci_report.sh` now include this HTML mockup in the `ci-diagnostics`
+artifact bundle so non-technical reviewers can inspect the analytical UI preview
+without cloning the repository or launching the API.
+
+To generate a release bundle landing page for any diagnostics directory:
+
+```bash
+python -m app.cli.release_bundle_index --artifact-dir ci_artifacts
+python -m app.cli.release_bundle_index --artifact-dir ci_artifacts --html-path release-bundle-index.html
+# or
+bash scripts/export_release_bundle_index.sh
+# or
+make bundle-index
+```
+
+To generate lightweight SVG preview cards for static HTML outputs without a
+browser, Playwright, Selenium, or live API server:
+
+```bash
+python -m app.cli.export_html_previews --artifact-dir ci_artifacts
+python -m app.cli.export_html_previews --artifact-dir ci_artifacts --output-dir ci_artifacts/previews --markdown-path ci_artifacts/html-previews.md
+# or
+make previews
+```
+
+The preview exporter reads generated HTML files such as `dashboard-mockup.html`
+and `release-bundle-index.html`, extracts titles, headings, excerpts, and simple
+link/table/section counts, and writes small SVG cards plus a Markdown index. This
+is useful for CI artifact browsing, release notes, and quick screenshots when a
+reviewer does not want to launch the full HTML page.
+
+To index any generated diagnostics directory with file sizes, SHA-256 hashes,
+and missing expected outputs:
+
+```bash
+python -m app.cli.artifact_manifest --artifact-dir ci_artifacts
+python -m app.cli.artifact_manifest --artifact-dir ci_artifacts --json-path manifest.json --markdown-path manifest.md
+# or
+make manifest
+```
+
+To turn a release health JSON file plus an artifact manifest into manager-friendly
+release notes:
+
+```bash
+python -m app.cli.release_notes
+python -m app.cli.release_notes --health-json ci_artifacts/release-health.json --manifest-json ci_artifacts/artifact-manifest.json --markdown-path ci_artifacts/release-notes.md --json-path ci_artifacts/release-notes.json
+# or
+make release-notes
+```
+
+The release notes summarize readiness, health counts, missing expected artifacts,
+priority failures or warnings, reviewer artifacts, and a recommended next step.
+This is useful when sharing CI bundles with users who need a quick analytical
+handoff rather than raw JSON diagnostics.
