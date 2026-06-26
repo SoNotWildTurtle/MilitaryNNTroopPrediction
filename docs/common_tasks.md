@@ -43,9 +43,9 @@ Hosted CI now runs the same entrypoint:
 make verify ARTIFACT_DIR=ci_artifacts
 ```
 
-That keeps local and pull-request validation aligned. When CI fails, reproduce the run locally with the same command, then open `ci_artifacts/release-bundle-index.html` first to inspect generated health reports, release notes, reviewer handoff notes, operator status board, provenance ledger, triage guidance, API contracts, examples, previews, manifests, and handoff validation results.
+That keeps local and pull-request validation aligned. When CI fails, reproduce the run locally with the same command, then open `ci_artifacts/release-bundle-index.html` first to inspect generated health reports, release notes, reviewer handoff notes, operator digest, operator status board, provenance ledger, triage guidance, API contracts, examples, previews, manifests, and handoff validation results.
 
-After it completes, open `ci_artifacts/release-bundle-index.html` first. That static page links the reviewer handoff, operator status board, provenance ledger, health report, release notes, triage summary, OpenAPI contract, synthetic examples, dashboard preview, HTML previews, and artifact manifest. Use `docs/release_bundle_review.md` as the reviewer checklist before sharing or summarizing the bundle.
+After it completes, open `ci_artifacts/release-bundle-index.html` first. That static page links the reviewer handoff, operator digest, operator status board, provenance ledger, health report, release notes, triage summary, OpenAPI contract, synthetic examples, dashboard preview, HTML previews, and artifact manifest. Use `docs/release_bundle_review.md` as the reviewer checklist before sharing or summarizing the bundle.
 
 ## CI failure triage
 
@@ -62,7 +62,7 @@ make install-core
 make verify ARTIFACT_DIR=ci_artifacts/local-ci
 ```
 
-Then open `ci_artifacts/local-ci/release-bundle-index.html` and check `reviewer-handoff.md` first when sharing context with another maintainer. Check `operator-status-board.md` when you need a quick non-technical readiness table. Check `artifact-provenance-ledger.md` when reviewers need to separate generated review evidence from synthetic fixtures and static previews. Check `reviewer-handoff-validation.json` next when downstream automation rejects a bundle; it is produced by `scripts/validate_reviewer_handoff.py` and reports the exact contract errors. Check `triage-summary.md` when a run failed. It summarizes failing health checks, missing expected artifacts, and the narrow target to rerun, such as `make doctor`, `make test`, `make ci-report`, `make validate-handoff`, `make openapi`, `make examples`, `make dashboard`, `make previews`, `make manifest`, `make artifact-gap-report`, `make provenance-ledger`, `make release-notes`, `make reviewer-handoff`, `make operator-status-board`, or `make triage-summary`.
+Then open `ci_artifacts/local-ci/release-bundle-index.html` and check `operator-digest.md` first for a concise first-read status, next command, missing-output summary, and copyable handoff line. Check `reviewer-handoff.md` when sharing context with another maintainer. Check `operator-status-board.md` when you need a quick non-technical readiness table. Check `artifact-provenance-ledger.md` when reviewers need to separate generated review evidence from synthetic fixtures and static previews. Check `reviewer-handoff-validation.json` next when downstream automation rejects a bundle; it is produced by `scripts/validate_reviewer_handoff.py` and reports the exact contract errors. Check `triage-summary.md` when a run failed. It summarizes failing health checks, missing expected artifacts, and the narrow target to rerun, such as `make doctor`, `make test`, `make ci-report`, `make validate-handoff`, `make openapi`, `make examples`, `make dashboard`, `make previews`, `make manifest`, `make artifact-gap-report`, `make provenance-ledger`, `make operator-digest`, `make release-notes`, `make reviewer-handoff`, `make operator-status-board`, or `make triage-summary`.
 
 ## Runtime
 
@@ -85,6 +85,7 @@ make previews
 make manifest
 make artifact-gap-report
 make provenance-ledger
+make operator-digest
 make release-notes
 make reviewer-handoff
 make operator-readiness
@@ -97,17 +98,18 @@ By default, artifact targets write into `ci_artifacts/`. Override the output dir
 
 ```bash
 make ci-report ARTIFACT_DIR=ci_artifacts/local-smoke
+make operator-digest ARTIFACT_DIR=ci_artifacts/local-smoke
 make validate-handoff ARTIFACT_DIR=ci_artifacts/local-smoke
 make operator-status-board ARTIFACT_DIR=ci_artifacts/local-smoke
 make provenance-ledger ARTIFACT_DIR=ci_artifacts/local-smoke
 make openapi ARTIFACT_DIR=ci_artifacts/api-contract-review
 ```
 
-Open `ci_artifacts/release-bundle-index.html` first when reviewing a generated diagnostics bundle. It links the reviewer handoff, operator status board, provenance ledger, health report, release notes, triage summary, OpenAPI contract, synthetic API examples, static dashboard mockup, HTML previews, and manifest from one dependency-free page. The companion guide at `docs/release_bundle_review.md` gives the quick reviewer handoff flow.
+Open `ci_artifacts/release-bundle-index.html` first when reviewing a generated diagnostics bundle. It links the reviewer handoff, operator digest, operator status board, provenance ledger, health report, release notes, triage summary, OpenAPI contract, synthetic API examples, static dashboard mockup, HTML previews, and manifest from one dependency-free page. The companion guide at `docs/release_bundle_review.md` gives the quick reviewer handoff flow.
 
-`reviewer-handoff.md` includes a normalized review status, a copyable summary, missing expected outputs, missing key artifacts, and the recommended narrow rerun command. Use that file when sending a diagnostics bundle to another maintainer because it summarizes whether the bundle is ready, needs warning review, or needs attention before deeper inspection. `operator-status-board.md` gives a shorter readiness line, severity, action table, and key-artifact table for non-technical status checks. `artifact-provenance-ledger.md` classifies generated diagnostics, synthetic examples, static previews, API contracts, handoff files, and reproducibility evidence so reviewers do not confuse demo data with release evidence. `reviewer-handoff-validation.json` and `reviewer-handoff-validation.txt` record the dependency-free validation result from `scripts/validate_reviewer_handoff.py` so reviewers and automation can confirm the machine-readable handoff follows `docs/reviewer_handoff_contract.md` before consuming it.
+`operator-digest.md` is the quick first-read summary for maintainers who need the current status, next command, missing-output count, and copyable handoff line without opening every artifact. `reviewer-handoff.md` includes a normalized review status, a copyable summary, missing expected outputs, missing key artifacts, and the recommended narrow rerun command. Use that file when sending a diagnostics bundle to another maintainer because it summarizes whether the bundle is ready, needs warning review, or needs attention before deeper inspection. `operator-status-board.md` gives a shorter readiness line, severity, action table, and key-artifact table for non-technical status checks. `artifact-provenance-ledger.md` classifies generated diagnostics, synthetic examples, static previews, API contracts, handoff files, and reproducibility evidence so reviewers do not confuse demo data with release evidence. `reviewer-handoff-validation.json` and `reviewer-handoff-validation.txt` record the dependency-free validation result from `scripts/validate_reviewer_handoff.py` so reviewers and automation can confirm the machine-readable handoff follows `docs/reviewer_handoff_contract.md` before consuming it.
 
-See `docs/operator_status_board.md` for the status board fields and review flow. See `docs/artifact_provenance_ledger.md` for the provenance classes and review flow.
+See `docs/operator_digest.md` for the digest fields and review flow. See `docs/operator_status_board.md` for the status board fields and review flow. See `docs/artifact_provenance_ledger.md` for the provenance classes and review flow.
 
 ## Cleanup
 
@@ -139,6 +141,7 @@ This removes generated local artifacts, Python bytecode caches, and `.pytest_cac
 | `make manifest` | Export artifact manifest JSON and Markdown with SHA-256 hashes. |
 | `make artifact-gap-report` | Export bundle completeness and suspicious-artifact audit Markdown/JSON. |
 | `make provenance-ledger` | Export artifact provenance Markdown/JSON with synthetic, preview, review, and reproducibility labels. |
+| `make operator-digest` | Export a concise first-read operator digest from generated diagnostics. |
 | `make release-notes` | Export manager-friendly release notes from diagnostics. |
 | `make reviewer-handoff` | Export actionable reviewer handoff Markdown/JSON with review status, copyable summary, missing artifacts, and rerun guidance. |
 | `make operator-readiness` | Export launch/no-launch operator readiness Markdown/JSON from diagnostics. |
