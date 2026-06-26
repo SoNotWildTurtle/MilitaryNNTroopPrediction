@@ -27,12 +27,13 @@ class MakefileWorkflowTests(unittest.TestCase):
 
         self.assertIn("make verify", content)
         self.assertRegex(content, r"(?m)^\.PHONY: .*\bverify\b")
-        self.assertRegex(content, r"(?m)^verify: doctor test ci-report$")
+        self.assertRegex(content, r"(?m)^verify: .*\bdoctor\b.*\btest\b.*\bci-report\b")
+        self.assertRegex(content, r"(?m)^verify: .*\bvalidate-handoff\b")
 
     def test_verify_target_points_reviewers_to_release_bundle_index(self) -> None:
         content = read_makefile()
 
-        verify_block = re.search(r"(?ms)^verify:.*?(?=^ci-report:)", content)
+        verify_block = re.search(r"(?ms)^verify:.*?(?=^ci-triage:)", content)
         self.assertIsNotNone(verify_block)
         assert verify_block is not None
         self.assertIn("release-bundle-index.html", verify_block.group(0))
