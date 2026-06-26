@@ -24,8 +24,21 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements-core.txt
 
-      - name: Run unified verification
-        run: make verify ARTIFACT_DIR=ci_artifacts
+      - name: Prepare diagnostic artifact directory
+        run: mkdir -p ci_artifacts
+
+      - name: Run setup diagnostics
+        run: make doctor ARTIFACT_DIR=ci_artifacts
+
+      - name: Run smoke and unit tests
+        run: make test ARTIFACT_DIR=ci_artifacts
+
+      - name: Build diagnostic bundle
+        if: always()
+        run: make ci-report ARTIFACT_DIR=ci_artifacts
+
+      - name: Validate reviewer handoff contract
+        run: make validate-handoff ARTIFACT_DIR=ci_artifacts
 
       - name: Upload diagnostic artifact bundle
         if: always()
