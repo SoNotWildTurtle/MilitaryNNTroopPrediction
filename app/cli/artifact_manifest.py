@@ -103,14 +103,29 @@ def _file_entry(path: Path, artifact_dir: Path) -> Dict[str, Any]:
 
 
 def build_manifest(artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> Dict[str, Any]:
-    """Build a deterministic manifest for files in ``artifact_dir``."""
+    """Build a deterministic manifest for files in ``artifact_dir``.
+
+    CI smoke tests sometimes point the manifest at broad temporary directories.
+    Treat unreadable or disappearing files as scan warnings instead of failing the
+    whole diagnostics landing page; expected repository artifacts remain strict
+    through ``missing_expected`` and the gap report.
+    """
 
     files: List[Dict[str, Any]] = []
+    scan_warnings: List[Dict[str, str]] = []
     if artifact_dir.exists():
         for path in sorted(p for p in artifact_dir.rglob("*") if p.is_file()):
             if path.name in GENERATED_MANIFEST_NAMES:
                 continue
-            files.append(_file_entry(path, artifact_dir))
+            try:
+                files.append(_file_entry(path, artifact_dir))
+            except (OSError, ValueError) as exc:
+                scan_warnings.append(
+                    {
+                        "path": path.as_posix(),
+                        "error": exc.__class__.__name__,
+                    }
+                )
 
     present_paths = {entry["path"] for entry in files}
     missing_expected = sorted(name for name in EXPECTED_ARTIFACTS if name not in present_paths)
@@ -121,6 +136,7 @@ def build_manifest(artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> Dict[str, Any]:
         "file_count": len(files),
         "total_size_bytes": sum(int(entry["size_bytes"]) for entry in files),
         "missing_expected": missing_expected,
+        "scan_warnings": scan_warnings,
         "files": files,
     }
 
@@ -146,6 +162,18 @@ def _markdown_lines(manifest: Dict[str, Any]) -> Iterable[str]:
         yield ""
         for name in manifest["missing_expected"]:
             yield f"- `{name}` - {EXPECTED_ARTIFACTS[name]}"
+        yield ""
+
+    scan_warnings = manifest.get("scan_warnings", [])
+    if scan_warnings:
+        yield "## Scan warnings"
+        yield ""
+        yield "Some files could not be read while the manifest was being generated."
+        yield ""
+        yield "| Path | Error |"
+        yield "| --- | --- |"
+        for warning in scan_warnings:
+            yield f"| `{warning['path']}` | {warning['error']} |"
         yield ""
 
     yield "## Files"
