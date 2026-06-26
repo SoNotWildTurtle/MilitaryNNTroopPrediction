@@ -1,14 +1,14 @@
 # Operator Next Steps
 
 `operator-next-steps` turns the local diagnostic bundle into a ranked action plan
-for maintainers. It is designed for recurring automation, CI artifact review, and
+for maintainers. It is designed for recurring automation, artifact review, and
 non-technical handoff notes where the next safe task should be obvious without
 reading raw JSON.
 
 The command is offline-only. It reads diagnostic JSON files that are already
 created by the project tooling and writes Markdown plus optional JSON. It does
 not run model inference, collection, ingestion, network calls, deployment, or
-military tasking workflows.
+operational workflows.
 
 ## Generate a plan
 
@@ -58,9 +58,9 @@ operator plan. If the status is `ready`, open `release-bundle-index.html`, revie
 the generated dashboard/API artifacts, and attach the diagnostics bundle to the
 handoff or pull request.
 
-## CI bundle integration
+## Rollback
 
-`scripts/ci_report.sh` includes `operator-next-steps.md`,
-`operator-next-steps.json`, and `operator-next-steps-help.txt` in the diagnostics
-bundle. This makes every local and hosted run easier to review because the bundle
-contains both raw data and a concise action path.
+This increment is additive. Roll back by removing `app.cli.operator_next_steps`,
+its tests, this document, and the `operator-next-steps` Makefile target. Existing
+bundle generation, API exports, manifests, and handoff commands continue to work
+without this optional report.
