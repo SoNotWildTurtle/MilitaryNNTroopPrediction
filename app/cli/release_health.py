@@ -12,7 +12,7 @@ import json
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Sequence
+from typing import Any, Sequence
 
 from app.cli import doctor
 
@@ -29,6 +29,32 @@ def _escape_table_cell(value: str) -> str:
     """Escape text for a Markdown table cell."""
 
     return value.replace("|", "\\|").replace("\n", " ")
+
+
+def _release_status(results: Sequence[doctor.CheckResult]) -> str:
+    """Return a stable aggregate status for machine-readable reports."""
+
+    ok, warn, fail = doctor.summarize(results)
+    if fail:
+        return "fail"
+    if warn:
+        return "review_warnings"
+    if ok:
+        return "pass"
+    return "unknown"
+
+
+def build_json_payload(results: Sequence[doctor.CheckResult], generated_at: datetime | None = None) -> dict[str, Any]:
+    """Build the machine-readable release health payload."""
+
+    generated_at = generated_at or datetime.now(timezone.utc)
+    ok, warn, fail = doctor.summarize(results)
+    return {
+        "status": _release_status(results),
+        "generated_at": generated_at.isoformat(timespec="seconds"),
+        "summary": {"ok": ok, "warnings": warn, "failures": fail},
+        "checks": [asdict(result) for result in results],
+    }
 
 
 def render_markdown(results: Sequence[doctor.CheckResult], generated_at: datetime | None = None) -> str:
@@ -93,7 +119,7 @@ def write_reports(
     if json_path is not None:
         json_path.parent.mkdir(parents=True, exist_ok=True)
         json_path.write_text(
-            json.dumps([asdict(result) for result in results], indent=2) + "\n",
+            json.dumps(build_json_payload(results), indent=2) + "\n",
             encoding="utf-8",
         )
 
