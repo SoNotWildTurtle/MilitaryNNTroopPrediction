@@ -29,6 +29,7 @@ mkdir -p "${ARTIFACT_DIR}"
 "${PYTHON_BIN}" -m app.cli.release_notes --help > "${ARTIFACT_DIR}/release-notes-help.txt"
 "${PYTHON_BIN}" -m app.cli.reviewer_handoff --help > "${ARTIFACT_DIR}/reviewer-handoff-help.txt"
 "${PYTHON_BIN}" -m app.cli.operator_readiness --help > "${ARTIFACT_DIR}/operator-readiness-help.txt"
+"${PYTHON_BIN}" -m app.cli.automation_plan --help > "${ARTIFACT_DIR}/automation-plan-help.txt"
 "${PYTHON_BIN}" -m app.cli.triage_summary --help > "${ARTIFACT_DIR}/triage-summary-help.txt"
 "${PYTHON_BIN}" -m app.cli.export_openapi --help > "${ARTIFACT_DIR}/export-openapi-help.txt"
 "${PYTHON_BIN}" -m app.cli.export_api_examples --help > "${ARTIFACT_DIR}/export-api-examples-help.txt"
@@ -53,6 +54,8 @@ Files:
 - reviewer-handoff.json: machine-readable reviewer handoff generated from diagnostics.
 - operator-readiness.md: launch/no-launch readiness brief generated from diagnostics.
 - operator-readiness.json: machine-readable operator readiness brief generated from diagnostics.
+- automation-plan.md: safe additive next-run plan generated from diagnostics and goals.
+- automation-plan.json: machine-readable safe additive next-run plan.
 - reviewer-handoff-validation.txt: human-readable reviewer handoff contract validation result.
 - reviewer-handoff-validation.json: machine-readable reviewer handoff contract validation result.
 - triage-summary.md: CI failure triage summary with narrow rerun targets.
@@ -72,6 +75,7 @@ Files:
 - release-notes-help.txt: current release notes CLI options.
 - reviewer-handoff-help.txt: current reviewer handoff CLI options.
 - operator-readiness-help.txt: current operator readiness CLI options.
+- automation-plan-help.txt: current automation plan CLI options.
 - triage-summary-help.txt: current CI triage summary CLI options.
 - export-openapi-help.txt: current OpenAPI export CLI options.
 - export-api-examples-help.txt: current API example export CLI options.
@@ -90,11 +94,12 @@ SUMMARY
   --artifact-dir "${ARTIFACT_DIR}" \
   --markdown-path "${ARTIFACT_DIR}/html-previews.md"
 
-# Release notes, triage summaries, reviewer handoffs, and operator readiness read
-# the manifest, while the manifest must also include their final outputs. A
-# multi-pass handoff keeps human notes, launch/no-launch guidance, narrow rerun
-# guidance, copyable review context, and the final machine-readable manifest
-# useful without requiring any network calls.
+# Release notes, triage summaries, automation plans, reviewer handoffs, and
+# operator readiness read the manifest, while the manifest must also include
+# their final outputs. A multi-pass handoff keeps human notes,
+# launch/no-launch guidance, narrow rerun guidance, additive next-run planning,
+# copyable review context, and the final machine-readable manifest useful
+# without requiring any network calls.
 "${PYTHON_BIN}" -m app.cli.artifact_manifest \
   --artifact-dir "${ARTIFACT_DIR}" \
   --json-path "${ARTIFACT_DIR}/artifact-manifest.json" \
@@ -118,6 +123,10 @@ SUMMARY
   --artifact-dir "${ARTIFACT_DIR}" \
   --markdown-path "${ARTIFACT_DIR}/operator-readiness.md" \
   --json-path "${ARTIFACT_DIR}/operator-readiness.json"
+"${PYTHON_BIN}" -m app.cli.automation_plan \
+  --artifact-dir "${ARTIFACT_DIR}" \
+  --markdown-path "${ARTIFACT_DIR}/automation-plan.md" \
+  --json-path "${ARTIFACT_DIR}/automation-plan.json"
 "${PYTHON_BIN}" -m app.cli.artifact_manifest \
   --artifact-dir "${ARTIFACT_DIR}" \
   --json-path "${ARTIFACT_DIR}/artifact-manifest.json" \
@@ -141,6 +150,10 @@ SUMMARY
   --artifact-dir "${ARTIFACT_DIR}" \
   --markdown-path "${ARTIFACT_DIR}/operator-readiness.md" \
   --json-path "${ARTIFACT_DIR}/operator-readiness.json"
+"${PYTHON_BIN}" -m app.cli.automation_plan \
+  --artifact-dir "${ARTIFACT_DIR}" \
+  --markdown-path "${ARTIFACT_DIR}/automation-plan.md" \
+  --json-path "${ARTIFACT_DIR}/automation-plan.json"
 "${PYTHON_BIN}" scripts/validate_reviewer_handoff.py \
   "${ARTIFACT_DIR}/reviewer-handoff.json" \
   > "${ARTIFACT_DIR}/reviewer-handoff-validation.txt"
@@ -155,5 +168,9 @@ SUMMARY
   --artifact-dir "${ARTIFACT_DIR}" \
   --markdown-path "${ARTIFACT_DIR}/operator-readiness.md" \
   --json-path "${ARTIFACT_DIR}/operator-readiness.json"
+"${PYTHON_BIN}" -m app.cli.automation_plan \
+  --artifact-dir "${ARTIFACT_DIR}" \
+  --markdown-path "${ARTIFACT_DIR}/automation-plan.md" \
+  --json-path "${ARTIFACT_DIR}/automation-plan.json"
 
 printf 'Wrote CI diagnostics to %s\n' "${ARTIFACT_DIR}"
