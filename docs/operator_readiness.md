@@ -31,6 +31,28 @@ For a full local validation pass that creates diagnostics and then validates the
 make verify
 ```
 
+## Custom artifact paths
+
+By default, the CLI reads these files from `--artifact-dir`:
+
+- `release-health.json`
+- `artifact-manifest.json`
+- `triage-summary.json`
+
+Smoke tests and CI triage flows sometimes write prefixed artifacts into a shared temporary directory. In those cases, pass explicit input paths so the readiness brief summarizes the same health, manifest, and triage artifacts that the rest of the workflow just generated:
+
+```bash
+python -m app.cli.operator_readiness \
+  --artifact-dir /tmp \
+  --health-json /tmp/militarynntroopprediction-release-health.json \
+  --manifest-json /tmp/militarynntroopprediction-artifact-manifest.json \
+  --triage-json /tmp/militarynntroopprediction-triage-summary.json \
+  --markdown-path /tmp/militarynntroopprediction-operator-readiness.md \
+  --json-path /tmp/militarynntroopprediction-operator-readiness.json
+```
+
+The generated JSON records the exact input paths under `input_paths` for reproducibility.
+
 ## Status semantics
 
 The JSON output uses three operator-facing launch states:
