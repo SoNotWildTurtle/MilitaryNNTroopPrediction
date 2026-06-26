@@ -15,20 +15,15 @@ from bson import ObjectId
 from app.api import main
 
 
-def query_bounds(field_info: object) -> tuple[int | None, int | None]:
-    """Return Query ge/le bounds across FastAPI and Pydantic releases."""
+def _query_bounds(field_info: object) -> tuple[int | None, int | None]:
+    """Return inclusive lower/upper bounds across FastAPI/Pydantic releases."""
 
-    direct_bounds = (getattr(field_info, "ge", None), getattr(field_info, "le", None))
-    if direct_bounds != (None, None):
-        return direct_bounds
-
-    bounds: dict[str, int | None] = {"ge": None, "le": None}
-    for item in getattr(field_info, "metadata", ()):
-        for attr in bounds:
-            value = getattr(item, attr, None)
-            if value is not None:
-                bounds[attr] = value
-    return bounds["ge"], bounds["le"]
+    lower = getattr(field_info, "ge", None)
+    upper = getattr(field_info, "le", None)
+    for metadata in getattr(field_info, "metadata", ()):
+        lower = getattr(metadata, "ge", lower)
+        upper = getattr(metadata, "le", upper)
+    return lower, upper
 
 
 class ApiRecordEndpointTests(unittest.TestCase):
@@ -100,7 +95,7 @@ class ApiRecordEndpointTests(unittest.TestCase):
                 limit_param = next(
                     param for param in route.dependant.query_params if param.name == "limit"
                 )
-                route_limits[path] = query_bounds(limit_param.field_info)
+                route_limits[path] = _query_bounds(limit_param.field_info)
 
         self.assertEqual(route_limits["/detections/{area}"], (1, 100))
         self.assertEqual(route_limits["/predictions/{area}"], (1, 100))
