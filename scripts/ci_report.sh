@@ -32,6 +32,7 @@ mkdir -p "${ARTIFACT_DIR}"
 "${PYTHON_BIN}" -m app.cli.release_notes --help > "${ARTIFACT_DIR}/release-notes-help.txt"
 "${PYTHON_BIN}" -m app.cli.reviewer_handoff --help > "${ARTIFACT_DIR}/reviewer-handoff-help.txt"
 "${PYTHON_BIN}" -m app.cli.operator_readiness --help > "${ARTIFACT_DIR}/operator-readiness-help.txt"
+"${PYTHON_BIN}" -m app.cli.operator_status_board --help > "${ARTIFACT_DIR}/operator-status-board-help.txt"
 "${PYTHON_BIN}" -m app.cli.automation_plan --help > "${ARTIFACT_DIR}/automation-plan-help.txt"
 "${PYTHON_BIN}" -m app.cli.triage_summary --help > "${ARTIFACT_DIR}/triage-summary-help.txt"
 "${PYTHON_BIN}" -m app.cli.artifact_gap_report --help > "${ARTIFACT_DIR}/artifact-gap-report-help.txt"
@@ -51,7 +52,7 @@ Files:
 - pip-version.txt: pip version used by CI.
 - pip-freeze.txt: installed package versions for reproducibility.
 - doctor-minimal.json: machine-readable core setup diagnostics.
-- release health/release notes/reviewer handoff/operator readiness/automation plan artifacts: generated local readiness, review, and next-run guidance.
+- release health/release notes/reviewer handoff/operator readiness/operator status board/automation plan artifacts: generated local readiness, review, and next-run guidance.
 - reviewer-handoff-validation.txt/json: reviewer handoff contract validation results.
 - triage-summary.md/json: CI failure triage summary with narrow rerun targets.
 - artifact-gap-report.md/json: diagnostic bundle completeness and suspicious-artifact report.
@@ -72,11 +73,11 @@ SUMMARY
   --markdown-path "${ARTIFACT_DIR}/html-previews.md"
 
 # Release notes, triage summaries, automation plans, reviewer handoffs, operator
-# readiness, and artifact gap reports read the manifest, while the manifest must
-# also include their final outputs. Multi-pass generation keeps human notes,
-# launch/no-launch guidance, bundle gap evidence, narrow rerun guidance, additive
-# next-run planning, copyable review context, and final hashes useful without any
-# network calls.
+# readiness/status boards, and artifact gap reports read the manifest, while the
+# manifest must also include their final outputs. Multi-pass generation keeps
+# human notes, launch/no-launch guidance, bundle gap evidence, narrow rerun
+# guidance, additive next-run planning, copyable review context, quick status
+# boards, and final hashes useful without any network calls.
 "${PYTHON_BIN}" -m app.cli.artifact_manifest \
   --artifact-dir "${ARTIFACT_DIR}" \
   --json-path "${ARTIFACT_DIR}/artifact-manifest.json" \
@@ -120,6 +121,10 @@ SUMMARY
   --artifact-dir "${ARTIFACT_DIR}" \
   --json-path "${ARTIFACT_DIR}/artifact-gap-report.json" \
   --markdown-path "${ARTIFACT_DIR}/artifact-gap-report.md"
+"${PYTHON_BIN}" -m app.cli.operator_status_board \
+  --artifact-dir "${ARTIFACT_DIR}" \
+  --markdown-path "${ARTIFACT_DIR}/operator-status-board.md" \
+  --json-path "${ARTIFACT_DIR}/operator-status-board.json"
 "${PYTHON_BIN}" -m app.cli.artifact_manifest \
   --artifact-dir "${ARTIFACT_DIR}" \
   --json-path "${ARTIFACT_DIR}/artifact-manifest.json" \
@@ -147,6 +152,10 @@ SUMMARY
   --artifact-dir "${ARTIFACT_DIR}" \
   --markdown-path "${ARTIFACT_DIR}/automation-plan.md" \
   --json-path "${ARTIFACT_DIR}/automation-plan.json"
+"${PYTHON_BIN}" -m app.cli.operator_status_board \
+  --artifact-dir "${ARTIFACT_DIR}" \
+  --markdown-path "${ARTIFACT_DIR}/operator-status-board.md" \
+  --json-path "${ARTIFACT_DIR}/operator-status-board.json"
 "${PYTHON_BIN}" scripts/validate_reviewer_handoff.py \
   "${ARTIFACT_DIR}/reviewer-handoff.json" \
   > "${ARTIFACT_DIR}/reviewer-handoff-validation.txt"
@@ -161,6 +170,10 @@ SUMMARY
   --artifact-dir "${ARTIFACT_DIR}" \
   --json-path "${ARTIFACT_DIR}/artifact-gap-report.json" \
   --markdown-path "${ARTIFACT_DIR}/artifact-gap-report.md"
+"${PYTHON_BIN}" -m app.cli.operator_status_board \
+  --artifact-dir "${ARTIFACT_DIR}" \
+  --markdown-path "${ARTIFACT_DIR}/operator-status-board.md" \
+  --json-path "${ARTIFACT_DIR}/operator-status-board.json"
 "${PYTHON_BIN}" -m app.cli.artifact_manifest \
   --artifact-dir "${ARTIFACT_DIR}" \
   --json-path "${ARTIFACT_DIR}/artifact-manifest.json" \
@@ -173,5 +186,9 @@ SUMMARY
   --artifact-dir "${ARTIFACT_DIR}" \
   --markdown-path "${ARTIFACT_DIR}/automation-plan.md" \
   --json-path "${ARTIFACT_DIR}/automation-plan.json"
+"${PYTHON_BIN}" -m app.cli.operator_status_board \
+  --artifact-dir "${ARTIFACT_DIR}" \
+  --markdown-path "${ARTIFACT_DIR}/operator-status-board.md" \
+  --json-path "${ARTIFACT_DIR}/operator-status-board.json"
 
 printf 'Wrote CI diagnostics to %s\n' "${ARTIFACT_DIR}"
