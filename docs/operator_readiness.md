@@ -56,6 +56,20 @@ It also reads `release-health.json` when present and summarizes failures, warnin
 4. Use `reviewer-handoff.md` as the copyable PR or release handoff note.
 5. If blocked, use `triage-summary.md` to rerun the narrowest failing target.
 
+## CI validation path
+
+Hosted CI runs the checklist after the release-health, manifest, triage-summary, and reviewer-handoff smoke artifacts are generated. If a pull request has no workflow run for its latest head SHA, push a small documentation or test-only commit rather than merging with unavailable validation. The expected narrow validation command remains:
+
+```bash
+python -m unittest tests.test_operator_readiness
+```
+
+Use the full verification path before merge when possible:
+
+```bash
+make verify
+```
+
 ## Safe scope
 
 This workflow is documentation and diagnostics only. It is intended for safer project onboarding, release review, and local verification. It does not introduce new collection, targeting, prediction, or external network behavior.
