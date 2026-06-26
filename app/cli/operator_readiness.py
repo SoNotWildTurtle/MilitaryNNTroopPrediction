@@ -22,13 +22,20 @@ DEFAULT_MANIFEST_NAME = "artifact-manifest.json"
 DEFAULT_TRIAGE_NAME = "triage-summary.json"
 
 REQUIRED_ARTIFACTS: Mapping[str, str] = {
-    "release-health.json": "Machine-readable readiness checks for setup, docs, generated outputs, and API contract health.",
+    "release-health.json": (
+        "Machine-readable readiness checks for setup, docs, generated outputs, "
+        "and API contract health."
+    ),
     "release-health.md": "Human-readable readiness report for reviewers and operators.",
-    "artifact-manifest.json": "Machine-readable artifact inventory with expected-output completeness.",
+    "artifact-manifest.json": (
+        "Machine-readable artifact inventory with expected-output completeness."
+    ),
     "artifact-manifest.md": "Human-readable artifact inventory and SHA-256 review table.",
     "triage-summary.json": "Machine-readable narrow rerun and remediation guidance.",
     "triage-summary.md": "Human-readable CI triage and next-step summary.",
-    "reviewer-handoff.json": "Copyable maintainer handoff metadata for diagnostics bundle review.",
+    "reviewer-handoff.json": (
+        "Copyable maintainer handoff metadata for diagnostics bundle review."
+    ),
     "reviewer-handoff.md": "Copyable maintainer handoff instructions.",
 }
 
@@ -108,7 +115,10 @@ def _status_counts(results: Sequence[Mapping[str, Any]]) -> Dict[str, int]:
     return counts
 
 
-def _required_artifact_status(artifact_dir: Path, manifest: Mapping[str, Any]) -> List[Dict[str, Any]]:
+def _required_artifact_status(
+    artifact_dir: Path,
+    manifest: Mapping[str, Any],
+) -> List[Dict[str, Any]]:
     manifest_paths = _manifest_paths(manifest)
     statuses: List[Dict[str, Any]] = []
     for path, purpose in REQUIRED_ARTIFACTS.items():
@@ -127,22 +137,40 @@ def _required_artifact_status(artifact_dir: Path, manifest: Mapping[str, Any]) -
 def build_readiness_brief(
     artifact_dir: Path = DEFAULT_ARTIFACT_DIR,
     generated_at: datetime | None = None,
+    health_path: Path | None = None,
+    manifest_path: Path | None = None,
+    triage_path: Path | None = None,
 ) -> Dict[str, Any]:
     """Build a deterministic operator readiness brief from generated artifacts."""
 
     generated_at = generated_at or datetime.now(timezone.utc).replace(microsecond=0)
-    health = _load_json(artifact_dir / DEFAULT_HEALTH_NAME, [])
-    manifest = _load_json(artifact_dir / DEFAULT_MANIFEST_NAME, {"missing_expected": [], "file_count": 0})
-    triage = _load_json(artifact_dir / DEFAULT_TRIAGE_NAME, {})
+    health_path = health_path or artifact_dir / DEFAULT_HEALTH_NAME
+    manifest_path = manifest_path or artifact_dir / DEFAULT_MANIFEST_NAME
+    triage_path = triage_path or artifact_dir / DEFAULT_TRIAGE_NAME
+
+    health = _load_json(health_path, [])
+    manifest = _load_json(manifest_path, {"missing_expected": [], "file_count": 0})
+    triage = _load_json(triage_path, {})
 
     health_results = _health_results(health)
     health_counts = _status_counts(health_results)
-    failing_checks = [dict(item) for item in health_results if STATUS_WEIGHTS.get(str(item.get("status", "")).lower(), 1) == 2]
-    warning_checks = [dict(item) for item in health_results if STATUS_WEIGHTS.get(str(item.get("status", "")).lower(), 1) == 1]
-    missing_expected = manifest.get("missing_expected", []) if isinstance(manifest, Mapping) else []
+    failing_checks = [
+        dict(item)
+        for item in health_results
+        if STATUS_WEIGHTS.get(str(item.get("status", "")).lower(), 1) == 2
+    ]
+    warning_checks = [
+        dict(item)
+        for item in health_results
+        if STATUS_WEIGHTS.get(str(item.get("status", "")).lower(), 1) == 1
+    ]
+    missing_expected = (
+        manifest.get("missing_expected", []) if isinstance(manifest, Mapping) else []
+    )
     if not isinstance(missing_expected, list):
         missing_expected = []
-    artifact_statuses = _required_artifact_status(artifact_dir, manifest if isinstance(manifest, Mapping) else {})
+    manifest_mapping = manifest if isinstance(manifest, Mapping) else {}
+    artifact_statuses = _required_artifact_status(artifact_dir, manifest_mapping)
     missing_required = [item["path"] for item in artifact_statuses if not item["present"]]
 
     signal_status = _worst_status(
@@ -153,21 +181,40 @@ def build_readiness_brief(
 
     if failing_checks or missing_required or missing_expected:
         launch_status = "blocked"
-        operator_decision = "Do not rely on this bundle for release or operational review until the listed blockers are fixed."
+        operator_decision = (
+            "Do not rely on this bundle for release or operational review until "
+            "the listed blockers are fixed."
+        )
     elif warning_checks:
         launch_status = "review"
-        operator_decision = "Usable for review, but an operator should read warnings before launch or release decisions."
+        operator_decision = (
+            "Usable for review, but an operator should read warnings before "
+            "launch or release decisions."
+        )
     else:
         launch_status = "ready"
-        operator_decision = "Ready for reviewer handoff using the generated diagnostics bundle."
+        operator_decision = "Ready for reviewer handoff using the diagnostics bundle."
 
-    next_step = str(triage.get("next_step") or triage.get("recommended_rerun") or "make verify") if isinstance(triage, Mapping) else "make verify"
+    if isinstance(triage, Mapping):
+        next_step = str(
+            triage.get("next_step") or triage.get("recommended_rerun") or "make verify"
+        )
+    else:
+        next_step = "make verify"
     if launch_status == "ready":
-        next_step = "Open ci_artifacts/release-bundle-index.html and attach the diagnostics bundle to the PR."
+        next_step = (
+            "Open ci_artifacts/release-bundle-index.html and attach the diagnostics "
+            "bundle to the PR."
+        )
 
     return {
         "generated_at": generated_at.isoformat(),
         "artifact_dir": artifact_dir.as_posix(),
+        "input_paths": {
+            "health_json": health_path.as_posix(),
+            "manifest_json": manifest_path.as_posix(),
+            "triage_json": triage_path.as_posix(),
+        },
         "launch_status": launch_status,
         "signal_status": signal_status,
         "operator_decision": operator_decision,
@@ -178,21 +225,42 @@ def build_readiness_brief(
         "missing_expected": [str(item) for item in missing_expected],
         "missing_required_artifacts": missing_required,
         "required_artifacts": artifact_statuses,
-        "artifact_count": int(manifest.get("file_count", 0) or 0) if isinstance(manifest, Mapping) else 0,
-        "safe_scope": "Summarizes local diagnostic artifacts only; does not run ingestion, detection, prediction, network, database, deployment, or destructive workflows.",
+        "artifact_count": (
+            int(manifest.get("file_count", 0) or 0)
+            if isinstance(manifest, Mapping)
+            else 0
+        ),
+        "safe_scope": (
+            "Summarizes local diagnostic artifacts only; does not run ingestion, "
+            "detection, prediction, network, database, deployment, or destructive "
+            "workflows."
+        ),
     }
 
 
 def _markdown_lines(brief: Mapping[str, Any]) -> Iterable[str]:
     yield "# Operator Readiness Brief"
     yield ""
-    yield "This brief gives maintainers and non-technical operators a fast launch/no-launch view of the generated diagnostics bundle."
+    yield (
+        "This brief gives maintainers and non-technical operators a fast "
+        "launch/no-launch view of the generated diagnostics bundle."
+    )
     yield ""
     yield f"Generated: `{brief['generated_at']}`"
     yield f"Artifact directory: `{brief['artifact_dir']}`"
     yield f"Launch status: **{str(brief['launch_status']).upper()}**"
     yield f"Signal status: `{brief['signal_status']}`"
     yield ""
+
+    input_paths = brief.get("input_paths", {})
+    if isinstance(input_paths, Mapping) and input_paths:
+        yield "## Input artifacts"
+        yield ""
+        yield f"- Health JSON: `{input_paths.get('health_json', '')}`"
+        yield f"- Manifest JSON: `{input_paths.get('manifest_json', '')}`"
+        yield f"- Triage JSON: `{input_paths.get('triage_json', '')}`"
+        yield ""
+
     yield "## Operator decision"
     yield ""
     yield str(brief["operator_decision"])
@@ -215,14 +283,16 @@ def _markdown_lines(brief: Mapping[str, Any]) -> Iterable[str]:
         yield "## Blockers"
         yield ""
         for check in brief["failing_checks"]:
-            yield f"- `{check.get('name', 'unknown')}`: {check.get('detail', '') or check.get('remediation', '') or 'No detail provided.'}"
+            detail = check.get("detail", "") or check.get("remediation", "")
+            yield f"- `{check.get('name', 'unknown')}`: {detail or 'No detail provided.'}"
         yield ""
 
     if brief["warning_checks"]:
         yield "## Warnings"
         yield ""
         for check in brief["warning_checks"]:
-            yield f"- `{check.get('name', 'unknown')}`: {check.get('detail', '') or check.get('remediation', '') or 'No detail provided.'}"
+            detail = check.get("detail", "") or check.get("remediation", "")
+            yield f"- `{check.get('name', 'unknown')}`: {detail or 'No detail provided.'}"
         yield ""
 
     if brief["missing_expected"] or brief["missing_required_artifacts"]:
@@ -252,7 +322,11 @@ def render_markdown(brief: Mapping[str, Any]) -> str:
     return "\n".join(_markdown_lines(brief)).rstrip() + "\n"
 
 
-def write_outputs(brief: Mapping[str, Any], markdown_path: Path, json_path: Path | None) -> None:
+def write_outputs(
+    brief: Mapping[str, Any],
+    markdown_path: Path,
+    json_path: Path | None,
+) -> None:
     markdown_path.parent.mkdir(parents=True, exist_ok=True)
     markdown_path.write_text(render_markdown(brief), encoding="utf-8")
     if json_path is not None:
@@ -261,12 +335,32 @@ def write_outputs(brief: Mapping[str, Any], markdown_path: Path, json_path: Path
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Generate an operator readiness brief from diagnostic artifacts.")
+    parser = argparse.ArgumentParser(
+        description="Generate an operator readiness brief from diagnostic artifacts."
+    )
     parser.add_argument(
         "--artifact-dir",
         type=Path,
         default=DEFAULT_ARTIFACT_DIR,
         help=f"diagnostic artifact directory; default: {DEFAULT_ARTIFACT_DIR}",
+    )
+    parser.add_argument(
+        "--health-json",
+        type=Path,
+        default=None,
+        help="health JSON input; default: <artifact-dir>/release-health.json",
+    )
+    parser.add_argument(
+        "--manifest-json",
+        type=Path,
+        default=None,
+        help="manifest JSON input; default: <artifact-dir>/artifact-manifest.json",
+    )
+    parser.add_argument(
+        "--triage-json",
+        type=Path,
+        default=None,
+        help="triage JSON input; default: <artifact-dir>/triage-summary.json",
     )
     parser.add_argument("--markdown-path", type=Path, default=None, help="Markdown output path")
     parser.add_argument("--json-path", type=Path, default=None, help="JSON output path")
@@ -279,7 +373,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     artifact_dir = args.artifact_dir
     markdown_path = args.markdown_path or artifact_dir / DEFAULT_MARKDOWN_NAME
     json_path = None if args.no_json else (args.json_path or artifact_dir / DEFAULT_JSON_NAME)
-    brief = build_readiness_brief(artifact_dir)
+    brief = build_readiness_brief(
+        artifact_dir=artifact_dir,
+        health_path=args.health_json,
+        manifest_path=args.manifest_json,
+        triage_path=args.triage_json,
+    )
     write_outputs(brief, markdown_path, json_path)
     print(f"Wrote operator readiness Markdown to {markdown_path}")
     if json_path is not None:
