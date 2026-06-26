@@ -22,12 +22,16 @@ mkdir -p "${ARTIFACT_DIR}"
   --markdown-path "${ARTIFACT_DIR}/api-response-examples.md"
 "${PYTHON_BIN}" -m app.cli.export_dashboard_mockup \
   --html-path "${ARTIFACT_DIR}/dashboard-mockup.html"
+"${PYTHON_BIN}" -m app.cli.synthetic_data_fixtures \
+  --output-dir "${ARTIFACT_DIR}/synthetic-fixtures" \
+  --json > "${ARTIFACT_DIR}/synthetic-fixtures-summary.json"
 "${PYTHON_BIN}" -m app.cli.quickstart --help > "${ARTIFACT_DIR}/quickstart-help.txt"
 "${PYTHON_BIN}" -m app.cli.doctor --help > "${ARTIFACT_DIR}/doctor-help.txt"
 "${PYTHON_BIN}" -m app.cli.release_health --help > "${ARTIFACT_DIR}/release-health-help.txt"
 "${PYTHON_BIN}" -m app.cli.release_notes --help > "${ARTIFACT_DIR}/release-notes-help.txt"
 "${PYTHON_BIN}" -m app.cli.reviewer_handoff --help > "${ARTIFACT_DIR}/reviewer-handoff-help.txt"
 "${PYTHON_BIN}" -m app.cli.triage_summary --help > "${ARTIFACT_DIR}/triage-summary-help.txt"
+"${PYTHON_BIN}" -m app.cli.synthetic_data_fixtures --help > "${ARTIFACT_DIR}/synthetic-data-fixtures-help.txt"
 "${PYTHON_BIN}" -m app.cli.export_openapi --help > "${ARTIFACT_DIR}/export-openapi-help.txt"
 "${PYTHON_BIN}" -m app.cli.export_api_examples --help > "${ARTIFACT_DIR}/export-api-examples-help.txt"
 "${PYTHON_BIN}" -m app.cli.export_dashboard_mockup --help > "${ARTIFACT_DIR}/export-dashboard-mockup-help.txt"
@@ -58,6 +62,11 @@ Files:
 - api-response-examples.json: synthetic JSON responses for dashboard and client builders.
 - api-response-examples.md: human-readable synthetic API response examples.
 - dashboard-mockup.html: self-contained static dashboard preview generated from synthetic examples.
+- synthetic-fixtures-summary.json: machine-readable summary of generated safe data fixtures.
+- synthetic-fixtures/synthetic-detections.jsonl: JSON Lines detection fixture records.
+- synthetic-fixtures/synthetic-predictions.jsonl: JSON Lines prediction fixture records.
+- synthetic-fixtures/synthetic-detections.csv: spreadsheet-friendly detection fixture records.
+- synthetic-fixtures/synthetic-fixtures.md: human-readable synthetic fixture summary.
 - release-bundle-index.html: self-contained reviewer landing page linking key bundle outputs.
 - html-previews.md: human-readable index of SVG previews for static HTML artifacts.
 - previews/dashboard-mockup.svg: lightweight browser-free visual preview of the dashboard mockup.
@@ -68,6 +77,7 @@ Files:
 - release-notes-help.txt: current release notes CLI options.
 - reviewer-handoff-help.txt: current reviewer handoff CLI options.
 - triage-summary-help.txt: current CI triage summary CLI options.
+- synthetic-data-fixtures-help.txt: current synthetic data fixture CLI options.
 - export-openapi-help.txt: current OpenAPI export CLI options.
 - export-api-examples-help.txt: current API example export CLI options.
 - export-dashboard-mockup-help.txt: current dashboard mockup export CLI options.
