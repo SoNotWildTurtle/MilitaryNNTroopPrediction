@@ -9,7 +9,7 @@ ARTIFACT_DIR ?= ci_artifacts
 TRIAGE_ARTIFACT_DIR ?= ci_artifacts/local-ci
 FIXTURE_DIR ?= data/fixtures
 
-.PHONY: help install-core install-optional configure doctor quickstart api test verify ci-triage ci-report openapi examples dashboard bundle-index previews manifest artifact-gap-report provenance-ledger operator-digest release-notes reviewer-handoff operator-readiness operator-status-board operator-session-plan operator-runbook-index operator-next-steps handoff-integrity evidence-checklist automation-plan validate-handoff triage-summary synthetic-fixtures clean
+.PHONY: help install-core install-optional configure doctor quickstart api test verify ci-triage ci-report openapi examples dashboard bundle-index previews manifest artifact-gap-report provenance-ledger provenance-validation-matrix operator-digest release-notes reviewer-handoff operator-readiness operator-status-board operator-session-plan operator-runbook-index operator-next-steps handoff-integrity evidence-checklist automation-plan validate-handoff triage-summary synthetic-fixtures clean
 
 help:
 	@printf 'MilitaryNNTroopPrediction common tasks\n\n'
@@ -34,6 +34,7 @@ help:
 	@printf '  make manifest          Export artifact manifest with SHA-256 hashes\n'
 	@printf '  make artifact-gap-report Audit bundle completeness and suspicious artifacts\n'
 	@printf '  make provenance-ledger Export artifact provenance and synthetic/preview labels\n'
+	@printf '  make provenance-validation-matrix Export cross-artifact provenance gate matrix\n'
 	@printf '  make operator-digest   Export concise first-read operator digest\n'
 	@printf '  make release-notes     Export manager-friendly release notes\n'
 	@printf '  make reviewer-handoff  Export copyable reviewer handoff notes\n'
@@ -85,11 +86,12 @@ ci-triage:
 	@printf '   make verify ARTIFACT_DIR=$(TRIAGE_ARTIFACT_DIR)\n\n'
 	@printf '3. Open the reviewer landing page first:\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/release-bundle-index.html\n\n'
-	@printf '4. If the bundle is incomplete, inspect the generated handoff, its validation result, gap report, provenance ledger, operator digest, operator status, operator session plan, operator runbook index, operator next steps, uncertainty review packet, handoff integrity report, evidence checklist, and triage summary, then rerun the narrow target:\n'
+	@printf '4. If the bundle is incomplete, inspect the generated handoff, its validation result, gap report, provenance ledger, provenance validation matrix, operator digest, operator status, operator session plan, operator runbook index, operator next steps, uncertainty review packet, handoff integrity report, evidence checklist, and triage summary, then rerun the narrow target:\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/reviewer-handoff.md\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/reviewer-handoff-validation.json\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/artifact-gap-report.md\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/artifact-provenance-ledger.md\n'
+	@printf '   $(TRIAGE_ARTIFACT_DIR)/provenance-validation-matrix.md\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/operator-digest.md\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/operator-readiness.md\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/operator-status-board.md\n'
@@ -102,7 +104,7 @@ ci-triage:
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/triage-summary.md\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/automation-plan.md\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/artifact-manifest.md\n'
-	@printf '   make doctor | make test | make ci-report | make validate-handoff | make openapi | make examples | make dashboard | make previews | make manifest | make artifact-gap-report | make provenance-ledger | make operator-digest | make release-notes | make reviewer-handoff | make operator-readiness | make operator-status-board | make operator-session-plan | make operator-runbook-index | make operator-next-steps | make handoff-integrity | make evidence-checklist | make automation-plan | make triage-summary | make synthetic-fixtures\n\n'
+	@printf '   make doctor | make test | make ci-report | make validate-handoff | make openapi | make examples | make dashboard | make previews | make manifest | make artifact-gap-report | make provenance-ledger | make provenance-validation-matrix | make operator-digest | make release-notes | make reviewer-handoff | make operator-readiness | make operator-status-board | make operator-session-plan | make operator-runbook-index | make operator-next-steps | make handoff-integrity | make evidence-checklist | make automation-plan | make triage-summary | make synthetic-fixtures\n\n'
 	@printf 'Safe-scope reminder: keep triage limited to local setup, deterministic tests, synthetic examples, API contracts, generated artifacts, and documentation.\n'
 
 ci-report:
@@ -150,6 +152,12 @@ provenance-ledger:
 		--artifact-dir $(ARTIFACT_DIR) \
 		--json-path $(ARTIFACT_DIR)/artifact-provenance-ledger.json \
 		--markdown-path $(ARTIFACT_DIR)/artifact-provenance-ledger.md
+
+provenance-validation-matrix:
+	$(PYTHON_BIN) -m app.cli.provenance_validation_matrix \
+		--artifact-dir $(ARTIFACT_DIR) \
+		--markdown-path $(ARTIFACT_DIR)/provenance-validation-matrix.md \
+		--json-path $(ARTIFACT_DIR)/provenance-validation-matrix.json
 
 operator-digest:
 	$(PYTHON_BIN) -m app.cli.operator_digest \
