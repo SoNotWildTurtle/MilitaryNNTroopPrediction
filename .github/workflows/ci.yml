@@ -110,6 +110,28 @@ jobs:
             --markdown-path /tmp/militarynntroopprediction-operator-readiness.md \
             --json-path /tmp/militarynntroopprediction-operator-readiness.json
 
+      - name: Export uncertainty review packet smoke artifact
+        run: |
+          python -m app.cli.uncertainty_review_packet \
+            --artifact-dir /tmp \
+            --operator-plan-json /tmp/militarynntroopprediction-operator-next-steps.json \
+            --health-json /tmp/militarynntroopprediction-release-health.json \
+            --manifest-json /tmp/militarynntroopprediction-artifact-manifest.json \
+            --markdown-path /tmp/militarynntroopprediction-uncertainty-review-packet.md \
+            --json-path /tmp/militarynntroopprediction-uncertainty-review-packet.json
+
+      - name: Export handoff integrity smoke artifact
+        run: |
+          python -m app.cli.handoff_integrity_report \
+            --artifact-dir /tmp \
+            --health-json /tmp/militarynntroopprediction-release-health.json \
+            --manifest-json /tmp/militarynntroopprediction-artifact-manifest.json \
+            --reviewer-handoff-json /tmp/militarynntroopprediction-reviewer-handoff.json \
+            --operator-next-steps-json /tmp/militarynntroopprediction-operator-next-steps.json \
+            --uncertainty-json /tmp/militarynntroopprediction-uncertainty-review-packet.json \
+            --markdown-path /tmp/militarynntroopprediction-handoff-integrity-report.md \
+            --json-path /tmp/militarynntroopprediction-handoff-integrity-report.json
+
       - name: Validate reviewer handoff smoke artifact
         run: |
           python scripts/validate_reviewer_handoff.py \
