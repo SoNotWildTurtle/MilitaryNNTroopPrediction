@@ -13,11 +13,13 @@ ci_artifacts/release-bundle-index.html
 The landing page is dependency-free and links the most useful reviewer artifacts first:
 
 1. `release-health.md` for the pass/warn/fail readiness summary.
-2. `triage-summary.md` for the exact local rerun target when hosted CI fails or an expected artifact is missing.
-3. `openapi-summary.md` and `openapi.json` for API contract review.
-4. `api-response-examples.md` and `api-response-examples.json` for client/dashboard integration.
-5. `dashboard-mockup.html` for the static analytical UI preview.
-6. `artifact-manifest.md` and `artifact-manifest.json` for sizes, hashes, and missing expected outputs.
+2. `reviewer-handoff.md` and `reviewer-handoff.json` for copyable human and machine-readable handoff status.
+3. `operator-next-steps.md` and `operator-next-steps.json` for the ranked next safe command or review action.
+4. `triage-summary.md` for the exact local rerun target when hosted CI fails or an expected artifact is missing.
+5. `openapi-summary.md` and `openapi.json` for API contract review.
+6. `api-response-examples.md` and `api-response-examples.json` for client/dashboard integration.
+7. `dashboard-mockup.html` for the static analytical UI preview.
+8. `artifact-manifest.md` and `artifact-manifest.json` for sizes, hashes, and missing expected outputs.
 
 ## Use the reviewer handoff
 
@@ -29,6 +31,12 @@ The JSON handoff includes:
 - `recommended_rerun` for the narrow local command to run next.
 - `missing_expected` and `missing_key_artifacts` for incomplete-bundle checks.
 - `review_order`, a machine-readable checklist matching the landing page review sequence. Each step includes the step number, action, artifact path, present/missing status, and why the artifact matters.
+
+## Continue with operator next steps
+
+Open `operator-next-steps.md` immediately after the reviewer handoff when you need the next safe maintainer action. It ranks diagnostic, artifact-generation, documentation, and handoff tasks from the available release health, manifest, and triage JSON without running live ingestion, prediction, networking, or model workflows.
+
+Use `operator-next-steps.json` for downstream automation that needs the same plan in a machine-readable form. It includes the plan status, triage status, indexed artifact count, missing artifacts, ranked actions, the recommended next step, and a safe-scope statement.
 
 ## Triage failed or incomplete bundles
 
@@ -45,7 +53,7 @@ make ci-triage
 make verify
 ```
 
-For focused artifact issues, use the rerun target printed in `triage-summary.md` instead of rerunning the full workflow. For example, rerun `make openapi`, `make dashboard`, `make bundle-index`, `make previews`, `make manifest`, or `make release-notes` when only one generated artifact is missing.
+For focused artifact issues, use the rerun target printed in `triage-summary.md` or the ranked target in `operator-next-steps.md` instead of rerunning the full workflow. For example, rerun `make openapi`, `make dashboard`, `make bundle-index`, `make previews`, `make manifest`, `make operator-next-steps`, or `make release-notes` when only one generated artifact is missing.
 
 ## Safe review boundaries
 
@@ -57,6 +65,6 @@ A reviewer should be able to report:
 
 - Overall release status from `release-health.md` or `reviewer-handoff.json`.
 - Any missing expected files from `artifact-manifest.md` or the handoff JSON.
-- The recommended narrow rerun target from `triage-summary.md` or the handoff JSON.
-- Whether API docs, examples, dashboard preview, manifests, and review-order artifacts are present.
+- The recommended narrow rerun target from `triage-summary.md`, `reviewer-handoff.json`, or `operator-next-steps.md`.
+- Whether API docs, examples, dashboard preview, manifests, operator next steps, and review-order artifacts are present.
 - The next engineering action if the bundle is incomplete.
