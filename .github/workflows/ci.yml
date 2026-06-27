@@ -132,6 +132,13 @@ jobs:
             --markdown-path /tmp/militarynntroopprediction-handoff-integrity-report.md \
             --json-path /tmp/militarynntroopprediction-handoff-integrity-report.json
 
+      - name: Export evidence checklist smoke artifact
+        run: |
+          python -m app.cli.evidence_checklist \
+            --artifact-dir /tmp \
+            --markdown-path /tmp/militarynntroopprediction-evidence-checklist.md \
+            --json-path /tmp/militarynntroopprediction-evidence-checklist.json
+
       - name: Validate reviewer handoff smoke artifact
         run: |
           python scripts/validate_reviewer_handoff.py \

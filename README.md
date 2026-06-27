@@ -21,6 +21,7 @@ This repository provides a starting point for a machine vision application that 
 - `docs/artifact_gap_report.md` – bundle completeness and suspicious-artifact audit workflow
 - `docs/artifact_provenance_ledger.md` – generated/synthetic/preview/review artifact provenance workflow
 - `docs/operator_status_board.md` – quick non-technical status board workflow for diagnostics handoff
+- `docs/evidence_checklist.md` – baseline evidence checklist workflow for analytical handoff bundles
 - `docs/synthetic_data_fixtures.md` – safe local fixture workflow for demos and client tests
 - `.env.example` – copyable first-run configuration template
 - `.github/workflows/ci.yml` – GitHub Actions smoke checks for pushes and pull requests
@@ -43,7 +44,7 @@ make configure
 make verify
 ```
 
-`make verify` runs the minimal setup doctor, local smoke/unit tests, and the diagnostics bundle generator in one safe pre-PR pass. See `docs/common_tasks.md` for the full target map, `CONTRIBUTING.md` for the safe contribution checklist, `docs/ci_troubleshooting.md` when a hosted CI run needs local reproduction, `docs/release_bundle_review.md` when reviewing generated bundles, `docs/artifact_gap_report.md` when checking bundle completeness, `docs/artifact_provenance_ledger.md` when separating generated review evidence from synthetic fixtures and previews, `docs/operator_status_board.md` when you need a fast non-technical status table, and `docs/synthetic_data_fixtures.md` when you need safe demo records without live data sources.
+`make verify` runs the minimal setup doctor, local smoke/unit tests, and the diagnostics bundle generator in one safe pre-PR pass. See `docs/common_tasks.md` for the full target map, `CONTRIBUTING.md` for the safe contribution checklist, `docs/ci_troubleshooting.md` when a hosted CI run needs local reproduction, `docs/release_bundle_review.md` when reviewing generated bundles, `docs/artifact_gap_report.md` when checking bundle completeness, `docs/artifact_provenance_ledger.md` when separating generated review evidence from synthetic fixtures and previews, `docs/operator_status_board.md` when you need a fast non-technical status table, `docs/evidence_checklist.md` when validating baseline handoff evidence, and `docs/synthetic_data_fixtures.md` when you need safe demo records without live data sources.
 
 For a guided local setup path that installs the small core dependency set, creates
 `.env` when needed, runs diagnostics, and prints the next command to run:
@@ -202,8 +203,8 @@ OpenAPI contract, exports synthetic API response examples, exports the static
 dashboard mockup, exports safe synthetic data fixtures, exports a release bundle
 index page, exports lightweight SVG previews for static HTML artifacts, exports a
 diagnostic artifact manifest, exports a diagnostic artifact gap report, exports an
-artifact provenance ledger, exports an operator status board, and executes the
-standard-library unit tests:
+artifact provenance ledger, exports an operator status board, exports a baseline
+evidence checklist, and executes the standard-library unit tests:
 
 ```bash
 python -m pip install -r requirements-core.txt
@@ -220,6 +221,7 @@ python -m app.cli.artifact_provenance_ledger --artifact-dir /tmp --manifest-path
 python -m app.cli.artifact_gap_report --artifact-dir /tmp --manifest-path /tmp/militarynntroopprediction-artifact-manifest.json --json-path /tmp/militarynntroopprediction-artifact-gap-report.json --markdown-path /tmp/militarynntroopprediction-artifact-gap-report.md
 python -m app.cli.release_notes --health-json /tmp/militarynntroopprediction-release-health.json --manifest-json /tmp/militarynntroopprediction-artifact-manifest.json --markdown-path /tmp/militarynntroopprediction-release-notes.md --json-path /tmp/militarynntroopprediction-release-notes.json
 python -m app.cli.operator_status_board --artifact-dir /tmp --manifest-path /tmp/militarynntroopprediction-artifact-manifest.json --markdown-path /tmp/militarynntroopprediction-operator-status-board.md --json-path /tmp/militarynntroopprediction-operator-status-board.json
+python -m app.cli.evidence_checklist --artifact-dir /tmp --markdown-path /tmp/militarynntroopprediction-evidence-checklist.md --json-path /tmp/militarynntroopprediction-evidence-checklist.json
 python -m unittest discover -s tests -p 'test_*.py'
 ```
 
@@ -245,12 +247,13 @@ contract, synthetic API response examples, safe JSONL/CSV synthetic data fixture
 a self-contained static dashboard mockup, a reviewer-friendly release bundle
 index page, lightweight SVG previews for static HTML outputs, SHA-256 artifact
 manifests, diagnostic artifact gap reports, artifact provenance ledgers, operator
-readiness briefs, operator status boards, automation plans, and the current help
-output for the doctor, quickstart, release health, release notes, OpenAPI export,
-API example export, dashboard mockup export, synthetic fixture export, release
-bundle index, HTML preview export, artifact manifest, artifact gap report,
-artifact provenance ledger, operator readiness, operator status board, and
-automation plan CLIs. To build the same bundle locally:
+readiness briefs, operator status boards, automation plans, evidence checklists,
+and the current help output for the doctor, quickstart, release health, release
+notes, OpenAPI export, API example export, dashboard mockup export, synthetic
+fixture export, release bundle index, HTML preview export, artifact manifest,
+artifact gap report, artifact provenance ledger, operator readiness, operator
+status board, evidence checklist, and automation plan CLIs. To build the same
+bundle locally:
 
 ```bash
 bash scripts/ci_report.sh
@@ -262,9 +265,9 @@ Open `ci_artifacts/release-bundle-index.html` first when reviewing a local or CI
 bundle. It links the release health summary, OpenAPI contract, synthetic examples,
 dashboard mockup, synthetic data fixtures, artifact manifest, artifact gap report,
 artifact provenance ledger, operator readiness, operator status board, automation
-plan, and all indexed bundle files from one static, dependency-free page. Use
-`docs/release_bundle_review.md` as the checklist for confirming the bundle is
-complete before handing it to another reviewer.
+plan, baseline evidence checklist, and all indexed bundle files from one static,
+dependency-free page. Use `docs/release_bundle_review.md` as the checklist for
+confirming the bundle is complete before handing it to another reviewer.
 
 If hosted CI fails, follow `docs/ci_troubleshooting.md` or run the short helper:
 
@@ -419,3 +422,16 @@ The release notes summarize readiness, health counts, missing expected artifacts
 priority failures or warnings, reviewer artifacts, and a recommended next step.
 This is useful when sharing CI bundles with users who need a quick analytical
 handoff rather than raw JSON diagnostics.
+
+To generate the baseline evidence checklist for a diagnostics bundle:
+
+```bash
+python -m app.cli.evidence_checklist --artifact-dir ci_artifacts
+python -m app.cli.evidence_checklist --artifact-dir ci_artifacts --markdown-path ci_artifacts/evidence-checklist.md --json-path ci_artifacts/evidence-checklist.json
+# or
+make evidence-checklist
+```
+
+The checklist summarizes whether key generated evidence exists for provenance,
+uncertainty, validation, reviewer handoff, handoff integrity, and safe analytical
+framing. It does not validate operational truth or imply certainty.
