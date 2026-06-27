@@ -39,7 +39,7 @@ REQUIRED_RECEIPT_ARTIFACTS = (
 RERUN_COMMANDS = (
     "make verify",
     "make ci-report",
-    "make handoff-validation-receipt",
+    "python -m app.cli.handoff_validation_receipt --artifact-dir ci_artifacts",
 )
 
 
