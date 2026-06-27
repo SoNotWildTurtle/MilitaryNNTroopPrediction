@@ -8,7 +8,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
-from app.cli.artifact_manifest import build_manifest, write_json, write_markdown
+from app.cli.artifact_manifest import EXPECTED_ARTIFACTS, build_manifest, write_json, write_markdown
 
 
 class ArtifactManifestTests(unittest.TestCase):
@@ -60,6 +60,12 @@ class ArtifactManifestTests(unittest.TestCase):
         self.assertEqual(parsed["file_count"], 1)
         self.assertIn("summary.txt", markdown)
         self.assertIn("# Diagnostic artifact manifest", markdown)
+
+    def test_operator_next_steps_artifacts_are_expected_outputs(self) -> None:
+        self.assertIn("operator-next-steps.md", EXPECTED_ARTIFACTS)
+        self.assertIn("operator-next-steps.json", EXPECTED_ARTIFACTS)
+        self.assertIn("operator-next-steps-help.txt", EXPECTED_ARTIFACTS)
+        self.assertIn("next-safe-command", EXPECTED_ARTIFACTS["operator-next-steps.md"])
 
 
 if __name__ == "__main__":
