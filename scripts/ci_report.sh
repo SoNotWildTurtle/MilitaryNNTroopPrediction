@@ -30,6 +30,7 @@ mkdir -p "${ARTIFACT_DIR}"
 "${PYTHON_BIN}" -m app.cli.operator_next_steps --help > "${ARTIFACT_DIR}/operator-next-steps-help.txt"
 "${PYTHON_BIN}" -m app.cli.uncertainty_review_packet --help > "${ARTIFACT_DIR}/uncertainty-review-packet-help.txt"
 "${PYTHON_BIN}" -m app.cli.handoff_integrity_report --help > "${ARTIFACT_DIR}/handoff-integrity-report-help.txt"
+"${PYTHON_BIN}" -m app.cli.evidence_checklist --help > "${ARTIFACT_DIR}/evidence-checklist-help.txt"
 "${PYTHON_BIN}" -m app.cli.automation_plan --help > "${ARTIFACT_DIR}/automation-plan-help.txt"
 "${PYTHON_BIN}" -m app.cli.triage_summary --help > "${ARTIFACT_DIR}/triage-summary-help.txt"
 "${PYTHON_BIN}" -m app.cli.artifact_gap_report --help > "${ARTIFACT_DIR}/artifact-gap-report-help.txt"
@@ -50,7 +51,7 @@ Files:
 - pip-version.txt: pip version used by CI.
 - pip-freeze.txt: installed package versions for reproducibility.
 - doctor-minimal.json: machine-readable core setup diagnostics.
-- release health/release notes/reviewer handoff/operator digest/operator readiness/operator status board/operator session plan/operator runbook index/operator next steps/uncertainty review packet/handoff integrity report/automation plan artifacts: generated local readiness, review, uncertainty, command-map, cross-artifact integrity, and next-run guidance.
+- release health/release notes/reviewer handoff/operator digest/operator readiness/operator status board/operator session plan/operator runbook index/operator next steps/uncertainty review packet/handoff integrity report/evidence checklist/automation plan artifacts: generated local readiness, review, uncertainty, command-map, cross-artifact integrity, baseline evidence, and next-run guidance.
 - reviewer-handoff-validation.txt/json: reviewer handoff contract validation results.
 - triage-summary.md/json: CI failure triage summary with narrow rerun targets.
 - artifact-gap-report.md/json: diagnostic bundle completeness and suspicious-artifact report.
@@ -80,6 +81,7 @@ SUMMARY
 "${PYTHON_BIN}" -m app.cli.operator_next_steps --artifact-dir "${ARTIFACT_DIR}" --markdown-path "${ARTIFACT_DIR}/operator-next-steps.md" --json-path "${ARTIFACT_DIR}/operator-next-steps.json"
 "${PYTHON_BIN}" -m app.cli.uncertainty_review_packet --artifact-dir "${ARTIFACT_DIR}" --markdown-path "${ARTIFACT_DIR}/uncertainty-review-packet.md" --json-path "${ARTIFACT_DIR}/uncertainty-review-packet.json"
 "${PYTHON_BIN}" -m app.cli.handoff_integrity_report --artifact-dir "${ARTIFACT_DIR}" --markdown-path "${ARTIFACT_DIR}/handoff-integrity-report.md" --json-path "${ARTIFACT_DIR}/handoff-integrity-report.json"
+"${PYTHON_BIN}" -m app.cli.evidence_checklist --artifact-dir "${ARTIFACT_DIR}" --markdown-path "${ARTIFACT_DIR}/evidence-checklist.md" --json-path "${ARTIFACT_DIR}/evidence-checklist.json"
 "${PYTHON_BIN}" scripts/validate_reviewer_handoff.py "${ARTIFACT_DIR}/reviewer-handoff.json" > "${ARTIFACT_DIR}/reviewer-handoff-validation.txt"
 "${PYTHON_BIN}" scripts/validate_reviewer_handoff.py "${ARTIFACT_DIR}/reviewer-handoff.json" --json > "${ARTIFACT_DIR}/reviewer-handoff-validation.json"
 "${PYTHON_BIN}" -m app.cli.artifact_manifest --artifact-dir "${ARTIFACT_DIR}" --json-path "${ARTIFACT_DIR}/artifact-manifest.json" --markdown-path "${ARTIFACT_DIR}/artifact-manifest.md"
@@ -92,6 +94,7 @@ SUMMARY
 "${PYTHON_BIN}" -m app.cli.operator_next_steps --artifact-dir "${ARTIFACT_DIR}" --markdown-path "${ARTIFACT_DIR}/operator-next-steps.md" --json-path "${ARTIFACT_DIR}/operator-next-steps.json"
 "${PYTHON_BIN}" -m app.cli.uncertainty_review_packet --artifact-dir "${ARTIFACT_DIR}" --markdown-path "${ARTIFACT_DIR}/uncertainty-review-packet.md" --json-path "${ARTIFACT_DIR}/uncertainty-review-packet.json"
 "${PYTHON_BIN}" -m app.cli.handoff_integrity_report --artifact-dir "${ARTIFACT_DIR}" --markdown-path "${ARTIFACT_DIR}/handoff-integrity-report.md" --json-path "${ARTIFACT_DIR}/handoff-integrity-report.json"
+"${PYTHON_BIN}" -m app.cli.evidence_checklist --artifact-dir "${ARTIFACT_DIR}" --markdown-path "${ARTIFACT_DIR}/evidence-checklist.md" --json-path "${ARTIFACT_DIR}/evidence-checklist.json"
 "${PYTHON_BIN}" -m app.cli.artifact_manifest --artifact-dir "${ARTIFACT_DIR}" --json-path "${ARTIFACT_DIR}/artifact-manifest.json" --markdown-path "${ARTIFACT_DIR}/artifact-manifest.md"
 "${PYTHON_BIN}" -m app.cli.artifact_provenance_ledger --artifact-dir "${ARTIFACT_DIR}" --json-path "${ARTIFACT_DIR}/artifact-provenance-ledger.json" --markdown-path "${ARTIFACT_DIR}/artifact-provenance-ledger.md"
 
