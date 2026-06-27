@@ -245,12 +245,13 @@ contract, synthetic API response examples, safe JSONL/CSV synthetic data fixture
 a self-contained static dashboard mockup, a reviewer-friendly release bundle
 index page, lightweight SVG previews for static HTML outputs, SHA-256 artifact
 manifests, diagnostic artifact gap reports, artifact provenance ledgers, operator
-readiness briefs, operator status boards, automation plans, and the current help
-output for the doctor, quickstart, release health, release notes, OpenAPI export,
-API example export, dashboard mockup export, synthetic fixture export, release
-bundle index, HTML preview export, artifact manifest, artifact gap report,
-artifact provenance ledger, operator readiness, operator status board, and
-automation plan CLIs. To build the same bundle locally:
+readiness briefs, operator status boards, automation plans, ranked operator next
+steps, and the current help output for the doctor, quickstart, release health,
+release notes, OpenAPI export, API example export, dashboard mockup export,
+synthetic fixture export, release bundle index, HTML preview export, artifact
+manifest, artifact gap report, artifact provenance ledger, operator readiness,
+operator status board, operator next steps, and automation plan CLIs. To build the
+same bundle locally:
 
 ```bash
 bash scripts/ci_report.sh
@@ -259,10 +260,11 @@ make ci-report
 ```
 
 Open `ci_artifacts/release-bundle-index.html` first when reviewing a local or CI
-bundle. It links the release health summary, OpenAPI contract, synthetic examples,
-dashboard mockup, synthetic data fixtures, artifact manifest, artifact gap report,
-artifact provenance ledger, operator readiness, operator status board, automation
-plan, and all indexed bundle files from one static, dependency-free page. Use
+bundle. It links the release health summary, reviewer handoff, ranked operator
+next steps, OpenAPI contract, synthetic examples, dashboard mockup, synthetic data
+fixtures, artifact manifest, artifact gap report, artifact provenance ledger,
+operator readiness, operator status board, automation plan, and all indexed
+bundle files from one static, dependency-free page. Use
 `docs/release_bundle_review.md` as the checklist for confirming the bundle is
 complete before handing it to another reviewer.
 
@@ -318,104 +320,4 @@ To export safe JSONL/CSV fixture records for data-loading demos or client tests:
 
 ```bash
 python -m app.cli.synthetic_data_fixtures
-python -m app.cli.synthetic_data_fixtures --output-dir data/fixtures --json
-# or
-make synthetic-fixtures
 ```
-
-These fixture files are generated from `app.api.examples`, so they stay aligned
-with the synthetic API response examples and dashboard mockups while remaining
-safe placeholders with no live data access.
-
-To generate a release bundle landing page for any diagnostics directory:
-
-```bash
-python -m app.cli.release_bundle_index --artifact-dir ci_artifacts
-python -m app.cli.release_bundle_index --artifact-dir ci_artifacts --html-path release-bundle-index.html
-# or
-bash scripts/export_release_bundle_index.sh
-# or
-make bundle-index
-```
-
-To generate lightweight SVG preview cards for static HTML outputs without a
-browser, Playwright, Selenium, or live API server:
-
-```bash
-python -m app.cli.export_html_previews --artifact-dir ci_artifacts
-python -m app.cli.export_html_previews --artifact-dir ci_artifacts --output-dir ci_artifacts/previews --markdown-path ci_artifacts/html-previews.md
-# or
-make previews
-```
-
-The preview exporter reads generated HTML files such as `dashboard-mockup.html`
-and `release-bundle-index.html`, extracts titles, headings, excerpts, and simple
-link/table/section counts, and writes small SVG cards plus a Markdown index. This
-is useful for CI artifact browsing, release notes, and quick screenshots when a
-reviewer does not want to launch the full HTML page.
-
-To index any generated diagnostics directory with file sizes, SHA-256 hashes,
-and missing expected outputs:
-
-```bash
-python -m app.cli.artifact_manifest --artifact-dir ci_artifacts
-python -m app.cli.artifact_manifest --artifact-dir ci_artifacts --json-path manifest.json --markdown-path manifest.md
-# or
-make manifest
-```
-
-To audit a generated diagnostics directory for missing, empty, or suspiciously
-small expected outputs:
-
-```bash
-python -m app.cli.artifact_gap_report --artifact-dir ci_artifacts
-python -m app.cli.artifact_gap_report --artifact-dir ci_artifacts --fail-on-gap
-# or
-make artifact-gap-report
-```
-
-This report is a safe local completeness check for reviewer handoff bundles. It
-reads only the generated manifest and artifact metadata; it does not run live data
-collection, model inference, prediction, deployment, or network workflows.
-
-To classify generated diagnostics, synthetic fixtures, static previews, API
-contracts, handoff outputs, and reproducibility evidence by provenance:
-
-```bash
-python -m app.cli.artifact_provenance_ledger --artifact-dir ci_artifacts
-python -m app.cli.artifact_provenance_ledger --artifact-dir ci_artifacts --json-path ci_artifacts/artifact-provenance-ledger.json --markdown-path ci_artifacts/artifact-provenance-ledger.md
-# or
-make provenance-ledger
-```
-
-The ledger reads only `artifact-manifest.json` and labels files that should not be
-mistaken for operational evidence, such as synthetic examples and static previews.
-
-To generate a quick non-technical operator status board from a diagnostics bundle:
-
-```bash
-python -m app.cli.operator_status_board --artifact-dir ci_artifacts
-python -m app.cli.operator_status_board --artifact-dir ci_artifacts --markdown-path ci_artifacts/operator-status-board.md --json-path ci_artifacts/operator-status-board.json
-# or
-make operator-status-board
-```
-
-The board reads only generated diagnostics such as the manifest, reviewer handoff,
-release health, triage summary, operator readiness, artifact gap report, and
-automation plan. It emits a copyable status line, severity, action table, key
-artifact table, and recommended next command for fast handoff.
-
-To turn a release health JSON file plus an artifact manifest into manager-friendly
-release notes:
-
-```bash
-python -m app.cli.release_notes
-python -m app.cli.release_notes --health-json ci_artifacts/release-health.json --manifest-json ci_artifacts/artifact-manifest.json --markdown-path ci_artifacts/release-notes.md --json-path ci_artifacts/release-notes.json
-# or
-make release-notes
-```
-
-The release notes summarize readiness, health counts, missing expected artifacts,
-priority failures or warnings, reviewer artifacts, and a recommended next step.
-This is useful when sharing CI bundles with users who need a quick analytical
-handoff rather than raw JSON diagnostics.
