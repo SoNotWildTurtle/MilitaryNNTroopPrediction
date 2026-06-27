@@ -23,6 +23,12 @@ DEFAULT_JSON_NAME = "operator-next-steps.json"
 
 STATUS_PRIORITY = {"fail": 90, "warn": 50, "ok": 0}
 
+ANALYTICAL_GUARDRAILS: tuple[str, ...] = (
+    "Treat outputs as defensive analytical estimates for validation and handoff, not operational targeting instructions.",
+    "Prefer reproducible diagnostics, synthetic fixtures, provenance evidence, and reviewer-ready artifacts before live data workflows.",
+    "Communicate uncertainty, missing artifacts, and setup warnings explicitly instead of presenting readiness as certainty.",
+)
+
 KNOWN_CHECK_TARGETS: Dict[str, str] = {
     "python": "make install-core",
     "core_deps": "make install-core",
@@ -201,6 +207,7 @@ def build_operator_next_steps(
         "actions": actions,
         "next_step": next_step,
         "safe_scope": "Offline diagnostics, deterministic checks, generated artifacts, documentation, and maintainer handoff only.",
+        "analytical_guardrails": list(ANALYTICAL_GUARDRAILS),
     }
 
 
@@ -247,6 +254,12 @@ def _markdown_lines(plan: Mapping[str, Any]) -> Iterable[str]:
         for artifact_path in missing:
             yield f"- `{artifact_path}`"
         yield ""
+
+    yield "## Analytical guardrails"
+    yield ""
+    for guardrail in plan.get("analytical_guardrails", ANALYTICAL_GUARDRAILS):
+        yield f"- {guardrail}"
+    yield ""
 
     yield "## Safe scope"
     yield ""

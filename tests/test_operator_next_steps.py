@@ -67,6 +67,21 @@ class OperatorNextStepsTests(unittest.TestCase):
         self.assertIn(("fail health check: core_deps", "make install-core"), keys)
         self.assertIn(("missing artifact: dashboard-mockup.html", "make dashboard"), keys)
 
+    def test_analytical_guardrails_are_rendered_and_serialized(self) -> None:
+        plan = build_operator_next_steps(
+            health_results=[],
+            manifest={"file_count": 2, "missing_expected": []},
+            triage_summary={"status": "ready", "recommended_actions": []},
+            generated_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        )
+        markdown = render_markdown(plan)
+
+        self.assertIn("analytical_guardrails", plan)
+        self.assertGreaterEqual(len(plan["analytical_guardrails"]), 3)
+        self.assertIn("## Analytical guardrails", markdown)
+        self.assertIn("not operational targeting instructions", markdown)
+        self.assertIn("Communicate uncertainty", markdown)
+
     def test_writers_create_markdown_and_json(self) -> None:
         plan = build_operator_next_steps(
             health_results=[],
@@ -85,6 +100,7 @@ class OperatorNextStepsTests(unittest.TestCase):
 
         self.assertIn("# Operator Next Steps", markdown)
         self.assertEqual(parsed["status"], "ready")
+        self.assertIn("analytical_guardrails", parsed)
 
 
 if __name__ == "__main__":

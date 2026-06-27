@@ -38,6 +38,8 @@ Open `operator-next-steps.md` after the handoff when the reviewer needs to decid
 
 Use `operator-next-steps.json` when automation or release tooling needs the same next-action recommendation without parsing Markdown. Treat the report as planning guidance only: it does not run predictions, fetch live data, connect to databases, make operational assertions, or imply certainty about analytical outputs.
 
+The Markdown and JSON outputs also include analytical guardrails so downstream reviewers keep the bundle framed as defensive validation evidence. The guardrails explicitly remind reviewers that outputs are analytical estimates, uncertainty and missing artifacts must be communicated, and reproducible diagnostics should be preferred before live data workflows.
+
 If the report is missing from a bundle, rerun:
 
 ```bash
@@ -75,5 +77,6 @@ A reviewer should be able to report:
 - Any missing expected files from `artifact-manifest.md` or the handoff JSON.
 - The recommended narrow rerun target from `triage-summary.md` or the handoff JSON.
 - The highest-ranked safe follow-up from `operator-next-steps.md` or `operator-next-steps.json`.
+- Whether the operator next-step guardrails were preserved in both Markdown and JSON handoff outputs.
 - Whether API docs, examples, dashboard preview, manifests, review-order artifacts, and next-step artifacts are present.
 - The next engineering action if the bundle is incomplete.
