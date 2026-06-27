@@ -31,6 +31,17 @@ python -m app.cli.operator_next_steps \
   --json-path ci_artifacts/operator-next-steps.json
 ```
 
+## CI bundle integration
+
+`make ci-report` now generates the next-steps Markdown and JSON reports, captures
+`operator-next-steps-help.txt`, and indexes those files in `artifact-manifest.*`.
+This keeps hosted CI, local release bundles, and PR handoffs aligned with the
+same recommended next safe command instead of requiring maintainers to run the
+report separately after bundle generation.
+
+The integration is additive and local-only. It does not change predictive output,
+model behavior, data ingestion, database access, or live network behavior.
+
 ## Inputs
 
 By default, the command reads:
@@ -60,7 +71,9 @@ handoff or pull request.
 
 ## Rollback
 
-This increment is additive. Roll back by removing `app.cli.operator_next_steps`,
-its tests, this document, and the `operator-next-steps` Makefile target. Existing
-bundle generation, API exports, manifests, and handoff commands continue to work
-without this optional report.
+This increment is additive. Roll back by removing the `operator_next_steps` calls
+from `scripts/ci_report.sh`, the `operator-next-steps.*` and
+`operator-next-steps-help.txt` entries from `app.cli.artifact_manifest`, and this
+integration note. The standalone CLI, Makefile target, existing bundle
+generation, API exports, manifests, and handoff commands continue to work without
+this optional bundle wiring.
