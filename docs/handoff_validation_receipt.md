@@ -36,7 +36,7 @@ It reports:
 - Upstream gate statuses for evidence, handoff integrity, triage, reviewer handoff, and uncertainty review.
 - Evidence pass/warn/fail totals.
 - Missing required artifacts, manifest missing-expected entries, and manifest scan warnings.
-- Exact rerun commands: `make verify`, `make ci-report`, and `make handoff-validation-receipt`.
+- Exact rerun commands: `make verify`, `make ci-report`, and `python -m app.cli.handoff_validation_receipt --artifact-dir ci_artifacts`.
 
 ## Status meanings
 
