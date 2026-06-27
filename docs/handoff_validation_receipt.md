@@ -18,6 +18,8 @@ Expected outputs:
 - `handoff-validation-receipt.md` for human review.
 - `handoff-validation-receipt.json` for automation, release gates, or handoff archives.
 
+The reusable CI diagnostics script now generates both files automatically when `make ci-report` or the hosted `ci-diagnostics` bundle runs. The receipt is generated after evidence, handoff integrity, uncertainty, provenance, and artifact manifest outputs so its digest and gate status summary reflect the completed bundle.
+
 ## What the receipt checks
 
 The receipt expects these upstream diagnostics to exist in the bundle or artifact manifest:
@@ -38,6 +40,12 @@ It reports:
 - Missing required artifacts, manifest missing-expected entries, and manifest scan warnings.
 - Exact rerun commands: `make verify`, `make ci-report`, and `python -m app.cli.handoff_validation_receipt --artifact-dir ci_artifacts`.
 
+## CI diagnostics bundle behavior
+
+`ci_artifacts/handoff-validation-receipt.md` should be treated as the final human-readable receipt for a generated local or hosted diagnostics bundle. `ci_artifacts/handoff-validation-receipt.json` is the machine-readable companion for release gates or downstream archive checks.
+
+Because the receipt summarizes already-generated evidence, reviewers should inspect upstream artifacts directly when the receipt status is `needs_review` or `blocked`. Re-export the receipt after fixing any missing artifact, provenance, uncertainty, handoff, or integrity issue so the bundle identity digest changes with the repaired evidence.
+
 ## Status meanings
 
 - `ready`: required receipt artifacts are present and upstream gates are ready/pass/ok.
@@ -50,10 +58,9 @@ Use the receipt as release and handoff metadata only. It helps prove which gener
 
 ## Rollback guidance
 
-This workflow is additive. To roll it back, stop generating `handoff-validation-receipt.md/json` and remove the CLI/test/doc files added for the receipt. Existing diagnostic artifacts, API contracts, setup commands, and prediction code do not depend on this receipt.
+This workflow is additive. To roll it back, stop generating `handoff-validation-receipt.md/json` from `scripts/ci_report.sh` and remove any CI bundle checks that expect those files. Existing diagnostic artifacts, API contracts, setup commands, and prediction code do not depend on this receipt.
 
 ## Follow-up work
 
-- Add the receipt to hosted CI diagnostics after the artifact bundle order is stable.
 - Add a release gate that can require `status == ready` for external handoff archives.
 - Include the receipt in the release bundle index once downstream reviewers have confirmed the preferred placement.
