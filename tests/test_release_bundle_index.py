@@ -26,6 +26,14 @@ class ReleaseBundleIndexTests(unittest.TestCase):
             (artifact_dir / "release-health.md").write_text("# Release health\n", encoding="utf-8")
             (artifact_dir / "openapi-summary.md").write_text("# API\n", encoding="utf-8")
             (artifact_dir / "dashboard-mockup.html").write_text("<h1>Mockup</h1>\n", encoding="utf-8")
+            (artifact_dir / "operator-next-steps.md").write_text(
+                "# Operator Next Steps\n\n`make verify`\n",
+                encoding="utf-8",
+            )
+            (artifact_dir / "operator-next-steps.json").write_text(
+                '{"status":"ready","next_step":"make verify","actions":[]}\n',
+                encoding="utf-8",
+            )
             (artifact_dir / "reviewer-handoff.md").write_text(
                 "# Reviewer handoff\n\nRecommended local rerun: `make verify`\n",
                 encoding="utf-8",
@@ -59,6 +67,12 @@ class ReleaseBundleIndexTests(unittest.TestCase):
         self.assertIn("Copyable reviewer handoff and review order", html_text)
         self.assertIn('href="reviewer-handoff.md"', html_text)
         self.assertIn('href="reviewer-handoff.json"', html_text)
+        self.assertIn("Ranked next safe operator actions", html_text)
+        self.assertIn("Machine-readable operator next steps", html_text)
+        self.assertIn('href="operator-next-steps.md"', html_text)
+        self.assertIn('href="operator-next-steps.json"', html_text)
+        self.assertIn("Choose the next safe action", html_text)
+        self.assertIn("narrowest safe diagnostic", html_text)
         self.assertIn("Reviewer handoff", html_text)
         self.assertIn("Handoff status", html_text)
         self.assertIn("Review status", html_text)
@@ -85,6 +99,7 @@ class ReleaseBundleIndexTests(unittest.TestCase):
             for name in (
                 "release-health.md",
                 "reviewer-handoff.md",
+                "operator-next-steps.md",
                 "triage-summary.md",
                 "artifact-manifest.md",
                 "openapi-summary.md",
@@ -96,10 +111,12 @@ class ReleaseBundleIndexTests(unittest.TestCase):
         self.assertIn("Review order checklist", html_text)
         self.assertIn("Confirm bundle readiness", html_text)
         self.assertIn("Use the reviewer handoff", html_text)
+        self.assertIn("Choose the next safe action", html_text)
         self.assertIn("Triage failures next", html_text)
         self.assertIn("Verify artifact inventory", html_text)
         self.assertIn("Review user-facing contracts", html_text)
         self.assertIn('href="release-health.md"', html_text)
+        self.assertIn('href="operator-next-steps.md"', html_text)
         self.assertIn('href="artifact-manifest.md"', html_text)
 
     def test_render_html_flags_missing_review_order_artifacts(self) -> None:
