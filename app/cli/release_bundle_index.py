@@ -14,6 +14,8 @@ DEFAULT_HTML_NAME = "release-bundle-index.html"
 HIGHLIGHTED_ARTIFACTS: Mapping[str, str] = {
     "reviewer-handoff.md": "Copyable reviewer handoff and review order",
     "reviewer-handoff.json": "Machine-readable reviewer handoff",
+    "operator-next-steps.md": "Ranked safe follow-up actions for operators",
+    "operator-next-steps.json": "Machine-readable operator next-step plan",
     "release-health.md": "Release readiness summary",
     "triage-summary.md": "CI triage summary and rerun targets",
     "triage-summary.json": "Machine-readable CI triage summary",
@@ -37,6 +39,11 @@ REVIEW_ORDER_STEPS: tuple[tuple[str, str, str], ...] = (
         "Use the reviewer handoff",
         "reviewer-handoff.md",
         "Copy the handoff into a PR, issue, or chat so another reviewer gets status, rerun command, and missing-artifact context.",
+    ),
+    (
+        "Promote operator next step",
+        "operator-next-steps.md",
+        "Review the ranked safe follow-up action before opening lower-level CI triage or planning new work.",
     ),
     (
         "Triage failures next",
