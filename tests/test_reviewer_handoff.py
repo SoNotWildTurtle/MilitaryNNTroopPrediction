@@ -75,10 +75,15 @@ class ReviewerHandoffTests(unittest.TestCase):
         self.assertEqual(review_order[0]["artifact"], "release-health.md")
         self.assertTrue(review_order[0]["present"])
         self.assertEqual(review_order[0]["status"], "present")
-        self.assertEqual(review_order[2]["artifact"], "triage-summary.md")
+        self.assertEqual(review_order[2]["action"], "Promote operator next step")
+        self.assertEqual(review_order[2]["artifact"], "operator-next-steps.md")
         self.assertFalse(review_order[2]["present"])
         self.assertEqual(review_order[2]["status"], "missing")
+        self.assertEqual(review_order[3]["artifact"], "triage-summary.md")
+        self.assertFalse(review_order[3]["present"])
+        self.assertEqual(review_order[3]["status"], "missing")
         self.assertIn("Confirm bundle readiness", markdown)
+        self.assertIn("`operator-next-steps.md` (missing)", markdown)
         self.assertIn("`triage-summary.md` (missing)", markdown)
 
     def test_build_handoff_has_safe_defaults_without_inputs(self) -> None:
@@ -112,6 +117,7 @@ class ReviewerHandoffTests(unittest.TestCase):
                         "api-response-examples.md",
                         "dashboard-mockup.html",
                         "reviewer-handoff.md",
+                        "operator-next-steps.md",
                     ]
                 ],
             }
