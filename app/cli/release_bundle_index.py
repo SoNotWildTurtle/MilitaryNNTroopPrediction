@@ -14,6 +14,8 @@ DEFAULT_HTML_NAME = "release-bundle-index.html"
 HIGHLIGHTED_ARTIFACTS: Mapping[str, str] = {
     "reviewer-handoff.md": "Copyable reviewer handoff and review order",
     "reviewer-handoff.json": "Machine-readable reviewer handoff",
+    "operator-next-steps.md": "Ranked next safe operator actions",
+    "operator-next-steps.json": "Machine-readable operator next steps",
     "release-health.md": "Release readiness summary",
     "triage-summary.md": "CI triage summary and rerun targets",
     "triage-summary.json": "Machine-readable CI triage summary",
@@ -37,6 +39,11 @@ REVIEW_ORDER_STEPS: tuple[tuple[str, str, str], ...] = (
         "Use the reviewer handoff",
         "reviewer-handoff.md",
         "Copy the handoff into a PR, issue, or chat so another reviewer gets status, rerun command, and missing-artifact context.",
+    ),
+    (
+        "Choose the next safe action",
+        "operator-next-steps.md",
+        "Use the ranked action plan to continue with the narrowest safe diagnostic, artifact, documentation, or reviewer-handoff task.",
     ),
     (
         "Triage failures next",
@@ -66,6 +73,7 @@ STATUS_CLASS_BY_VALUE: Mapping[str, str] = {
     "warnings": "status-warning",
     "warning": "status-warning",
     "needs_review": "status-warning",
+    "action_needed": "status-warning",
     "needs_attention": "status-attention",
     "attention": "status-attention",
     "missing": "status-attention",
@@ -270,6 +278,22 @@ def _reviewer_handoff_card(handoff: Mapping[str, Any] | None) -> str:
     return _status_card("Reviewer handoff", review_status, detail)
 
 
+def _operator_next_steps_card(plan: Mapping[str, Any] | None) -> str:
+    """Return a top-level status card for the operator next-steps artifact."""
+
+    if not plan:
+        return _status_card(
+            "Operator next steps",
+            "MISSING",
+            "Generate operator-next-steps.json so maintainers can continue from the narrowest safe action.",
+        )
+    status = str(plan.get("status", "needs_review"))
+    next_step = str(plan.get("next_step", "make verify"))
+    actions = _count_list(plan.get("actions"))
+    detail = f"Next safe action: {next_step}; {actions} ranked action(s) available."
+    return _status_card("Operator next steps", status, detail)
+
+
 def _triage_summary_html(artifact_dir: Path) -> str:
     """Render a compact CI triage summary preview when present."""
 
@@ -281,6 +305,50 @@ def _triage_summary_html(artifact_dir: Path) -> str:
         "<h2>CI triage summary</h2>"
         '<p class="muted">Use this first when a hosted CI run fails or an expected artifact is missing.</p>'
         "<pre>" + html.escape(triage_preview) + "</pre>"
+        "</section>"
+    )
+
+
+def _operator_next_steps_summary(plan: Mapping[str, Any] | None) -> str:
+    """Render structured operator next-step details when JSON is available."""
+
+    if not plan:
+        return ""
+    status = str(plan.get("status", "needs_review"))
+    triage_status = str(plan.get("triage_status", "unknown"))
+    next_step = str(plan.get("next_step", "make verify"))
+    artifact_count = str(plan.get("artifact_count", "0"))
+    actions = _count_list(plan.get("actions"))
+    safe_scope = str(plan.get("safe_scope", "Offline diagnostics and reviewer handoff only."))
+    return (
+        f'<div class="handoff-status {_status_class(status)}-panel">'
+        "<h3>Next-step status</h3>"
+        "<dl>"
+        f"<dt>Plan status</dt><dd>{_status_badge(status)}</dd>"
+        f"<dt>Triage status</dt><dd>{_status_badge(triage_status)}</dd>"
+        f"<dt>Next safe action</dt><dd><code>{html.escape(next_step)}</code></dd>"
+        f"<dt>Ranked actions</dt><dd>{actions}</dd>"
+        f"<dt>Indexed artifacts</dt><dd>{html.escape(artifact_count)}</dd>"
+        "</dl>"
+        f"<p>{html.escape(safe_scope)}</p>"
+        "</div>"
+    )
+
+
+def _operator_next_steps_html(artifact_dir: Path, plan: Mapping[str, Any] | None = None) -> str:
+    """Render a compact operator next-steps preview when present."""
+
+    plan_preview = _read_preview(artifact_dir / "operator-next-steps.md", max_chars=1100)
+    plan_summary = _operator_next_steps_summary(plan)
+    if not plan_preview and not plan_summary:
+        return ""
+    preview_html = f"<pre>{html.escape(plan_preview)}</pre>" if plan_preview else ""
+    return (
+        "<section>"
+        "<h2>Operator next steps</h2>"
+        '<p class="muted">Use this ranked plan to continue with the smallest safe diagnostic, artifact, documentation, or handoff action.</p>'
+        f"{plan_summary}"
+        f"{preview_html}"
         "</section>"
     )
 
@@ -298,7 +366,7 @@ def _reviewer_handoff_summary(handoff: Mapping[str, Any] | None) -> str:
     missing_key_artifacts = _count_list(handoff.get("missing_key_artifacts"))
     summary_block = f"<pre>{html.escape(copyable_summary)}</pre>" if copyable_summary else ""
     return (
-        f'<div class="handoff-status {_status_class(review_status)}-panel">'
+        f'<div class="handoff-status {_status_class(review_status)}-panel'>
         "<h3>Handoff status</h3>"
         "<dl>"
         f"<dt>Review status</dt><dd>{_status_badge(review_status)}</dd>"
@@ -338,6 +406,7 @@ def render_html(artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> str:
     release_health_payload = _load_json(artifact_dir / "release-health.json")
     release_health = _as_mapping(release_health_payload)
     reviewer_handoff = _as_mapping(_load_json(artifact_dir / "reviewer-handoff.json")) or None
+    operator_next_steps = _as_mapping(_load_json(artifact_dir / "operator-next-steps.json")) or None
     doctor_payload = _load_json(artifact_dir / "doctor-minimal.json")
     summary_preview = _read_preview(artifact_dir / "summary.txt")
 
@@ -352,6 +421,7 @@ def render_html(artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> str:
     cards = [
         _status_card("Release health", status, f"{passed_checks}/{total_checks} readiness checks passed."),
         _reviewer_handoff_card(reviewer_handoff),
+        _operator_next_steps_card(operator_next_steps),
         _status_card("Doctor failures", "fail" if doctor_failures else "pass", "Core setup diagnostics from the minimal CI doctor run."),
         _status_card("Artifacts indexed", str(manifest["file_count"]), f"Total size {_format_bytes(int(manifest['total_size_bytes']))}."),
         _status_card("Missing expected", "missing" if missing else "pass", "Expected files absent from this bundle."),
@@ -368,6 +438,7 @@ def render_html(artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> str:
 
     review_order_html = _review_order_html(entries_by_path)
     reviewer_handoff_html = _reviewer_handoff_html(artifact_dir, reviewer_handoff)
+    operator_next_steps_html = _operator_next_steps_html(artifact_dir, operator_next_steps)
     triage_html = _triage_summary_html(artifact_dir)
 
     return f"""<!doctype html>
@@ -417,7 +488,7 @@ def render_html(artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> str:
   <main>
     <header>
       <h1>Release bundle index</h1>
-      <p class="muted">Self-contained reviewer landing page for generated diagnostics, API contracts, examples, dashboard previews, reviewer handoffs, and CI triage artifacts.</p>
+      <p class="muted">Self-contained reviewer landing page for generated diagnostics, API contracts, examples, dashboard previews, reviewer handoffs, operator next steps, and CI triage artifacts.</p>
       <p class="muted">Generated at <code>{html.escape(str(manifest['generated_at']))}</code> from <code>{html.escape(str(manifest['artifact_dir']))}</code>.</p>
     </header>
 
@@ -436,6 +507,7 @@ def render_html(artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> str:
     </section>
 
     {reviewer_handoff_html}
+    {operator_next_steps_html}
     {triage_html}
     {summary_html}
     {missing_html}
