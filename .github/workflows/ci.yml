@@ -139,6 +139,13 @@ jobs:
             --markdown-path /tmp/militarynntroopprediction-evidence-checklist.md \
             --json-path /tmp/militarynntroopprediction-evidence-checklist.json
 
+      - name: Export provenance validation matrix smoke artifact
+        run: |
+          python -m app.cli.provenance_validation_matrix \
+            --artifact-dir /tmp \
+            --markdown-path /tmp/militarynntroopprediction-provenance-validation-matrix.md \
+            --json-path /tmp/militarynntroopprediction-provenance-validation-matrix.json
+
       - name: Validate reviewer handoff smoke artifact
         run: |
           python scripts/validate_reviewer_handoff.py \
