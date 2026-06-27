@@ -67,6 +67,12 @@ class ArtifactManifestTests(unittest.TestCase):
         self.assertIn("operator-next-steps-help.txt", EXPECTED_ARTIFACTS)
         self.assertIn("next-safe-command", EXPECTED_ARTIFACTS["operator-next-steps.md"])
 
+    def test_handoff_integrity_artifacts_are_expected_outputs(self) -> None:
+        self.assertIn("handoff-integrity-report.md", EXPECTED_ARTIFACTS)
+        self.assertIn("handoff-integrity-report.json", EXPECTED_ARTIFACTS)
+        self.assertIn("handoff-integrity-report-help.txt", EXPECTED_ARTIFACTS)
+        self.assertIn("cross-artifact", EXPECTED_ARTIFACTS["handoff-integrity-report.md"])
+
 
 if __name__ == "__main__":
     unittest.main()
