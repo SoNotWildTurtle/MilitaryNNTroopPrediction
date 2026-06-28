@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Exported `schema_version` and top-level `merge_blockers` from `workflow_gate_summary` so the documented JSON contract matches generated artifacts.
 - Added `docs/workflow_gate_summary_schema.md` to document the `workflow_gate_summary` JSON contract, consumer guidance, safety limits, compatibility expectations, and rollback path.
 - Added static regression coverage so exported workflow-gate fields remain documented for downstream JSON consumers.
 - Added `narrow_rerun_targets` and a top-level `narrow_rerun_plan` to `workflow_gate_summary` output so reviewers can reproduce the smallest relevant validation slice before rerunning broader gates.
