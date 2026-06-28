@@ -78,6 +78,47 @@ class WorkflowGateSummaryTests(unittest.TestCase):
         self.assertIn("job conclusion", markdown)
         self.assertIn(SAFE_SCOPE, markdown)
 
+    def test_schema_document_covers_exported_contract_fields(self) -> None:
+        summary = build_workflow_gate_summary()
+        schema_doc = Path("docs/workflow_gate_summary_schema.md").read_text(encoding="utf-8")
+
+        for field in (
+            "schema_version",
+            "generated_at",
+            "status",
+            "safe_scope",
+            "artifact_dir",
+            "next_action",
+            "required_gate_count",
+            "missing_required_workflows",
+            "gates",
+            "narrow_rerun_plan",
+            "review_order",
+            "merge_blockers",
+        ):
+            with self.subTest(field=field):
+                self.assertIn(f"`{field}`", schema_doc)
+                self.assertIn(field, summary)
+
+        for field in (
+            "workflow_path",
+            "required_before_merge",
+            "local_reproduction",
+            "green_means",
+            "green_does_not_mean",
+            "blocker_when",
+            "evidence_to_collect",
+            "narrow_rerun_targets",
+            "workflow_file_status",
+            "merge_blocker",
+        ):
+            with self.subTest(gate_field=field):
+                self.assertIn(f"`{field}`", schema_doc)
+                self.assertIn(field, summary["gates"][0])
+
+        self.assertIn("not a predictive model quality assessment", schema_doc)
+        self.assertIn("Hosted check status must still be verified", schema_doc)
+
     def test_writer_creates_json_and_markdown_outputs(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             output_dir = Path(tmpdir)
