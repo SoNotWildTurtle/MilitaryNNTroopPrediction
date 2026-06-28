@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added the offline `workflow_gate_summary` CLI to export a JSON/Markdown map of required hosted validation gates, local reproduction commands, green-check meaning, merge blockers, and safe analytical scope.
+- Added `docs/workflow_gate_summary.md` with usage, reviewer workflow, compatibility notes, and rollback guidance.
+- Added deterministic tests for workflow gate naming, missing-workflow blocker behavior, Markdown rendering, JSON/Markdown writing, and required-before-merge metadata.
 - Added `docs/reviewer_workflow_status_index.md` to map hosted check names to local reproduction commands, green-check meaning, known limits, and merge-blocker triage.
 - Added static regression coverage for the reviewer workflow status index so hosted check guidance stays aligned with existing CI, analytical framing, and handoff receipt workflows.
 - Added `.github/workflows/handoff-validation-receipt.yml` to independently smoke-test the final handoff receipt and upload its diagnostic bundle.
