@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added `docs/workflow_gate_review_runbook.md` with a deterministic, offline-first merge gate review checklist, blocker triage table, safe analytical scope notes, rollback guidance, and local reproduction commands for required hosted checks.
+- Added static regression coverage for the workflow gate review runbook so required gates, final-head-SHA review, safe analytical framing, and narrow local rerun commands stay documented.
 - Added the offline `workflow_gate_summary` CLI to export a JSON/Markdown map of required hosted validation gates, local reproduction commands, green-check meaning, merge blockers, and safe analytical scope.
 - Added `docs/workflow_gate_summary.md` with usage, reviewer workflow, compatibility notes, and rollback guidance.
 - Added deterministic tests for workflow gate naming, missing-workflow blocker behavior, Markdown rendering, JSON/Markdown writing, and required-before-merge metadata.
