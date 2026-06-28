@@ -153,6 +153,14 @@ jobs:
             --markdown-path /tmp/militarynntroopprediction-decision-log.md \
             --json-path /tmp/militarynntroopprediction-decision-log.json
 
+      - name: Export operator exception register smoke artifact
+        run: |
+          python -m app.cli.operator_exception_register \
+            --artifact-dir /tmp \
+            --markdown-path /tmp/militarynntroopprediction-operator-exception-register.md \
+            --json-path /tmp/militarynntroopprediction-operator-exception-register.json \
+            --text-path /tmp/militarynntroopprediction-operator-exception-register.txt
+
       - name: Validate reviewer handoff smoke artifact
         run: |
           python scripts/validate_reviewer_handoff.py \
