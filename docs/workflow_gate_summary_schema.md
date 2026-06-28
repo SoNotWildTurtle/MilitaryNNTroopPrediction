@@ -2,7 +2,7 @@
 
 `python -m app.cli.workflow_gate_summary --json-path <path>` writes an offline JSON document for reviewer handoff tooling. This page documents the stable, additive contract for consumers that want to validate hosted workflow evidence without guessing field meaning.
 
-The contract is intentionally static. The exporter inspects the local checkout for expected workflow files and renders reviewer guidance. It does not call GitHub, launch model inference, collect external intelligence, connect to MongoDB, or treat analytical estimates as certainty.
+The contract is intentionally static. The exporter inspects the local checkout for expected workflow files and renders reviewer guidance. It does not call GitHub, launch model inference, collect external intelligence, connect to MongoDB, or treat analytical estimates as certainty. It is not a predictive model quality assessment.
 
 ## Compatibility rules
 
@@ -27,7 +27,7 @@ The contract is intentionally static. The exporter inspects the local checkout f
 | `gates` | array of gate objects | Yes | Per-workflow gate metadata documented below. |
 | `narrow_rerun_plan` | array of rerun objects | Yes | Flattened focused rerun sequence derived from all gate-level `narrow_rerun_targets`. |
 | `review_order` | array of strings | Yes | Ordered merge-review checklist for final-head-SHA validation. |
-| `merge_blockers` | array of strings | Yes | Conditions that should block merge until resolved. |
+| `merge_blockers` | array of strings | Yes | Human-readable blocking conditions detected by the offline checkout inspection. Empty means no offline file-presence blockers were detected. |
 
 ## Gate object
 
@@ -73,6 +73,7 @@ Each item in `narrow_rerun_plan` is generated from one gate command so automatio
   "schema_version": "workflow-gate-summary/v1",
   "status": "ready_for_review",
   "missing_required_workflows": [],
+  "merge_blockers": [],
   "gates": [
     {
       "name": "CI",
