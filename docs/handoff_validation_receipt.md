@@ -6,6 +6,27 @@ The receipt is offline and metadata-only. It reads generated JSON artifacts, rec
 
 ## Generate a receipt
 
+For the standard reviewer workflow, build the diagnostics bundle first and then regenerate the final receipt through the task runner:
+
+```bash
+make ci-report
+make handoff-validation-receipt
+```
+
+The target writes:
+
+- `ci_artifacts/handoff-validation-receipt.md` for human review.
+- `ci_artifacts/handoff-validation-receipt.json` for automation, release gates, or handoff archives.
+
+Use `ARTIFACT_DIR` when validating a separate local review bundle:
+
+```bash
+make ci-report ARTIFACT_DIR=ci_artifacts/local-review
+make handoff-validation-receipt ARTIFACT_DIR=ci_artifacts/local-review
+```
+
+The direct CLI remains available for scripts and custom output paths:
+
 ```bash
 python -m app.cli.handoff_validation_receipt \
   --artifact-dir ci_artifacts \
@@ -13,12 +34,7 @@ python -m app.cli.handoff_validation_receipt \
   --json-path ci_artifacts/handoff-validation-receipt.json
 ```
 
-Expected outputs:
-
-- `handoff-validation-receipt.md` for human review.
-- `handoff-validation-receipt.json` for automation, release gates, or handoff archives.
-
-The reusable CI diagnostics script now generates both files automatically when `make ci-report` or the hosted `ci-diagnostics` bundle runs. The receipt is generated after evidence, handoff integrity, uncertainty, provenance, and artifact manifest outputs so its digest and gate status summary reflect the completed bundle.
+The reusable CI diagnostics script generates both files automatically when `make ci-report` or the hosted `ci-diagnostics` bundle runs. The receipt is generated after evidence, handoff integrity, uncertainty, provenance, and artifact manifest outputs so its digest and gate status summary reflect the completed bundle.
 
 ## What the receipt checks
 
@@ -58,7 +74,7 @@ Use the receipt as release and handoff metadata only. It helps prove which gener
 
 ## Rollback guidance
 
-This workflow is additive. To roll it back, stop generating `handoff-validation-receipt.md/json` from `scripts/ci_report.sh` and remove any CI bundle checks that expect those files. Existing diagnostic artifacts, API contracts, setup commands, and prediction code do not depend on this receipt.
+This workflow is additive. To roll it back, remove the `handoff-validation-receipt` Make target and stop generating `handoff-validation-receipt.md/json` from `scripts/ci_report.sh`. Existing diagnostic artifacts, API contracts, setup commands, and prediction code do not depend on this receipt.
 
 ## Follow-up work
 

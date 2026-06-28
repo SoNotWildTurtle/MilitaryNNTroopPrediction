@@ -9,7 +9,7 @@ ARTIFACT_DIR ?= ci_artifacts
 TRIAGE_ARTIFACT_DIR ?= ci_artifacts/local-ci
 FIXTURE_DIR ?= data/fixtures
 
-.PHONY: help install-core install-optional configure doctor quickstart api test verify ci-triage ci-report openapi examples dashboard bundle-index previews manifest artifact-gap-report provenance-ledger provenance-validation-matrix operator-digest release-notes reviewer-handoff operator-readiness operator-status-board operator-session-plan operator-runbook-index operator-next-steps handoff-integrity evidence-checklist decision-log operator-exception-register automation-plan validate-handoff triage-summary synthetic-fixtures clean
+.PHONY: help install-core install-optional configure doctor quickstart api test verify ci-triage ci-report openapi examples dashboard bundle-index previews manifest artifact-gap-report provenance-ledger provenance-validation-matrix operator-digest release-notes reviewer-handoff operator-readiness operator-status-board operator-session-plan operator-runbook-index operator-next-steps handoff-integrity evidence-checklist decision-log operator-exception-register handoff-validation-receipt automation-plan validate-handoff triage-summary synthetic-fixtures clean
 
 help:
 	@printf 'MilitaryNNTroopPrediction common tasks\n\n'
@@ -47,6 +47,7 @@ help:
 	@printf '  make evidence-checklist Export baseline evidence checklist for handoff bundles\n'
 	@printf '  make decision-log      Export analytical ready/blocked decision log\n'
 	@printf '  make operator-exception-register Export prioritized blocker/warning exception queue\n'
+	@printf '  make handoff-validation-receipt Export final bundle validation receipt\n'
 	@printf '  make automation-plan   Export safe additive next-run plan\n'
 	@printf '  make triage-summary    Export CI triage summary and narrow rerun targets\n'
 	@printf '  make synthetic-fixtures Export safe JSONL/CSV fixtures for demos and clients\n\n'
@@ -88,7 +89,7 @@ ci-triage:
 	@printf '   make verify ARTIFACT_DIR=$(TRIAGE_ARTIFACT_DIR)\n\n'
 	@printf '3. Open the reviewer landing page first:\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/release-bundle-index.html\n\n'
-	@printf '4. If the bundle is incomplete, inspect the generated handoff, its validation result, gap report, provenance ledger, provenance validation matrix, operator digest, operator status, operator session plan, operator runbook index, operator next steps, uncertainty review packet, handoff integrity report, evidence checklist, decision log, operator exception register, and triage summary, then rerun the narrow target:\n'
+	@printf '4. If the bundle is incomplete, inspect the generated handoff, its validation result, gap report, provenance ledger, provenance validation matrix, operator digest, operator status, operator session plan, operator runbook index, operator next steps, uncertainty review packet, handoff integrity report, evidence checklist, decision log, operator exception register, handoff validation receipt, and triage summary, then rerun the narrow target:\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/reviewer-handoff.md\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/reviewer-handoff-validation.json\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/artifact-gap-report.md\n'
@@ -105,10 +106,11 @@ ci-triage:
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/evidence-checklist.md\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/decision-log.md\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/operator-exception-register.md\n'
+	@printf '   $(TRIAGE_ARTIFACT_DIR)/handoff-validation-receipt.md\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/triage-summary.md\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/automation-plan.md\n'
 	@printf '   $(TRIAGE_ARTIFACT_DIR)/artifact-manifest.md\n'
-	@printf '   make doctor | make test | make ci-report | make validate-handoff | make openapi | make examples | make dashboard | make previews | make manifest | make artifact-gap-report | make provenance-ledger | make provenance-validation-matrix | make operator-digest | make release-notes | make reviewer-handoff | make operator-readiness | make operator-status-board | make operator-session-plan | make operator-runbook-index | make operator-next-steps | make handoff-integrity | make evidence-checklist | make decision-log | make operator-exception-register | make automation-plan | make triage-summary | make synthetic-fixtures\n\n'
+	@printf '   make doctor | make test | make ci-report | make validate-handoff | make openapi | make examples | make dashboard | make previews | make manifest | make artifact-gap-report | make provenance-ledger | make provenance-validation-matrix | make operator-digest | make release-notes | make reviewer-handoff | make operator-readiness | make operator-status-board | make operator-session-plan | make operator-runbook-index | make operator-next-steps | make handoff-integrity | make evidence-checklist | make decision-log | make operator-exception-register | make handoff-validation-receipt | make automation-plan | make triage-summary | make synthetic-fixtures\n\n'
 	@printf 'Safe-scope reminder: keep triage limited to local setup, deterministic tests, synthetic examples, API contracts, generated artifacts, and documentation.\n'
 
 ci-report:
@@ -236,6 +238,12 @@ operator-exception-register:
 		--markdown-path $(ARTIFACT_DIR)/operator-exception-register.md \
 		--json-path $(ARTIFACT_DIR)/operator-exception-register.json \
 		--text-path $(ARTIFACT_DIR)/operator-exception-register.txt
+
+handoff-validation-receipt:
+	$(PYTHON_BIN) -m app.cli.handoff_validation_receipt \
+		--artifact-dir $(ARTIFACT_DIR) \
+		--markdown-path $(ARTIFACT_DIR)/handoff-validation-receipt.md \
+		--json-path $(ARTIFACT_DIR)/handoff-validation-receipt.json
 
 automation-plan:
 	$(PYTHON_BIN) -m app.cli.automation_plan \
