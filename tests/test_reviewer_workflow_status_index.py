@@ -33,7 +33,10 @@ class ReviewerWorkflowStatusIndexTests(unittest.TestCase):
     def test_status_index_preserves_scope_and_merge_blocker_language(self) -> None:
         content = DOC.read_text(encoding="utf-8")
 
-        self.assertIn("does not claim that analytical estimates are true", content)
+        self.assertRegex(
+            content,
+            r"do(?:es)? not claim that analytical estimates are true",
+        )
         self.assertIn("does not validate model quality", content)
         self.assertIn("unavailable artifact", content)
         self.assertIn("unresolved review thread", content)
