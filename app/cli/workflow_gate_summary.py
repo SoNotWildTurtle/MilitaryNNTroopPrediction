@@ -18,6 +18,7 @@ from typing import Any, Dict, Iterable, Mapping, Sequence
 DEFAULT_ARTIFACT_DIR = Path("ci_artifacts")
 DEFAULT_MARKDOWN_NAME = "workflow-gate-summary.md"
 DEFAULT_JSON_NAME = "workflow-gate-summary.json"
+SCHEMA_VERSION = "workflow-gate-summary/v1"
 
 SAFE_SCOPE = (
     "Offline review aid for lawful defensive analysis workflows. It summarizes "
@@ -142,7 +143,9 @@ def build_workflow_gate_summary(
         if missing_required
         else "Confirm each hosted check is green for the final PR head SHA, then review the diff before merge."
     )
+    merge_blockers = [f"Missing required workflow file: {path}" for path in missing_required]
     return {
+        "schema_version": SCHEMA_VERSION,
         "generated_at": generated_at.isoformat(),
         "status": status,
         "next_action": next_action,
@@ -150,6 +153,7 @@ def build_workflow_gate_summary(
         "safe_scope": SAFE_SCOPE,
         "required_gate_count": sum(1 for gate in gates if gate.required_before_merge),
         "missing_required_workflows": missing_required,
+        "merge_blockers": merge_blockers,
         "gates": gate_entries,
         "narrow_rerun_plan": rerun_plan,
         "review_order": [
@@ -196,9 +200,9 @@ def _markdown_lines(summary: Mapping[str, Any]) -> Iterable[str]:
     yield ""
     yield "## Merge blockers"
     yield ""
-    if summary.get("missing_required_workflows"):
-        for path in summary["missing_required_workflows"]:
-            yield f"- Missing required workflow file: `{path}`"
+    if summary.get("merge_blockers"):
+        for blocker in summary["merge_blockers"]:
+            yield f"- {blocker}"
     else:
         yield "- No required workflow files are missing from this offline checkout."
     for gate in summary["gates"]:

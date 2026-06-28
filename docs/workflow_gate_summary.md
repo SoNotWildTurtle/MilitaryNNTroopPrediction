@@ -50,6 +50,12 @@ In the bundle, review:
 - `workflow-gate-summary.json`
 - `workflow-gate-summary-help.txt`
 
+## JSON contract
+
+Downstream tools and reviewers that parse the JSON output should use [`docs/workflow_gate_summary_schema.md`](workflow_gate_summary_schema.md) as the stable, additive contract. The schema guide documents top-level fields, per-gate fields, the flattened `narrow_rerun_plan`, compatibility expectations, consumer workflow, and rollback notes.
+
+Consumers should ignore unknown fields, keep the final PR head SHA with captured evidence, and preserve the documented safety limits so green validation is not described as predictive truth, operational certainty, or live data validity.
+
 ## Evidence capture checklist
 
 Each gate entry includes an `evidence_to_collect` field in JSON and an evidence checklist section in Markdown. Before merging, reviewers should capture:
