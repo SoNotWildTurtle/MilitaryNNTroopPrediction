@@ -16,6 +16,7 @@ from typing import Any, Dict, Iterable, Mapping, Sequence
 DEFAULT_ARTIFACT_DIR = Path("ci_artifacts")
 DEFAULT_MARKDOWN_NAME = "decision-log.md"
 DEFAULT_JSON_NAME = "decision-log.json"
+DEFAULT_SUMMARY_NAME = "decision-log-summary.txt"
 
 SAFE_SCOPE = (
     "Offline decision log for lawful defensive/analytical handoff review. It "
@@ -271,13 +272,34 @@ def render_markdown(log: Mapping[str, Any]) -> str:
     return "\n".join(_markdown_lines(log)).rstrip() + "\n"
 
 
-def write_outputs(log: Mapping[str, Any], markdown_path: Path | None, json_path: Path | None) -> None:
+def render_summary(log: Mapping[str, Any]) -> str:
+    """Render a single-line privacy-safe handoff summary for chat/email/status tools."""
+
+    decision = str(log.get("decision", "unknown")).upper()
+    blockers = len(list(log.get("blockers", [])))
+    warnings = len(list(log.get("warnings", [])))
+    next_action = str(log.get("next_action", "Review generated diagnostics before handoff."))
+    return (
+        f"Decision={decision}; blockers={blockers}; warnings={warnings}; "
+        f"next_action={next_action} Scope: analytical review only; no operational certainty claimed.\n"
+    )
+
+
+def write_outputs(
+    log: Mapping[str, Any],
+    markdown_path: Path | None,
+    json_path: Path | None,
+    summary_path: Path | None = None,
+) -> None:
     if markdown_path is not None:
         markdown_path.parent.mkdir(parents=True, exist_ok=True)
         markdown_path.write_text(render_markdown(log), encoding="utf-8")
     if json_path is not None:
         json_path.parent.mkdir(parents=True, exist_ok=True)
         json_path.write_text(json.dumps(log, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    if summary_path is not None:
+        summary_path.parent.mkdir(parents=True, exist_ok=True)
+        summary_path.write_text(render_summary(log), encoding="utf-8")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -285,8 +307,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--artifact-dir", type=Path, default=DEFAULT_ARTIFACT_DIR)
     parser.add_argument("--markdown-path", type=Path, default=None)
     parser.add_argument("--json-path", type=Path, default=None)
+    parser.add_argument("--summary-path", type=Path, default=None)
     parser.add_argument("--no-markdown", action="store_true")
     parser.add_argument("--no-json", action="store_true")
+    parser.add_argument("--no-summary", action="store_true")
     return parser
 
 
@@ -295,13 +319,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     log = build_decision_log(args.artifact_dir)
     markdown_path = None if args.no_markdown else (args.markdown_path or args.artifact_dir / DEFAULT_MARKDOWN_NAME)
     json_path = None if args.no_json else (args.json_path or args.artifact_dir / DEFAULT_JSON_NAME)
-    write_outputs(log, markdown_path, json_path)
+    summary_path = None if args.no_summary else (args.summary_path or args.artifact_dir / DEFAULT_SUMMARY_NAME)
+    write_outputs(log, markdown_path, json_path, summary_path)
     if markdown_path is not None:
         print(f"Wrote analytical decision log Markdown to {markdown_path}")
     if json_path is not None:
         print(f"Wrote analytical decision log JSON to {json_path}")
-    if markdown_path is None and json_path is None:
-        print("No outputs requested; remove --no-markdown or --no-json to write decision log files.")
+    if summary_path is not None:
+        print(f"Wrote analytical decision log summary to {summary_path}")
+    if markdown_path is None and json_path is None and summary_path is None:
+        print("No outputs requested; remove --no-markdown, --no-json, or --no-summary to write decision log files.")
     return 0
 
 
