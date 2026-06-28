@@ -15,6 +15,7 @@ After generating diagnostics, run:
 
 ```bash
 python -m app.cli.operator_exception_register --artifact-dir ci_artifacts
+make operator-exception-register
 ```
 
 Default outputs:
@@ -27,6 +28,13 @@ For a terminal-only summary without writing files:
 
 ```bash
 python -m app.cli.operator_exception_register --artifact-dir ci_artifacts --no-markdown --no-json --no-text
+```
+
+Use a separate artifact directory when comparing runs:
+
+```bash
+make ci-report ARTIFACT_DIR=ci_artifacts/local-review
+make operator-exception-register ARTIFACT_DIR=ci_artifacts/local-review
 ```
 
 ## Inputs
@@ -48,12 +56,17 @@ accidentally sign off on incomplete evidence.
 ## Review flow
 
 1. Generate the diagnostics bundle with `make ci-report`.
-2. Generate the exception register.
-3. Resolve every `BLOCKER` row before merge, release, or handoff signoff.
-4. Assign every `WARNING` or `REVIEW` row to an owner or record an accepted
+2. Open `release-bundle-index.html` first for the full bundle map.
+3. Open `operator-exception-register.md` for the prioritized action queue.
+4. Resolve every `BLOCKER` row before merge, release, or handoff signoff.
+5. Assign every `WARNING` or `REVIEW` row to an owner or record an accepted
    limitation in the handoff notes.
-5. Regenerate the register after repairs so the final bundle reflects the current
+6. Regenerate the register after repairs so the final bundle reflects the current
    state.
+
+Use `operator-exception-register.txt` when you need a copyable one-line summary
+and `operator-exception-register.json` when downstream automation needs stable
+fields.
 
 ## Output contract
 
@@ -67,6 +80,20 @@ The JSON output contains:
 - `owner_hint`: a deterministic owner suggestion based on safe keywords such as
   provenance, evidence, validation, privacy, uncertainty, and handoff.
 - `next_action`: recommended review action for the entry or register.
+- `safe_scope` and `analytical_disclaimer`: reminders that outputs are review
+  aids, not operational certainty.
+
+## Task runner and CI integration
+
+The root `Makefile` exposes `make operator-exception-register`, `make help` lists
+it with the other diagnostics artifacts, and `make ci-triage` points reviewers to
+the generated register when a bundle needs narrow follow-up.
+
+The CI smoke workflow now invokes `python -m app.cli.operator_exception_register`
+so import, argument parsing, Markdown, JSON, and text export regressions are caught
+before maintainers depend on the artifact. `scripts/ci_report.sh` also includes
+the register, its text summary, and its help output in the uploaded diagnostics
+bundle.
 
 ## Privacy and safety notes
 
@@ -75,9 +102,21 @@ and text summaries. It does not call network services, ingest live OSINT, run
 models, change predictions, or modify source data. Treat all outputs as review
 metadata for analytical estimates, not as operational truth.
 
+## Troubleshooting
+
+If the register reports missing artifacts, regenerate the diagnostics bundle:
+
+```bash
+make ci-report
+make operator-exception-register
+```
+
+If it reports invalid JSON, rerun the narrow CLI that produces the named input
+artifact, inspect that file, then rerun the register.
+
 ## Rollback
 
-The feature is additive. To roll it back, remove
-`app/cli/operator_exception_register.py`, `tests/test_operator_exception_register.py`,
-and this documentation file. No data, model, API, or prediction behavior depends
+The feature is additive. To roll it back, remove the Makefile target, the CI smoke
+step, the `scripts/ci_report.sh` register export lines, this documentation update,
+and the wiring regression test. No data, model, API, or prediction behavior depends
 on the register.
