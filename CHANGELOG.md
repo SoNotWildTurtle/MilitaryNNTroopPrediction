@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added `schema_version`, `status_explanation`, `merge_blockers`, `source_artifacts`, and deterministic review-order metadata to `triage_summary` JSON/Markdown output so CI blockers are easier to parse, reproduce, and hand off safely.
+- Added `docs/triage_summary_schema.md` to document the triage summary JSON contract, status semantics, compatibility expectations, safe analytical framing, and rollback path.
+- Updated CI troubleshooting guidance and regression coverage for machine-readable triage contract fields.
 - Exported `schema_version` and top-level `merge_blockers` from `workflow_gate_summary` so the documented JSON contract matches generated artifacts.
 - Added `docs/workflow_gate_summary_schema.md` to document the `workflow_gate_summary` JSON contract, consumer guidance, safety limits, compatibility expectations, and rollback path.
 - Added static regression coverage so exported workflow-gate fields remain documented for downstream JSON consumers.

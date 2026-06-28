@@ -30,6 +30,7 @@ That landing page links the release health report, release notes, triage summary
 1. **Open the generated triage summary first**
    - Review `triage-summary.md` in the artifact bundle.
    - Use its first recommended target as the narrow rerun path.
+   - Use `triage-summary.json` when automation needs the `schema_version`, `merge_blockers`, `source_artifacts`, or ordered `recommended_actions` contract documented in `docs/triage_summary_schema.md`.
    - If it says the bundle is ready, review `release-bundle-index.html` and attach the diagnostics bundle to the PR.
 
 2. **Check reviewer handoff validation when automation or review routing fails**
@@ -55,6 +56,7 @@ That landing page links the release health report, release notes, triage summary
 6. **Diagnostics bundle failed**
    - Run `make ci-report ARTIFACT_DIR=ci_artifacts/local-ci`.
    - Check `triage-summary.md` for failing health checks and narrow rerun targets.
+   - Check `triage-summary.json` for machine-readable `merge_blockers` and `source_artifacts` when reporting exact blocked inputs.
    - Check `reviewer-handoff-validation.json` for reviewer handoff contract errors.
    - Check `artifact-manifest.md` for missing generated files.
    - Re-run the narrow target that failed, such as `make doctor`, `make test`, `make ci-report`, `make validate-handoff`, `make openapi`, `make examples`, `make dashboard`, `make previews`, `make manifest`, `make release-notes`, or `make triage-summary`.
