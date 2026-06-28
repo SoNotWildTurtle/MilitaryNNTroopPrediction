@@ -146,6 +146,13 @@ jobs:
             --markdown-path /tmp/militarynntroopprediction-provenance-validation-matrix.md \
             --json-path /tmp/militarynntroopprediction-provenance-validation-matrix.json
 
+      - name: Export analytical decision log smoke artifact
+        run: |
+          python -m app.cli.decision_log \
+            --artifact-dir /tmp \
+            --markdown-path /tmp/militarynntroopprediction-decision-log.md \
+            --json-path /tmp/militarynntroopprediction-decision-log.json
+
       - name: Validate reviewer handoff smoke artifact
         run: |
           python scripts/validate_reviewer_handoff.py \
