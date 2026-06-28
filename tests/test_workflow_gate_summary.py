@@ -31,6 +31,17 @@ class WorkflowGateSummaryTests(unittest.TestCase):
         self.assertIn("not operational targeting guidance", summary["safe_scope"])
         self.assertIn("make verify", {gate["local_reproduction"].split()[0] + " " + gate["local_reproduction"].split()[1] for gate in summary["gates"] if gate["name"] == "CI"})
 
+    def test_default_summary_includes_gate_evidence_to_collect(self) -> None:
+        summary = build_workflow_gate_summary()
+
+        for gate in summary["gates"]:
+            with self.subTest(gate=gate["name"]):
+                self.assertIn("evidence_to_collect", gate)
+                self.assertIn("run URL", gate["evidence_to_collect"])
+                self.assertIn("job conclusion", gate["evidence_to_collect"])
+                self.assertIn("final", gate["evidence_to_collect"])
+        self.assertTrue(any("uploaded artifact evidence" in item for item in summary["review_order"]))
+
     def test_missing_required_workflow_blocks_summary(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             repo_root = Path(tmpdir)
@@ -40,7 +51,7 @@ class WorkflowGateSummaryTests(unittest.TestCase):
         self.assertIn(".github/workflows/ci.yml", summary["missing_required_workflows"])
         self.assertTrue(any(gate["merge_blocker"] for gate in summary["gates"]))
 
-    def test_markdown_preserves_green_meaning_and_limits(self) -> None:
+    def test_markdown_preserves_green_meaning_limits_and_evidence(self) -> None:
         summary = build_workflow_gate_summary()
         markdown = render_markdown(summary)
 
@@ -48,6 +59,8 @@ class WorkflowGateSummaryTests(unittest.TestCase):
         self.assertIn("What green does not mean", markdown)
         self.assertIn("predictive truth", markdown)
         self.assertIn("Merge blockers", markdown)
+        self.assertIn("Evidence capture checklist", markdown)
+        self.assertIn("job conclusion", markdown)
         self.assertIn(SAFE_SCOPE, markdown)
 
     def test_writer_creates_json_and_markdown_outputs(self) -> None:
@@ -60,12 +73,15 @@ class WorkflowGateSummaryTests(unittest.TestCase):
             write_outputs(summary, markdown_path, json_path)
 
             self.assertIn("Workflow Gate Summary", markdown_path.read_text(encoding="utf-8"))
-            self.assertIn('"required_gate_count": 3', json_path.read_text(encoding="utf-8"))
+            json_text = json_path.read_text(encoding="utf-8")
+            self.assertIn('"required_gate_count": 3', json_text)
+            self.assertIn('"evidence_to_collect"', json_text)
 
     def test_default_gates_are_required_before_merge(self) -> None:
         self.assertTrue(DEFAULT_GATES)
         self.assertTrue(all(gate.required_before_merge for gate in DEFAULT_GATES))
         self.assertTrue(all(".github/workflows/" in gate.workflow_path for gate in DEFAULT_GATES))
+        self.assertTrue(all("final" in gate.evidence_to_collect for gate in DEFAULT_GATES))
 
 
 if __name__ == "__main__":
