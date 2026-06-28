@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added `narrow_rerun_targets` and a top-level `narrow_rerun_plan` to `workflow_gate_summary` output so reviewers can reproduce the smallest relevant validation slice before rerunning broader gates.
+- Documented the focused workflow-gate rerun workflow and added regression coverage for JSON, Markdown, and default gate metadata.
 - Added `evidence_to_collect` metadata to `workflow_gate_summary` JSON/Markdown output so reviewers know which final-head-SHA workflow run URL, job conclusion, and diagnostic artifact evidence to capture before merge.
 - Added regression coverage and documentation for the workflow gate evidence capture checklist.
 - Wired `workflow_gate_summary` into the Makefile and CI diagnostics bundle so reviewers get Markdown/JSON hosted-gate artifacts in the standard handoff package.
