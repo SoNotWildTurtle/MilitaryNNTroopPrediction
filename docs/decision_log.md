@@ -23,6 +23,15 @@ python -m app.cli.decision_log \
   --json-path ci_artifacts/decision-log.json
 ```
 
+The Makefile exposes the same workflow for operators and CI triage:
+
+```bash
+make decision-log ARTIFACT_DIR=ci_artifacts
+make ci-report ARTIFACT_DIR=ci_artifacts
+```
+
+`make ci-report` now includes the decision log in the uploaded diagnostics bundle after the prerequisite handoff, evidence, validation, provenance, integrity, uncertainty, and manifest artifacts have been generated.
+
 ## Inputs reviewed
 
 The exporter checks for these generated files when present:
@@ -47,6 +56,16 @@ The JSON output includes:
 - `blockers` and `warnings`: copyable review lists.
 - `safe_scope` and `analytical_disclaimer`: explicit scope limits for handoff consumers.
 
+## CI and handoff review
+
+The CI workflow smoke-tests the exporter and the diagnostics bundle includes:
+
+- `decision-log-help.txt` for command-line contract visibility.
+- `decision-log.md` for human review.
+- `decision-log.json` for automation, future gates, and release evidence.
+
+Reviewers should treat a blocked decision as a handoff blocker, a needs-review decision as a prompt for documented analyst review, and a ready decision as supporting evidence rather than operational certainty.
+
 ## Rollback
 
-This feature is additive. To roll it back, remove `app/cli/decision_log.py`, `tests/test_decision_log.py`, and this document. No existing API, model, data, or artifact schema is changed.
+This feature is additive. To roll it back, remove `app/cli/decision_log.py`, `tests/test_decision_log.py`, this document, the `make decision-log` target, and the decision-log calls in `scripts/ci_report.sh` and `.github/workflows/ci.yml`. No existing API, model, data, or artifact schema is changed.
