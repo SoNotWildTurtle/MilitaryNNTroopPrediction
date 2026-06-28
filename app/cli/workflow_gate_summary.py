@@ -38,6 +38,7 @@ class WorkflowGate:
     green_means: str
     green_does_not_mean: str
     blocker_when: str
+    evidence_to_collect: str
 
 
 DEFAULT_GATES = (
@@ -49,6 +50,10 @@ DEFAULT_GATES = (
         green_means="Core setup, artifact generation, handoff validation, and unit discovery compose successfully.",
         green_does_not_mean="Model quality, live data availability, external services, or predictive truth were validated.",
         blocker_when="The run is queued, missing, cancelled, failing, or tied to a different head SHA.",
+        evidence_to_collect=(
+            "Record the final PR head SHA, the CI workflow run URL, the Smoke tests job conclusion, "
+            "and the uploaded ci-diagnostics artifact name or ID."
+        ),
     ),
     WorkflowGate(
         name="Analytical Framing Audit",
@@ -61,6 +66,10 @@ DEFAULT_GATES = (
         green_means="Generated handoff language keeps analytical-scope caveats and avoids audited overconfident wording.",
         green_does_not_mean="Every possible unsafe phrase was detected or analytical conclusions are correct.",
         blocker_when="The audit is unavailable, failing, or reports unresolved severe framing findings.",
+        evidence_to_collect=(
+            "Record the framing-audit workflow run URL, Safe-scope wording audit job conclusion, "
+            "and analytical-framing-audit artifact availability for the final head SHA."
+        ),
     ),
     WorkflowGate(
         name="Handoff Validation Receipt",
@@ -70,6 +79,10 @@ DEFAULT_GATES = (
         green_means="A deterministic diagnostics bundle and final validation receipt can be produced offline.",
         green_does_not_mean="Reviewer judgment, policy review, or predictive certainty can be skipped.",
         blocker_when="The receipt artifact is missing, empty, unavailable, queued, or generated from stale inputs.",
+        evidence_to_collect=(
+            "Record the receipt workflow run URL, Final handoff receipt check job conclusion, "
+            "and handoff-validation-receipt artifact availability for the final head SHA."
+        ),
     ),
 )
 
@@ -114,6 +127,7 @@ def build_workflow_gate_summary(
         "gates": gate_entries,
         "review_order": [
             "Check all hosted gates are complete and green on the final head SHA.",
+            "Record the run URL, job conclusion, and uploaded artifact evidence for each required gate.",
             "Fetch exact failing job logs before changing code when any gate fails.",
             "Reproduce the narrow failing command locally before rerunning the full bundle.",
             "Inspect final diff for deletions, secrets, unsafe claims, generated artifacts, and wrong target branch.",
@@ -141,12 +155,13 @@ def _markdown_lines(summary: Mapping[str, Any]) -> Iterable[str]:
     yield ""
     yield "## Required workflow gates"
     yield ""
-    yield "| Gate | Workflow file | File status | Local reproduction | What green means | What green does not mean |"
-    yield "| --- | --- | --- | --- | --- | --- |"
+    yield "| Gate | Workflow file | File status | Local reproduction | Evidence to collect | What green means | What green does not mean |"
+    yield "| --- | --- | --- | --- | --- | --- | --- |"
     for gate in summary["gates"]:
         yield (
             f"| `{_escape_table(gate['name'])}` | `{_escape_table(gate['workflow_path'])}` | "
             f"{_escape_table(gate['workflow_file_status'])} | `{_escape_table(gate['local_reproduction'])}` | "
+            f"{_escape_table(gate['evidence_to_collect'])} | "
             f"{_escape_table(gate['green_means'])} | {_escape_table(gate['green_does_not_mean'])} |"
         )
     yield ""
@@ -159,6 +174,11 @@ def _markdown_lines(summary: Mapping[str, Any]) -> Iterable[str]:
         yield "- No required workflow files are missing from this offline checkout."
     for gate in summary["gates"]:
         yield f"- `{gate['name']}` blocks merge when: {gate['blocker_when']}"
+    yield ""
+    yield "## Evidence capture checklist"
+    yield ""
+    for gate in summary["gates"]:
+        yield f"- `{gate['name']}`: {gate['evidence_to_collect']}"
     yield ""
     yield "## Review order"
     yield ""
