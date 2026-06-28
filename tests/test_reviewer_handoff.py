@@ -70,19 +70,28 @@ class ReviewerHandoffTests(unittest.TestCase):
             markdown = render_markdown(handoff)
 
         review_order = handoff["review_order"]
+        review_by_action = {step["action"]: step for step in review_order}
+        review_by_artifact = {step["artifact"]: step for step in review_order}
+
         self.assertEqual(review_order[0]["step"], 1)
         self.assertEqual(review_order[0]["action"], "Confirm bundle readiness")
         self.assertEqual(review_order[0]["artifact"], "release-health.md")
         self.assertTrue(review_order[0]["present"])
         self.assertEqual(review_order[0]["status"], "present")
-        self.assertEqual(review_order[2]["action"], "Promote operator next step")
-        self.assertEqual(review_order[2]["artifact"], "operator-next-steps.md")
-        self.assertFalse(review_order[2]["present"])
-        self.assertEqual(review_order[2]["status"], "missing")
-        self.assertEqual(review_order[3]["artifact"], "triage-summary.md")
-        self.assertFalse(review_order[3]["present"])
-        self.assertEqual(review_order[3]["status"], "missing")
+
+        exception_step = review_by_action["Review operator exceptions"]
+        next_step = review_by_action["Promote operator next step"]
+        self.assertLess(exception_step["step"], next_step["step"])
+        self.assertEqual(exception_step["artifact"], "operator-exception-register.md")
+        self.assertFalse(exception_step["present"])
+        self.assertEqual(exception_step["status"], "missing")
+        self.assertEqual(next_step["artifact"], "operator-next-steps.md")
+        self.assertFalse(next_step["present"])
+        self.assertEqual(next_step["status"], "missing")
+        self.assertFalse(review_by_artifact["triage-summary.md"]["present"])
+        self.assertEqual(review_by_artifact["triage-summary.md"]["status"], "missing")
         self.assertIn("Confirm bundle readiness", markdown)
+        self.assertIn("`operator-exception-register.md` (missing)", markdown)
         self.assertIn("`operator-next-steps.md` (missing)", markdown)
         self.assertIn("`triage-summary.md` (missing)", markdown)
 
@@ -117,6 +126,7 @@ class ReviewerHandoffTests(unittest.TestCase):
                         "api-response-examples.md",
                         "dashboard-mockup.html",
                         "reviewer-handoff.md",
+                        "operator-exception-register.md",
                         "operator-next-steps.md",
                     ]
                 ],
