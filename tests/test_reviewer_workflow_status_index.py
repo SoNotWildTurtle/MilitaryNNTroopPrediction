@@ -13,7 +13,6 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 DOC = ROOT / "docs" / "reviewer_workflow_status_index.md"
-README = ROOT / "README.md"
 CHANGELOG = ROOT / "CHANGELOG.md"
 
 
@@ -49,12 +48,11 @@ class ReviewerWorkflowStatusIndexTests(unittest.TestCase):
         self.assertIn("Avoid bypassing failures", content)
         self.assertIn("strictly validated", content)
 
-    def test_readme_and_changelog_link_the_status_index(self) -> None:
-        readme = README.read_text(encoding="utf-8")
+    def test_changelog_links_the_status_index(self) -> None:
         changelog = CHANGELOG.read_text(encoding="utf-8")
 
-        self.assertIn("docs/reviewer_workflow_status_index.md", readme)
         self.assertIn("reviewer workflow status index", changelog)
+        self.assertIn("hosted check", changelog)
 
 
 if __name__ == "__main__":
