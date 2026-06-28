@@ -55,6 +55,17 @@ class MakefileWorkflowTests(unittest.TestCase):
         self.assertIn("$(ARTIFACT_DIR)/decision-log.md", content)
         self.assertIn("$(ARTIFACT_DIR)/decision-log.json", content)
 
+    def test_handoff_validation_receipt_target_is_documented_and_exported(self) -> None:
+        content = read_makefile()
+
+        self.assertRegex(content, r"(?m)^\.PHONY: .*\bhandoff-validation-receipt\b")
+        self.assertIn("make handoff-validation-receipt", content)
+        self.assertRegex(content, r"(?m)^handoff-validation-receipt:")
+        self.assertIn("app.cli.handoff_validation_receipt", content)
+        self.assertIn("$(ARTIFACT_DIR)/handoff-validation-receipt.md", content)
+        self.assertIn("$(ARTIFACT_DIR)/handoff-validation-receipt.json", content)
+        self.assertIn("handoff validation receipt", content.lower())
+
 
 if __name__ == "__main__":
     unittest.main()
