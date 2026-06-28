@@ -13,6 +13,7 @@ DEFAULT_MARKDOWN_NAME = "triage-summary.md"
 DEFAULT_JSON_NAME = "triage-summary.json"
 DEFAULT_HEALTH_NAME = "release-health.json"
 DEFAULT_MANIFEST_NAME = "artifact-manifest.json"
+SCHEMA_VERSION = "triage-summary/v1"
 
 RERUN_TARGETS: Dict[str, str] = {
     "python": "make install-core",
@@ -95,6 +96,9 @@ def build_triage_summary(
     health_results: Sequence[Mapping[str, Any]] | Mapping[str, Any],
     manifest: Mapping[str, Any],
     generated_at: datetime | None = None,
+    artifact_dir: Path = DEFAULT_ARTIFACT_DIR,
+    health_json_path: Path | None = None,
+    manifest_json_path: Path | None = None,
 ) -> Dict[str, Any]:
     """Build a deterministic triage summary from health checks and manifest data."""
 
@@ -128,27 +132,51 @@ def build_triage_summary(
 
     if failing_checks:
         status = "blocked"
+        status_explanation = "One or more release-health checks failed; fix the root cause before reviewing generated artifacts."
         next_step = recommended_actions[0]["target"]
     elif missing_artifacts:
         status = "incomplete"
+        status_explanation = "The diagnostics manifest is missing expected artifacts; regenerate the narrow artifact target before handoff."
         next_step = recommended_actions[0]["target"]
     elif warning_checks:
         status = "review"
+        status_explanation = "No hard blockers were found, but warnings still need reviewer acknowledgement before handoff."
         next_step = "Review warnings in release-health.md; run make verify after any fixes."
     else:
         status = "ready"
+        status_explanation = "No failing health checks or missing expected artifacts were reported by the local diagnostics inputs."
         next_step = "Open release-bundle-index.html and attach the diagnostics bundle for review."
 
+    merge_blockers = [f"Failing health check: {check.get('name', 'unknown')}" for check in failing_checks]
+    merge_blockers.extend(f"Missing expected artifact: {artifact_path}" for artifact_path in missing_artifacts)
+
     return {
+        "schema_version": SCHEMA_VERSION,
         "generated_at": generated_at.isoformat(),
         "status": status,
+        "status_explanation": status_explanation,
         "health_summary": status_counts,
         "failing_checks": failing_checks,
         "warning_checks": warning_checks,
         "missing_artifacts": missing_artifacts,
+        "merge_blockers": merge_blockers,
         "recommended_actions": recommended_actions,
         "next_step": next_step,
         "artifact_count": int(manifest.get("file_count", 0) or 0),
+        "source_artifacts": {
+            "artifact_dir": artifact_dir.as_posix(),
+            "health_json": (health_json_path or artifact_dir / DEFAULT_HEALTH_NAME).as_posix(),
+            "manifest_json": (manifest_json_path or artifact_dir / DEFAULT_MANIFEST_NAME).as_posix(),
+            "health_check_count": len(normalized_health),
+            "missing_expected_count": len(missing_artifacts),
+        },
+        "review_order": [
+            "Open triage-summary.md before raw logs to identify the narrowest safe rerun target.",
+            "Fix failing health checks before addressing missing generated artifacts.",
+            "Regenerate missing artifacts with the mapped Makefile target, then rerun `make manifest`.",
+            "Treat warnings as reviewer items, not proof that analytical outputs are correct.",
+            "Rerun `make verify` before handing off or merging after any fix.",
+        ],
         "safe_scope": "Local setup, deterministic tests, synthetic examples, API contracts, generated artifacts, and documentation.",
     }
 
@@ -157,7 +185,12 @@ def _markdown_lines(summary: Mapping[str, Any]) -> Iterable[str]:
     yield "# CI Triage Summary"
     yield ""
     yield f"Generated: `{summary['generated_at']}`"
+    yield f"Schema: `{summary.get('schema_version', SCHEMA_VERSION)}`"
     yield f"Status: **{str(summary['status']).upper()}**"
+    yield ""
+    yield "## Status explanation"
+    yield ""
+    yield str(summary["status_explanation"])
     yield ""
     yield "## Health summary"
     yield ""
@@ -166,11 +199,24 @@ def _markdown_lines(summary: Mapping[str, Any]) -> Iterable[str]:
     yield f"- Warnings: {health['warn']}"
     yield f"- Failures: {health['fail']}"
     yield f"- Indexed artifacts: {summary['artifact_count']}"
+    source_artifacts = summary.get("source_artifacts", {})
+    if source_artifacts:
+        yield f"- Artifact directory: `{source_artifacts.get('artifact_dir', 'ci_artifacts')}`"
+        yield f"- Health source: `{source_artifacts.get('health_json', DEFAULT_HEALTH_NAME)}`"
+        yield f"- Manifest source: `{source_artifacts.get('manifest_json', DEFAULT_MANIFEST_NAME)}`"
     yield ""
     yield "## Recommended next step"
     yield ""
     yield f"`{summary['next_step']}`"
     yield ""
+
+    blockers = list(summary.get("merge_blockers", []))
+    if blockers:
+        yield "## Merge blockers"
+        yield ""
+        for blocker in blockers:
+            yield f"- {blocker}"
+        yield ""
 
     actions = list(summary["recommended_actions"])
     if actions:
@@ -200,6 +246,11 @@ def _markdown_lines(summary: Mapping[str, Any]) -> Iterable[str]:
             yield f"- `{artifact_path}`"
         yield ""
 
+    yield "## Review order"
+    yield ""
+    for index, item in enumerate(summary.get("review_order", []), start=1):
+        yield f"{index}. {item}"
+    yield ""
     yield "## Safe scope"
     yield ""
     yield str(summary["safe_scope"])
@@ -247,7 +298,13 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     health_results = _load_json(health_path, [])
     manifest = _load_json(manifest_path, {"file_count": 0, "missing_expected": []})
-    summary = build_triage_summary(health_results, manifest)
+    summary = build_triage_summary(
+        health_results,
+        manifest,
+        artifact_dir=artifact_dir,
+        health_json_path=health_path,
+        manifest_json_path=manifest_path,
+    )
     write_outputs(summary, markdown_path, json_path)
 
     print(f"Wrote CI triage summary Markdown to {markdown_path}")
