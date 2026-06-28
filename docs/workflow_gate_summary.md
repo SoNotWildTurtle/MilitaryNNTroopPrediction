@@ -8,6 +8,7 @@ Pull requests now have multiple review-oriented workflows. The gate summary give
 
 - which hosted checks are expected before merge;
 - the local command that best reproduces each check;
+- what evidence to collect from GitHub before merge;
 - what a green check proves;
 - what a green check does **not** prove;
 - when a missing, stale, queued, failed, or unavailable gate should block merge.
@@ -48,13 +49,25 @@ In the bundle, review:
 - `workflow-gate-summary.json`
 - `workflow-gate-summary-help.txt`
 
+## Evidence capture checklist
+
+Each gate entry includes an `evidence_to_collect` field in JSON and an evidence checklist section in Markdown. Before merging, reviewers should capture:
+
+- the final PR head SHA being reviewed;
+- the hosted workflow run URL for each required gate;
+- the named job conclusion for that final head SHA;
+- the uploaded artifact name or ID when the workflow produces diagnostics.
+
+This makes handoff easier to audit later without implying that a green workflow proves operational truth, model quality, or live data validity.
+
 ## Review workflow
 
 1. Generate or open the workflow gate summary.
 2. Confirm every required hosted check named in the summary is complete and green for the final PR head SHA.
-3. If a check is failing or unavailable, fetch the exact job logs and reproduce the narrow local command listed for that gate.
-4. Fix root causes or brittle assertions without bypassing behavioral guarantees.
-5. Review the final diff for accidental deletions, secrets, generated artifacts, unsupported claims, unsafe changes, regressions, and target-branch correctness before merge.
+3. Capture the run URL, job conclusion, and uploaded artifact evidence named in the evidence checklist.
+4. If a check is failing or unavailable, fetch the exact job logs and reproduce the narrow local command listed for that gate.
+5. Fix root causes or brittle assertions without bypassing behavioral guarantees.
+6. Review the final diff for accidental deletions, secrets, generated artifacts, unsupported claims, unsafe changes, regressions, and target-branch correctness before merge.
 
 ## Compatibility
 

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added `evidence_to_collect` metadata to `workflow_gate_summary` JSON/Markdown output so reviewers know which final-head-SHA workflow run URL, job conclusion, and diagnostic artifact evidence to capture before merge.
+- Added regression coverage and documentation for the workflow gate evidence capture checklist.
 - Wired `workflow_gate_summary` into the Makefile and CI diagnostics bundle so reviewers get Markdown/JSON hosted-gate artifacts in the standard handoff package.
 - Added static regression coverage for workflow gate summary task-runner and CI artifact wiring.
 - Added `docs/workflow_gate_review_runbook.md` with a deterministic, offline-first merge gate review checklist, blocker triage table, safe analytical scope notes, rollback guidance, and local reproduction commands for required hosted checks.
