@@ -60,7 +60,7 @@ Files:
 - artifact-gap-report.md/json: diagnostic bundle completeness and suspicious-artifact report.
 - artifact-provenance-ledger.md/json: diagnostic bundle provenance labels for generated, synthetic, preview, and review artifacts.
 - provenance-validation-matrix.md/json: cross-artifact matrix tying provenance labels to required handoff validation signals.
-- decision-log.md/json: analytical ready/blocked/needs-review decision log compiled from handoff diagnostics.
+- decision-log.md/json/summary.txt: analytical ready/blocked/needs-review decision log and copyable one-line status summary compiled from handoff diagnostics.
 - openapi.json/openapi-summary.md: API contract exports.
 - api-response-examples.json/md: synthetic API response examples.
 - dashboard-mockup.html: self-contained static dashboard preview.
@@ -106,7 +106,7 @@ SUMMARY
 "${PYTHON_BIN}" -m app.cli.artifact_manifest --artifact-dir "${ARTIFACT_DIR}" --json-path "${ARTIFACT_DIR}/artifact-manifest.json" --markdown-path "${ARTIFACT_DIR}/artifact-manifest.md"
 "${PYTHON_BIN}" -m app.cli.artifact_provenance_ledger --artifact-dir "${ARTIFACT_DIR}" --json-path "${ARTIFACT_DIR}/artifact-provenance-ledger.json" --markdown-path "${ARTIFACT_DIR}/artifact-provenance-ledger.md"
 "${PYTHON_BIN}" -m app.cli.provenance_validation_matrix --artifact-dir "${ARTIFACT_DIR}" --markdown-path "${ARTIFACT_DIR}/provenance-validation-matrix.md" --json-path "${ARTIFACT_DIR}/provenance-validation-matrix.json"
-"${PYTHON_BIN}" -m app.cli.decision_log --artifact-dir "${ARTIFACT_DIR}" --markdown-path "${ARTIFACT_DIR}/decision-log.md" --json-path "${ARTIFACT_DIR}/decision-log.json"
+"${PYTHON_BIN}" -m app.cli.decision_log --artifact-dir "${ARTIFACT_DIR}" --markdown-path "${ARTIFACT_DIR}/decision-log.md" --json-path "${ARTIFACT_DIR}/decision-log.json" --summary-path "${ARTIFACT_DIR}/decision-log-summary.txt"
 "${PYTHON_BIN}" -m app.cli.artifact_manifest --artifact-dir "${ARTIFACT_DIR}" --json-path "${ARTIFACT_DIR}/artifact-manifest.json" --markdown-path "${ARTIFACT_DIR}/artifact-manifest.md"
 "${PYTHON_BIN}" -m app.cli.artifact_provenance_ledger --artifact-dir "${ARTIFACT_DIR}" --json-path "${ARTIFACT_DIR}/artifact-provenance-ledger.json" --markdown-path "${ARTIFACT_DIR}/artifact-provenance-ledger.md"
 
