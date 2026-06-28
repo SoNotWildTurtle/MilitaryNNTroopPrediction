@@ -1,0 +1,55 @@
+name: Handoff Validation Receipt
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  receipt-check:
+    name: Final handoff receipt check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install core runtime dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-core.txt
+
+      - name: Compile receipt module and tests
+        run: python -m compileall app tests
+
+      - name: Run handoff validation receipt unit tests
+        run: python -m unittest tests.test_handoff_validation_receipt
+
+      - name: Build deterministic diagnostics bundle
+        run: make ci-report ARTIFACT_DIR=ci_artifacts
+
+      - name: Export final handoff validation receipt
+        run: |
+          python -m app.cli.handoff_validation_receipt \
+            --artifact-dir ci_artifacts \
+            --markdown-path ci_artifacts/handoff-validation-receipt.md \
+            --json-path ci_artifacts/handoff-validation-receipt.json
+
+      - name: Assert receipt artifacts exist
+        run: |
+          test -s ci_artifacts/handoff-validation-receipt.md
+          test -s ci_artifacts/handoff-validation-receipt.json
+          grep -q "claim of predictive certainty" ci_artifacts/handoff-validation-receipt.md
+
+      - name: Upload receipt artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: handoff-validation-receipt
+          path: ci_artifacts/
+          if-no-files-found: error
