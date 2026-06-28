@@ -6,6 +6,7 @@ The command reads existing diagnostics in an artifact directory and writes:
 
 - `decision-log.md` for reviewers who need a concise handoff narrative.
 - `decision-log.json` for automation, CI evidence, and future release gates.
+- `decision-log-summary.txt` for copyable one-line status updates in chat, email, release comments, or manager handoffs.
 
 ## Why this exists
 
@@ -20,7 +21,8 @@ python -m app.cli.decision_log --artifact-dir ci_artifacts
 python -m app.cli.decision_log \
   --artifact-dir ci_artifacts \
   --markdown-path ci_artifacts/decision-log.md \
-  --json-path ci_artifacts/decision-log.json
+  --json-path ci_artifacts/decision-log.json \
+  --summary-path ci_artifacts/decision-log-summary.txt
 ```
 
 The Makefile exposes the same workflow for operators and CI triage:
@@ -56,6 +58,14 @@ The JSON output includes:
 - `blockers` and `warnings`: copyable review lists.
 - `safe_scope` and `analytical_disclaimer`: explicit scope limits for handoff consumers.
 
+The text summary is intentionally one line and privacy-safe:
+
+```text
+Decision=READY; blockers=0; warnings=0; next_action=Attach the decision log to the handoff bundle and run `make verify` before promotion or merge. Scope: analytical review only; no operational certainty claimed.
+```
+
+Use it when a manager or reviewer needs the current state without opening the full Markdown or JSON artifact.
+
 ## CI and handoff review
 
 The CI workflow smoke-tests the exporter and the diagnostics bundle includes:
@@ -63,9 +73,10 @@ The CI workflow smoke-tests the exporter and the diagnostics bundle includes:
 - `decision-log-help.txt` for command-line contract visibility.
 - `decision-log.md` for human review.
 - `decision-log.json` for automation, future gates, and release evidence.
+- `decision-log-summary.txt` for copyable one-line status handoffs.
 
 Reviewers should treat a blocked decision as a handoff blocker, a needs-review decision as a prompt for documented analyst review, and a ready decision as supporting evidence rather than operational certainty.
 
 ## Rollback
 
-This feature is additive. To roll it back, remove `app/cli/decision_log.py`, `tests/test_decision_log.py`, this document, the `make decision-log` target, and the decision-log calls in `scripts/ci_report.sh` and `.github/workflows/ci.yml`. No existing API, model, data, or artifact schema is changed.
+This feature is additive. To roll it back, remove the summary rendering additions in `app/cli/decision_log.py`, the summary assertions in `tests/test_decision_log.py`, the `decision-log-summary.txt` references in this document, and the explicit summary path in `scripts/ci_report.sh`. No existing API, model, data, or artifact schema is changed.

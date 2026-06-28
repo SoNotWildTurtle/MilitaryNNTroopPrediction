@@ -8,7 +8,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
-from app.cli.decision_log import build_decision_log, render_markdown, write_outputs
+from app.cli.decision_log import build_decision_log, render_markdown, render_summary, write_outputs
 
 
 class DecisionLogTests(unittest.TestCase):
@@ -68,25 +68,45 @@ class DecisionLogTests(unittest.TestCase):
         self.assertEqual(log["decision"], "needs_review")
         self.assertTrue(any("uncertainty-review-packet.json" in item for item in log["warnings"]))
 
-    def test_writers_create_markdown_and_json(self) -> None:
+    def test_summary_is_one_line_and_preserves_safe_scope(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            artifact_dir = Path(temp_dir)
+            self._write_ready_bundle(artifact_dir)
+
+            log = build_decision_log(
+                artifact_dir,
+                generated_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+            )
+            summary = render_summary(log)
+
+        self.assertEqual(summary.count("\n"), 1)
+        self.assertIn("Decision=READY", summary)
+        self.assertIn("blockers=0", summary)
+        self.assertIn("warnings=0", summary)
+        self.assertIn("no operational certainty claimed", summary)
+
+    def test_writers_create_markdown_json_and_summary(self) -> None:
         with TemporaryDirectory() as temp_dir:
             artifact_dir = Path(temp_dir) / "artifacts"
             artifact_dir.mkdir()
             self._write_ready_bundle(artifact_dir)
             markdown_path = Path(temp_dir) / "decision-log.md"
             json_path = Path(temp_dir) / "decision-log.json"
+            summary_path = Path(temp_dir) / "decision-log-summary.txt"
             log = build_decision_log(
                 artifact_dir,
                 generated_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
             )
 
-            write_outputs(log, markdown_path, json_path)
+            write_outputs(log, markdown_path, json_path, summary_path)
             markdown = markdown_path.read_text(encoding="utf-8")
             parsed = json.loads(json_path.read_text(encoding="utf-8"))
+            summary = summary_path.read_text(encoding="utf-8")
 
         self.assertIn("# Analytical Decision Log", markdown)
         self.assertEqual(parsed["generated_at"], "2026-01-01T00:00:00+00:00")
         self.assertEqual(parsed["decision"], "ready")
+        self.assertIn("Decision=READY", summary)
 
 
 if __name__ == "__main__":
