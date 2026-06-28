@@ -39,6 +39,7 @@ class WorkflowGate:
     green_does_not_mean: str
     blocker_when: str
     evidence_to_collect: str
+    narrow_rerun_targets: Sequence[str]
 
 
 DEFAULT_GATES = (
@@ -53,6 +54,12 @@ DEFAULT_GATES = (
         evidence_to_collect=(
             "Record the final PR head SHA, the CI workflow run URL, the Smoke tests job conclusion, "
             "and the uploaded ci-diagnostics artifact name or ID."
+        ),
+        narrow_rerun_targets=(
+            "python -m compileall app tests",
+            "python -m app.cli.doctor --skip-optional --skip-mongo --json",
+            "make ci-report ARTIFACT_DIR=ci_artifacts/local-review",
+            "python -m unittest discover tests",
         ),
     ),
     WorkflowGate(
@@ -70,6 +77,10 @@ DEFAULT_GATES = (
             "Record the framing-audit workflow run URL, Safe-scope wording audit job conclusion, "
             "and analytical-framing-audit artifact availability for the final head SHA."
         ),
+        narrow_rerun_targets=(
+            "python -m unittest tests.test_analytical_framing_audit",
+            "python -m app.cli.analytical_framing_audit --artifact-dir ci_artifacts/local-review",
+        ),
     ),
     WorkflowGate(
         name="Handoff Validation Receipt",
@@ -82,6 +93,11 @@ DEFAULT_GATES = (
         evidence_to_collect=(
             "Record the receipt workflow run URL, Final handoff receipt check job conclusion, "
             "and handoff-validation-receipt artifact availability for the final head SHA."
+        ),
+        narrow_rerun_targets=(
+            "make ci-report ARTIFACT_DIR=ci_artifacts/local-review",
+            "make handoff-validation-receipt ARTIFACT_DIR=ci_artifacts/local-review",
+            "make validate-handoff ARTIFACT_DIR=ci_artifacts/local-review",
         ),
     ),
 )
@@ -102,12 +118,22 @@ def build_workflow_gate_summary(
     generated_at = generated_at or datetime.now(timezone.utc).replace(microsecond=0)
     gate_entries = []
     missing_required = []
+    rerun_plan = []
     for gate in gates:
         entry = asdict(gate)
+        entry["narrow_rerun_targets"] = list(gate.narrow_rerun_targets)
         entry["workflow_file_status"] = _path_status(repo_root, gate.workflow_path)
         entry["merge_blocker"] = gate.required_before_merge and entry["workflow_file_status"] != "present"
         if entry["merge_blocker"]:
             missing_required.append(gate.workflow_path)
+        rerun_plan.extend(
+            {
+                "gate": gate.name,
+                "command": command,
+                "purpose": "Reproduce a focused slice before rerunning the broader hosted or local gate.",
+            }
+            for command in gate.narrow_rerun_targets
+        )
         gate_entries.append(entry)
 
     status = "blocked" if missing_required else "ready_for_review"
@@ -125,6 +151,7 @@ def build_workflow_gate_summary(
         "required_gate_count": sum(1 for gate in gates if gate.required_before_merge),
         "missing_required_workflows": missing_required,
         "gates": gate_entries,
+        "narrow_rerun_plan": rerun_plan,
         "review_order": [
             "Check all hosted gates are complete and green on the final head SHA.",
             "Record the run URL, job conclusion, and uploaded artifact evidence for each required gate.",
@@ -155,13 +182,15 @@ def _markdown_lines(summary: Mapping[str, Any]) -> Iterable[str]:
     yield ""
     yield "## Required workflow gates"
     yield ""
-    yield "| Gate | Workflow file | File status | Local reproduction | Evidence to collect | What green means | What green does not mean |"
-    yield "| --- | --- | --- | --- | --- | --- | --- |"
+    yield "| Gate | Workflow file | File status | Local reproduction | Evidence to collect | Narrow rerun targets | What green means | What green does not mean |"
+    yield "| --- | --- | --- | --- | --- | --- | --- | --- |"
     for gate in summary["gates"]:
+        rerun_targets = "<br>".join(f"`{target}`" for target in gate["narrow_rerun_targets"])
         yield (
             f"| `{_escape_table(gate['name'])}` | `{_escape_table(gate['workflow_path'])}` | "
             f"{_escape_table(gate['workflow_file_status'])} | `{_escape_table(gate['local_reproduction'])}` | "
             f"{_escape_table(gate['evidence_to_collect'])} | "
+            f"{_escape_table(rerun_targets)} | "
             f"{_escape_table(gate['green_means'])} | {_escape_table(gate['green_does_not_mean'])} |"
         )
     yield ""
@@ -179,6 +208,13 @@ def _markdown_lines(summary: Mapping[str, Any]) -> Iterable[str]:
     yield ""
     for gate in summary["gates"]:
         yield f"- `{gate['name']}`: {gate['evidence_to_collect']}"
+    yield ""
+    yield "## Narrow rerun plan"
+    yield ""
+    yield "Use the smallest relevant target first when a hosted job fails, then rerun the broader gate after the root cause is fixed."
+    yield ""
+    for item in summary["narrow_rerun_plan"]:
+        yield f"- `{item['gate']}`: `{item['command']}` — {item['purpose']}"
     yield ""
     yield "## Review order"
     yield ""
