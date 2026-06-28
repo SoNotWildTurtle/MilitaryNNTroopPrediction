@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Wired `workflow_gate_summary` into the Makefile and CI diagnostics bundle so reviewers get Markdown/JSON hosted-gate artifacts in the standard handoff package.
+- Added static regression coverage for workflow gate summary task-runner and CI artifact wiring.
 - Added `docs/workflow_gate_review_runbook.md` with a deterministic, offline-first merge gate review checklist, blocker triage table, safe analytical scope notes, rollback guidance, and local reproduction commands for required hosted checks.
 - Added static regression coverage for the workflow gate review runbook so required gates, final-head-SHA review, safe analytical framing, and narrow local rerun commands stay documented.
 - Added the offline `workflow_gate_summary` CLI to export a JSON/Markdown map of required hosted validation gates, local reproduction commands, green-check meaning, merge blockers, and safe analytical scope.

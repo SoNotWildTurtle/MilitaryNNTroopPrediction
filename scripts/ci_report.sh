@@ -34,6 +34,7 @@ mkdir -p "${ARTIFACT_DIR}"
 "${PYTHON_BIN}" -m app.cli.decision_log --help > "${ARTIFACT_DIR}/decision-log-help.txt"
 "${PYTHON_BIN}" -m app.cli.operator_exception_register --help > "${ARTIFACT_DIR}/operator-exception-register-help.txt"
 "${PYTHON_BIN}" -m app.cli.handoff_validation_receipt --help > "${ARTIFACT_DIR}/handoff-validation-receipt-help.txt"
+"${PYTHON_BIN}" -m app.cli.workflow_gate_summary --help > "${ARTIFACT_DIR}/workflow-gate-summary-help.txt"
 "${PYTHON_BIN}" -m app.cli.provenance_validation_matrix --help > "${ARTIFACT_DIR}/provenance-validation-matrix-help.txt"
 "${PYTHON_BIN}" -m app.cli.automation_plan --help > "${ARTIFACT_DIR}/automation-plan-help.txt"
 "${PYTHON_BIN}" -m app.cli.triage_summary --help > "${ARTIFACT_DIR}/triage-summary-help.txt"
@@ -55,12 +56,13 @@ Files:
 - pip-version.txt: pip version used by CI.
 - pip-freeze.txt: installed package versions for reproducibility.
 - doctor-minimal.json: machine-readable core setup diagnostics.
-- release health/release notes/reviewer handoff/operator digest/operator readiness/operator status board/operator session plan/operator runbook index/operator next steps/uncertainty review packet/handoff integrity report/evidence checklist/decision log/operator exception register/handoff validation receipt/provenance validation matrix/automation plan artifacts: generated local readiness, review, uncertainty, command-map, cross-artifact integrity, baseline evidence, analytical decision, prioritized exception queue, final receipt, provenance gate matrix, and next-run guidance.
+- release health/release notes/reviewer handoff/operator digest/operator readiness/operator status board/operator session plan/operator runbook index/operator next steps/uncertainty review packet/handoff integrity report/evidence checklist/decision log/operator exception register/handoff validation receipt/workflow gate summary/provenance validation matrix/automation plan artifacts: generated local readiness, review, uncertainty, command-map, cross-artifact integrity, baseline evidence, analytical decision, prioritized exception queue, final receipt, hosted gate map, provenance gate matrix, and next-run guidance.
 - reviewer-handoff-validation.txt/json: reviewer handoff contract validation results.
 - triage-summary.md/json: CI failure triage summary with narrow rerun targets.
 - artifact-gap-report.md/json: diagnostic bundle completeness and suspicious-artifact report.
 - artifact-provenance-ledger.md/json: diagnostic bundle provenance labels for generated, synthetic, preview, and review artifacts.
 - provenance-validation-matrix.md/json: cross-artifact matrix tying provenance labels to required handoff validation signals.
+- workflow-gate-summary.md/json: required hosted workflow gate map with local reproduction commands and merge-blocker meaning.
 - decision-log.md/json/summary.txt: analytical ready/blocked/needs-review decision log and copyable one-line status summary compiled from handoff diagnostics.
 - operator-exception-register.md/json/txt: prioritized blocker, warning, missing-artifact, and review-item queue compiled from handoff diagnostics.
 - openapi.json/openapi-summary.md: API contract exports.
@@ -105,6 +107,7 @@ SUMMARY
 "${PYTHON_BIN}" -m app.cli.artifact_manifest --artifact-dir "${ARTIFACT_DIR}" --json-path "${ARTIFACT_DIR}/artifact-manifest.json" --markdown-path "${ARTIFACT_DIR}/artifact-manifest.md"
 "${PYTHON_BIN}" -m app.cli.artifact_provenance_ledger --artifact-dir "${ARTIFACT_DIR}" --json-path "${ARTIFACT_DIR}/artifact-provenance-ledger.json" --markdown-path "${ARTIFACT_DIR}/artifact-provenance-ledger.md"
 "${PYTHON_BIN}" -m app.cli.handoff_validation_receipt --artifact-dir "${ARTIFACT_DIR}" --markdown-path "${ARTIFACT_DIR}/handoff-validation-receipt.md" --json-path "${ARTIFACT_DIR}/handoff-validation-receipt.json"
+"${PYTHON_BIN}" -m app.cli.workflow_gate_summary --artifact-dir "${ARTIFACT_DIR}" --markdown-path "${ARTIFACT_DIR}/workflow-gate-summary.md" --json-path "${ARTIFACT_DIR}/workflow-gate-summary.json"
 "${PYTHON_BIN}" -m app.cli.artifact_manifest --artifact-dir "${ARTIFACT_DIR}" --json-path "${ARTIFACT_DIR}/artifact-manifest.json" --markdown-path "${ARTIFACT_DIR}/artifact-manifest.md"
 "${PYTHON_BIN}" -m app.cli.artifact_provenance_ledger --artifact-dir "${ARTIFACT_DIR}" --json-path "${ARTIFACT_DIR}/artifact-provenance-ledger.json" --markdown-path "${ARTIFACT_DIR}/artifact-provenance-ledger.md"
 "${PYTHON_BIN}" -m app.cli.provenance_validation_matrix --artifact-dir "${ARTIFACT_DIR}" --markdown-path "${ARTIFACT_DIR}/provenance-validation-matrix.md" --json-path "${ARTIFACT_DIR}/provenance-validation-matrix.json"
@@ -112,5 +115,4 @@ SUMMARY
 "${PYTHON_BIN}" -m app.cli.operator_exception_register --artifact-dir "${ARTIFACT_DIR}" --markdown-path "${ARTIFACT_DIR}/operator-exception-register.md" --json-path "${ARTIFACT_DIR}/operator-exception-register.json" --text-path "${ARTIFACT_DIR}/operator-exception-register.txt"
 "${PYTHON_BIN}" -m app.cli.artifact_manifest --artifact-dir "${ARTIFACT_DIR}" --json-path "${ARTIFACT_DIR}/artifact-manifest.json" --markdown-path "${ARTIFACT_DIR}/artifact-manifest.md"
 "${PYTHON_BIN}" -m app.cli.artifact_provenance_ledger --artifact-dir "${ARTIFACT_DIR}" --json-path "${ARTIFACT_DIR}/artifact-provenance-ledger.json" --markdown-path "${ARTIFACT_DIR}/artifact-provenance-ledger.md"
-
 printf 'Wrote CI diagnostics to %s\n' "${ARTIFACT_DIR}"

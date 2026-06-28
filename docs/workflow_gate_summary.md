@@ -29,6 +29,25 @@ Default outputs:
 - `ci_artifacts/workflow-gate-summary.md`
 - `ci_artifacts/workflow-gate-summary.json`
 
+You can also use the Makefile wrapper:
+
+```bash
+make workflow-gate-summary ARTIFACT_DIR=ci_artifacts/local-review
+```
+
+The standard diagnostic bundle now includes the same artifacts when running:
+
+```bash
+make ci-report ARTIFACT_DIR=ci_artifacts/local-review
+make verify ARTIFACT_DIR=ci_artifacts/local-review
+```
+
+In the bundle, review:
+
+- `workflow-gate-summary.md`
+- `workflow-gate-summary.json`
+- `workflow-gate-summary-help.txt`
+
 ## Review workflow
 
 1. Generate or open the workflow gate summary.
@@ -39,8 +58,8 @@ Default outputs:
 
 ## Compatibility
 
-This CLI is additive and standard-library only. It does not alter existing APIs, schemas, data files, workflows, or generated artifact contracts. JSON consumers should treat new fields as additive.
+This CLI is additive and standard-library only. It does not alter existing APIs, schemas, data files, workflows, or generated artifact contracts. JSON consumers should treat new fields as additive. The Makefile and CI bundle wiring only add new outputs; existing commands and artifact names remain unchanged.
 
 ## Rollback
 
-To roll back this increment, remove `app/cli/workflow_gate_summary.py`, `tests/test_workflow_gate_summary.py`, this document, and the changelog entry. No data migration is required.
+To roll back the CLI itself, remove `app/cli/workflow_gate_summary.py`, `tests/test_workflow_gate_summary.py`, this document, and the changelog entry. To roll back only the bundle wiring, revert the Makefile target, `scripts/ci_report.sh` additions, static wiring tests, and the related changelog entry. No data migration is required.

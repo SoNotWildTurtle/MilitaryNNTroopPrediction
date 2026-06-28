@@ -66,6 +66,17 @@ class MakefileWorkflowTests(unittest.TestCase):
         self.assertIn("$(ARTIFACT_DIR)/handoff-validation-receipt.json", content)
         self.assertIn("handoff validation receipt", content.lower())
 
+    def test_workflow_gate_summary_target_is_documented_and_exported(self) -> None:
+        content = read_makefile()
+
+        self.assertRegex(content, r"(?m)^\.PHONY: .*\bworkflow-gate-summary\b")
+        self.assertIn("make workflow-gate-summary", content)
+        self.assertRegex(content, r"(?m)^workflow-gate-summary:")
+        self.assertIn("app.cli.workflow_gate_summary", content)
+        self.assertIn("$(ARTIFACT_DIR)/workflow-gate-summary.md", content)
+        self.assertIn("$(ARTIFACT_DIR)/workflow-gate-summary.json", content)
+        self.assertIn("workflow gate summary", content.lower())
+
 
 if __name__ == "__main__":
     unittest.main()
