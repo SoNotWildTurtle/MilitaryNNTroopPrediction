@@ -45,6 +45,16 @@ class MakefileWorkflowTests(unittest.TestCase):
         self.assertIn("bash scripts/test.sh", content)
         self.assertIn("bash scripts/ci_report.sh", content)
 
+    def test_decision_log_target_is_documented_and_exported(self) -> None:
+        content = read_makefile()
+
+        self.assertRegex(content, r"(?m)^\.PHONY: .*\bdecision-log\b")
+        self.assertIn("make decision-log", content)
+        self.assertRegex(content, r"(?m)^decision-log:")
+        self.assertIn("app.cli.decision_log", content)
+        self.assertIn("$(ARTIFACT_DIR)/decision-log.md", content)
+        self.assertIn("$(ARTIFACT_DIR)/decision-log.json", content)
+
 
 if __name__ == "__main__":
     unittest.main()
