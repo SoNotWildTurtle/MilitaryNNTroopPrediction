@@ -41,6 +41,18 @@ class ReleaseBundleIndexTests(unittest.TestCase):
                 "}\n",
                 encoding="utf-8",
             )
+            (artifact_dir / "operator-exception-register.md").write_text(
+                "# Operator exception register\n\nNo blocking exceptions found.\n",
+                encoding="utf-8",
+            )
+            (artifact_dir / "operator-exception-register.json").write_text(
+                '{"status":"ready","exceptions":[]}\n',
+                encoding="utf-8",
+            )
+            (artifact_dir / "operator-exception-register.txt").write_text(
+                "Operator exception register: ready\n",
+                encoding="utf-8",
+            )
             (artifact_dir / "operator-next-steps.md").write_text(
                 "# Operator next steps\n\nHighest ranked safe action: review release bundle.\n",
                 encoding="utf-8",
@@ -78,6 +90,13 @@ class ReleaseBundleIndexTests(unittest.TestCase):
         self.assertIn("Missing expected outputs", html_text)
         self.assertIn("Missing key artifacts", html_text)
         self.assertIn("Reviewer handoff for `ci_artifacts`: status `ready`.", html_text)
+        self.assertIn("Prioritized operator exception queue", html_text)
+        self.assertIn("Machine-readable operator exception queue", html_text)
+        self.assertIn("Copyable operator exception summary", html_text)
+        self.assertIn('href="operator-exception-register.md"', html_text)
+        self.assertIn('href="operator-exception-register.json"', html_text)
+        self.assertIn('href="operator-exception-register.txt"', html_text)
+        self.assertIn("Review operator exceptions", html_text)
         self.assertIn("Ranked safe follow-up actions for operators", html_text)
         self.assertIn("Machine-readable operator next-step plan", html_text)
         self.assertIn('href="operator-next-steps.md"', html_text)
@@ -98,6 +117,7 @@ class ReleaseBundleIndexTests(unittest.TestCase):
             for name in (
                 "release-health.md",
                 "reviewer-handoff.md",
+                "operator-exception-register.md",
                 "operator-next-steps.md",
                 "triage-summary.md",
                 "artifact-manifest.md",
@@ -110,13 +130,19 @@ class ReleaseBundleIndexTests(unittest.TestCase):
         self.assertIn("Review order checklist", html_text)
         self.assertIn("Confirm bundle readiness", html_text)
         self.assertIn("Use the reviewer handoff", html_text)
+        self.assertIn("Review operator exceptions", html_text)
         self.assertIn("Promote operator next step", html_text)
         self.assertIn("Triage failures next", html_text)
         self.assertIn("Verify artifact inventory", html_text)
         self.assertIn("Review user-facing contracts", html_text)
         self.assertIn('href="release-health.md"', html_text)
+        self.assertIn('href="operator-exception-register.md"', html_text)
         self.assertIn('href="operator-next-steps.md"', html_text)
         self.assertIn('href="artifact-manifest.md"', html_text)
+        self.assertLess(
+            html_text.index("Review operator exceptions"),
+            html_text.index("Promote operator next step"),
+        )
 
     def test_render_html_flags_missing_review_order_artifacts(self) -> None:
         with TemporaryDirectory() as temp_dir:
@@ -126,6 +152,7 @@ class ReleaseBundleIndexTests(unittest.TestCase):
             html_text = render_html(artifact_dir)
 
         self.assertIn("Review order checklist", html_text)
+        self.assertIn("operator-exception-register.md", html_text)
         self.assertIn("operator-next-steps.md", html_text)
         self.assertIn("PRESENT", html_text)
         self.assertIn("MISSING", html_text)
