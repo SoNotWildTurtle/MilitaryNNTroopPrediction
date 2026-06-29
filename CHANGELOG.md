@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added README navigation and static regression coverage for `docs/validation_failure_reproduction_matrix.md` so hosted CI, CLI, schema, artifact, documentation, and analytical-framing failure triage is discoverable from the primary setup surface without duplicating existing guidance.
 - Added the validation failure reproduction matrix guide in `docs/validation_failure_reproduction_matrix.md` and static regression coverage so maintainers can map hosted CI, CLI, schema, artifact, documentation, and analytical-framing failures to the narrowest safe local rerun while preserving blocker visibility, final-head-SHA evidence, compatibility notes, rollback guidance, and safe analytical framing.
 - Added `docs/artifact_consumer_validation_profile.md` and static regression coverage so downstream diagnostics consumers can classify hard failures, warnings, and informational notes while preserving blocker visibility, provenance labels, additive JSON fields, rollback guidance, and safe analytical framing.
 - Added `docs/artifact_consumer_compatibility.md` and static regression coverage so downstream JSON/Markdown consumers preserve unknown fields, schema-version hints, uncertainty caveats, merge blockers, provenance labels, rollback guidance, and safe analytical framing while reading generated diagnostics bundles.
