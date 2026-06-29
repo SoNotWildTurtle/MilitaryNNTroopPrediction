@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added `docs/repository_incremental_growth_plan.md` and static regression coverage so recurring repository maintenance preserves durable near-term, medium-term, and long-term repository goals, selects mergeable cohesive increments, avoids duplicated or fragmented busywork, and records follow-up work without replacing existing runbooks.
 - Added `docs/automation_pr_evidence_template.md` and static regression coverage as an automation PR evidence template so final head SHA, required hosted checks, local validation, diff review, compatibility impact, rollback path, blockers, and safe analytical framing are captured consistently in reviewable pull request descriptions without replacing existing runbooks.
 - Added `docs/validation_evidence_crosswalk.md` and static regression coverage as a validation evidence crosswalk so reviewer questions map directly to local commands, hosted check evidence, generated artifacts, merge blockers, compatibility notes, rollback fields, and safe analytical framing without replacing existing validation runbooks.
 - Added README navigation and static regression coverage for `docs/validation_failure_reproduction_matrix.md` so hosted CI, CLI, schema, artifact, documentation, and analytical-framing failure triage is discoverable from the primary setup surface for the narrowest safe rerun without duplicating existing guidance.
