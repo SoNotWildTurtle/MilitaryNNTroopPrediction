@@ -1,10 +1,4 @@
-"""Static regression coverage for README preflight navigation.
-
-The automation preflight handbook is documentation-only, so these tests keep the
-primary repository entry points aligned with failure-first hosted validation,
-review handoff, and safe analytical framing guidance without calling external
-services, live data sources, model inference, or deployment workflows.
-"""
+"""Static regression coverage for README preflight navigation."""
 
 from __future__ import annotations
 
@@ -44,11 +38,14 @@ class ReadmePreflightNavigationTests(unittest.TestCase):
 
     def test_fast_first_run_points_to_preflight_before_ci_troubleshooting(self) -> None:
         content = README.read_text(encoding="utf-8")
+        fast_first_run = content.split("### Fast first run", 1)[1].split(
+            "### 1. Install dependencies", 1
+        )[0]
 
-        self.assertIn("before opening or merging recurring maintenance work", content)
+        self.assertIn("before opening or merging recurring maintenance work", fast_first_run)
         self.assertLess(
-            content.index("docs/automation_run_preflight.md"),
-            content.index("docs/ci_troubleshooting.md"),
+            fast_first_run.index("docs/automation_run_preflight.md"),
+            fast_first_run.index("docs/ci_troubleshooting.md"),
         )
 
     def test_changelog_records_readme_navigation_update(self) -> None:
