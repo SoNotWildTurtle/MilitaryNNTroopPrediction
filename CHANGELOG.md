@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added `docs/artifact_consumer_validation_profile.md` and static regression coverage so downstream diagnostics consumers can classify hard failures, warnings, and informational notes while preserving blocker visibility, provenance labels, additive JSON fields, rollback guidance, and safe analytical framing.
 - Added `docs/artifact_consumer_compatibility.md` and static regression coverage so downstream JSON/Markdown consumers preserve unknown fields, schema-version hints, uncertainty caveats, merge blockers, provenance labels, rollback guidance, and safe analytical framing while reading generated diagnostics bundles.
 - Added `schema_version` metadata to `provenance_validation_matrix` JSON/Markdown output so downstream handoff readers can detect the matrix contract version without guessing from field presence.
 - Added `docs/provenance_validation_matrix_schema.md` and regression coverage for the provenance validation matrix contract, required row fields, compatibility expectations, safe analytical framing, and rollback guidance.
