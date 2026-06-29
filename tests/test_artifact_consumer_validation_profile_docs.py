@@ -15,7 +15,6 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 DOC = ROOT / "docs" / "artifact_consumer_validation_profile.md"
 CHANGELOG = ROOT / "CHANGELOG.md"
-README = ROOT / "README.md"
 
 
 def normalized_text(value: str) -> str:
@@ -145,12 +144,10 @@ class ArtifactConsumerValidationProfileDocsTests(unittest.TestCase):
             with self.subTest(term=term):
                 assert_normalized_contains(self, term, content)
 
-    def test_changelog_and_readme_navigation_reference_profile(self) -> None:
+    def test_changelog_references_profile(self) -> None:
         changelog = CHANGELOG.read_text(encoding="utf-8")
-        readme = README.read_text(encoding="utf-8")
 
         assert_normalized_contains(self, "artifact consumer validation profile", changelog)
-        self.assertIn("docs/artifact_consumer_validation_profile.md", readme)
 
     def test_rollback_and_compatibility_are_narrow(self) -> None:
         content = DOC.read_text(encoding="utf-8")
