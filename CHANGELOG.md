@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added `schema_version` metadata to `provenance_validation_matrix` JSON/Markdown output so downstream handoff readers can detect the matrix contract version without guessing from field presence.
+- Added `docs/provenance_validation_matrix_schema.md` and regression coverage for the provenance validation matrix contract, required row fields, compatibility expectations, safe analytical framing, and rollback guidance.
 - Added `docs/post_merge_verification_receipt.md` as a copyable post-merge receipt for target-branch verification, resulting merge commit SHA, required hosted check evidence, stacked PR follow-up, compatibility, rollback, and safe analytical framing after merge.
 - Added static regression coverage for the post-merge verification receipt so final head SHA, merge commit, target-branch verification, required hosted checks, no-bypass blockers, stacked PR review, rollback, and analytical-scope language remain documented.
 - Added `docs/hosted_check_evidence_log.md` as a copyable hosted check evidence template for final head SHA, run URL, job conclusion, artifact review, narrow rerun, final diff, blocker, compatibility, and rollback capture before merge.

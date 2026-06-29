@@ -18,6 +18,7 @@ from typing import Any, Dict, Iterable, List, Mapping, Sequence
 DEFAULT_ARTIFACT_DIR = Path("ci_artifacts")
 DEFAULT_MARKDOWN_NAME = "provenance-validation-matrix.md"
 DEFAULT_JSON_NAME = "provenance-validation-matrix.json"
+SCHEMA_VERSION = "1.0"
 
 SAFE_SCOPE = (
     "Offline diagnostic matrix for lawful defensive analysis handoffs. It "
@@ -205,6 +206,7 @@ def build_provenance_validation_matrix(
         next_action = "Attach this matrix with the diagnostic bundle and rerun `make verify` before handoff or merge."
 
     return {
+        "schema_version": SCHEMA_VERSION,
         "generated_at": generated_at.isoformat(),
         "artifact_dir": artifact_dir.as_posix(),
         "status": status,
@@ -228,6 +230,7 @@ def _markdown_lines(matrix: Mapping[str, Any]) -> Iterable[str]:
     yield ""
     yield "A deterministic, privacy-safe cross-check of generated handoff evidence, provenance labels, and validation signals."
     yield ""
+    yield f"Schema version: `{matrix.get('schema_version', SCHEMA_VERSION)}`"
     yield f"Generated: `{matrix['generated_at']}`"
     yield f"Artifact directory: `{matrix['artifact_dir']}`"
     yield f"Status: **{str(matrix['status']).upper()}**"

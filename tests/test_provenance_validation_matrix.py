@@ -9,6 +9,7 @@ from tempfile import TemporaryDirectory
 import unittest
 
 from app.cli.provenance_validation_matrix import (
+    SCHEMA_VERSION,
     build_provenance_validation_matrix,
     render_markdown,
     write_outputs,
@@ -98,11 +99,60 @@ class ProvenanceValidationMatrixTests(unittest.TestCase):
         )
         markdown = render_markdown(matrix)
 
+        self.assertEqual(matrix["schema_version"], SCHEMA_VERSION)
         self.assertEqual(matrix["status"], "ready")
         self.assertEqual(matrix["ready_signal_count"], matrix["required_signal_count"])
         self.assertEqual(matrix["blockers"], [])
         self.assertIn("# Provenance Validation Matrix", markdown)
+        self.assertIn(f"Schema version: `{SCHEMA_VERSION}`", markdown)
         self.assertIn("without making operational targeting claims", matrix["safe_scope"])
+
+    def test_schema_document_covers_exported_contract_fields(self) -> None:
+        matrix = build_provenance_validation_matrix(
+            generated_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+            manifest=self._ready_manifest(),
+            ledger=self._ready_ledger(),
+            evidence={"status": "ready"},
+            receipt={"status": "ready"},
+        )
+        schema_doc = Path("docs/provenance_validation_matrix_schema.md").read_text(encoding="utf-8")
+
+        for field in (
+            "schema_version",
+            "generated_at",
+            "artifact_dir",
+            "status",
+            "source_statuses",
+            "required_signal_count",
+            "ready_signal_count",
+            "blockers",
+            "warnings",
+            "next_action",
+            "rows",
+            "safe_scope",
+        ):
+            with self.subTest(field=field):
+                self.assertIn(f"`{field}`", schema_doc)
+                self.assertIn(field, matrix)
+
+        for row_field in (
+            "gate",
+            "artifact",
+            "status",
+            "category",
+            "operational_claim",
+            "sha256",
+            "size_bytes",
+            "requirement",
+            "rationale",
+        ):
+            with self.subTest(row_field=row_field):
+                self.assertIn(f"`{row_field}`", schema_doc)
+                self.assertIn(row_field, matrix["rows"][0])
+
+        self.assertIn("not a live-data validation", schema_doc)
+        self.assertIn("not an operational targeting artifact", schema_doc)
+        self.assertIn("do not remove or rename", schema_doc)
 
     def test_missing_required_signal_blocks_matrix(self) -> None:
         manifest = self._ready_manifest()
@@ -150,6 +200,7 @@ class ProvenanceValidationMatrixTests(unittest.TestCase):
             parsed = json.loads(json_path.read_text(encoding="utf-8"))
 
         self.assertIn("# Provenance Validation Matrix", markdown)
+        self.assertEqual(parsed["schema_version"], SCHEMA_VERSION)
         self.assertEqual(parsed["generated_at"], "2026-01-01T00:00:00+00:00")
 
 
