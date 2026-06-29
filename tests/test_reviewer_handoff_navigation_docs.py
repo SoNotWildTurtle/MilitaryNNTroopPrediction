@@ -39,6 +39,7 @@ class ReviewerHandoffNavigationDocsTests(unittest.TestCase):
 
     def test_routes_artifact_contract_and_bundle_guidance(self) -> None:
         content = DOC.read_text(encoding="utf-8")
+        content_lower = content.lower()
 
         for term in [
             "docs/workflow_gate_summary_schema.md",
@@ -46,12 +47,17 @@ class ReviewerHandoffNavigationDocsTests(unittest.TestCase):
             "docs/artifact_provenance_ledger.md",
             "docs/artifact_gap_report.md",
             "docs/operator_status_board.md",
+        ]:
+            with self.subTest(term=term):
+                self.assertIn(term, content)
+
+        for phrase in [
             "diagnostic bundle landing page",
             "evidence checklist",
             "release notes",
         ]:
-            with self.subTest(term=term):
-                self.assertIn(term, content)
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, content_lower)
 
     def test_prefers_narrow_local_reruns_before_broad_validation(self) -> None:
         content = DOC.read_text(encoding="utf-8")
