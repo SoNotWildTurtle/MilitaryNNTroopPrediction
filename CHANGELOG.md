@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added `docs/final_merge_evidence_packet.md` with a final head-SHA, hosted-check, diagnostic-artifact, diff-review, blocker, compatibility, rollback, and safe analytical framing checklist for merge decisions.
+- Added static regression coverage for the final merge evidence packet so unavailable validation remains documented as a blocker.
 - Added `schema_version`, `status_explanation`, `merge_blockers`, `source_artifacts`, and deterministic review-order metadata to `triage_summary` JSON/Markdown output so CI blockers are easier to parse, reproduce, and hand off safely.
 - Added `docs/triage_summary_schema.md` to document the triage summary JSON contract, status semantics, compatibility expectations, safe analytical framing, and rollback path.
 - Updated CI troubleshooting guidance and regression coverage for machine-readable triage contract fields.
