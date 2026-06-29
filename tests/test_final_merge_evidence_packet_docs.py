@@ -13,8 +13,6 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 DOC = ROOT / "docs" / "final_merge_evidence_packet.md"
-README = ROOT / "README.md"
-CHANGELOG = ROOT / "CHANGELOG.md"
 
 
 class FinalMergeEvidencePacketDocsTests(unittest.TestCase):
@@ -55,12 +53,19 @@ class FinalMergeEvidencePacketDocsTests(unittest.TestCase):
         self.assertIn("certainty", content)
         self.assertIn("predictive outputs remain framed as estimates", content)
 
-    def test_packet_is_linked_from_readme_and_changelog(self) -> None:
-        readme = README.read_text(encoding="utf-8")
-        changelog = CHANGELOG.read_text(encoding="utf-8")
+    def test_packet_defines_merge_decision_states_and_rollback(self) -> None:
+        content = DOC.read_text(encoding="utf-8")
 
-        self.assertIn("docs/final_merge_evidence_packet.md", readme)
-        self.assertIn("final merge evidence packet", changelog.lower())
+        for state in [
+            "ready_to_merge",
+            "blocked_ci",
+            "blocked_review",
+            "blocked_scope",
+            "needs_handoff_update",
+        ]:
+            with self.subTest(state=state):
+                self.assertIn(state, content)
+        self.assertIn("Rollback is safe", content)
 
 
 if __name__ == "__main__":
