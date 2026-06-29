@@ -17,6 +17,7 @@ This repository provides a starting point for a machine vision application that 
 - `CONTRIBUTING.md` – safe contribution scope, PR checklist, and reviewer guidance
 - `docs/common_tasks.md` – examples for common `make` workflows
 - `docs/ci_troubleshooting.md` – local reproduction and diagnostics guide for CI failures
+- `docs/automation_run_preflight.md` – start-of-run checklist for default branch, open PRs, hosted checks, narrow reruns, additive scope, and merge readiness
 - `docs/reviewer_handoff_navigation.md` – first-stop routing map for reviewer handoff docs, generated artifacts, and narrow rerun commands
 - `docs/release_bundle_review.md` – reviewer checklist for generated diagnostics bundles
 - `docs/artifact_gap_report.md` – bundle completeness and suspicious-artifact audit workflow
@@ -45,7 +46,7 @@ make configure
 make verify
 ```
 
-`make verify` runs the minimal setup doctor, local smoke/unit tests, and the diagnostics bundle generator in one safe pre-PR pass. See `docs/common_tasks.md` for the full target map, `CONTRIBUTING.md` for the safe contribution checklist, `docs/ci_troubleshooting.md` when a hosted CI run needs local reproduction, `docs/reviewer_handoff_navigation.md` when you need the first-stop map for reviewer handoff docs and generated artifacts, `docs/release_bundle_review.md` when reviewing generated bundles, `docs/artifact_gap_report.md` when checking bundle completeness, `docs/artifact_provenance_ledger.md` when separating generated review evidence from synthetic fixtures and previews, `docs/operator_status_board.md` when you need a fast non-technical status table, `docs/evidence_checklist.md` when validating baseline handoff evidence, and `docs/synthetic_data_fixtures.md` when you need safe demo records without live data sources.
+`make verify` runs the minimal setup doctor, local smoke/unit tests, and the diagnostics bundle generator in one safe pre-PR pass. See `docs/common_tasks.md` for the full target map, `CONTRIBUTING.md` for the safe contribution checklist, `docs/automation_run_preflight.md` before opening or merging recurring maintenance work, `docs/ci_troubleshooting.md` when a hosted CI run needs local reproduction, `docs/reviewer_handoff_navigation.md` when you need the first-stop map for reviewer handoff docs and generated artifacts, `docs/release_bundle_review.md` when reviewing generated bundles, `docs/artifact_gap_report.md` when checking bundle completeness, `docs/artifact_provenance_ledger.md` when separating generated review evidence from synthetic fixtures and previews, `docs/operator_status_board.md` when you need a fast non-technical status table, `docs/evidence_checklist.md` when validating baseline handoff evidence, and `docs/synthetic_data_fixtures.md` when you need safe demo records without live data sources.
 
 For a guided local setup path that installs the small core dependency set, creates
 `.env` when needed, runs diagnostics, and prints the next command to run:
