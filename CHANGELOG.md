@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added README navigation for `docs/automation_run_preflight.md` so recurring maintenance runs can find the preflight checklist from the primary setup and structure surfaces.
+- Added static regression coverage for README preflight navigation so the handbook remains discoverable alongside reviewer handoff and CI troubleshooting guidance.
 - Added `docs/automation_run_preflight.md` as a deterministic start-of-run checklist for default-branch inspection, open/stacked PR review, hosted-check blockers, narrow reruns, additive scope, merge readiness, and safe analytical framing.
 - Added static regression coverage for the automation run preflight handbook so recurring maintenance runs keep failure-first triage, required hosted checks, compatibility, rollback, and safety language documented.
 - Added `docs/reviewer_handoff_navigation.md` as a first-stop routing map for hosted checks, workflow gates, schema docs, merge readiness records, blocker decisions, artifact provenance, gap reports, and narrow rerun commands.
