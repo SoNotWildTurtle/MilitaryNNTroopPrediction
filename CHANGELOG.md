@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added `docs/automation_run_preflight.md` as a deterministic start-of-run checklist for default-branch inspection, open/stacked PR review, hosted-check blockers, narrow reruns, additive scope, merge readiness, and safe analytical framing.
+- Added static regression coverage for the automation run preflight handbook so recurring maintenance runs keep failure-first triage, required hosted checks, compatibility, rollback, and safety language documented.
 - Added `docs/reviewer_handoff_navigation.md` as a first-stop routing map for hosted checks, workflow gates, schema docs, merge readiness records, blocker decisions, artifact provenance, gap reports, and narrow rerun commands.
 - Added README links and static regression coverage for the reviewer handoff navigation map so reviewers can find the right evidence guide without duplicating existing workflows.
 - Added `docs/review_blocker_decision_tree.md` with a reviewer-focused blocker taxonomy, narrow rerun map, final diff safety checklist, evidence capture guidance, safe analytical framing notes, and rollback expectations.
