@@ -45,7 +45,7 @@ class ArtifactConsumerCompatibilityDocsTests(unittest.TestCase):
     """Ensure downstream artifact consumer guidance stays complete and safe-scoped."""
 
     def test_safe_scope_and_analytical_limits_are_explicit(self) -> None:
-        content = DOC.read_text(encoding="utf-8").lower()
+        content = DOC.read_text(encoding="utf-8")
 
         for phrase in [
             "deterministic local/ci evidence",
@@ -62,7 +62,7 @@ class ArtifactConsumerCompatibilityDocsTests(unittest.TestCase):
             "reviewer handoff material",
         ]:
             with self.subTest(phrase=phrase):
-                self.assertIn(phrase, content)
+                assert_normalized_contains(self, phrase, content)
 
     def test_consumer_rules_preserve_additive_schema_compatibility(self) -> None:
         content = DOC.read_text(encoding="utf-8")
