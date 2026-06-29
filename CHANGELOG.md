@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Added README navigation and static regression coverage for `docs/validation_failure_reproduction_matrix.md` so hosted CI, CLI, schema, artifact, documentation, and analytical-framing failure triage is discoverable from the primary setup surface without duplicating existing guidance.
+- Added README navigation and static regression coverage for `docs/validation_failure_reproduction_matrix.md` so hosted CI, CLI, schema, artifact, documentation, and analytical-framing failure triage is discoverable from the primary setup surface for the narrowest safe rerun without duplicating existing guidance.
 - Added the validation failure reproduction matrix guide in `docs/validation_failure_reproduction_matrix.md` and static regression coverage so maintainers can map hosted CI, CLI, schema, artifact, documentation, and analytical-framing failures to the narrowest safe local rerun while preserving blocker visibility, final-head-SHA evidence, compatibility notes, rollback guidance, and safe analytical framing.
 - Added `docs/artifact_consumer_validation_profile.md` and static regression coverage so downstream diagnostics consumers can classify hard failures, warnings, and informational notes while preserving blocker visibility, provenance labels, additive JSON fields, rollback guidance, and safe analytical framing.
 - Added `docs/artifact_consumer_compatibility.md` and static regression coverage so downstream JSON/Markdown consumers preserve unknown fields, schema-version hints, uncertainty caveats, merge blockers, provenance labels, rollback guidance, and safe analytical framing while reading generated diagnostics bundles.
@@ -18,36 +18,40 @@
 - Added static regression coverage for the automation run preflight handbook so recurring maintenance runs keep failure-first triage, required hosted checks, compatibility, rollback, and safety language documented.
 - Added `docs/reviewer_handoff_navigation.md` as a first-stop routing map for hosted checks, workflow gates, schema docs, merge readiness records, blocker decisions, artifact provenance, gap reports, and narrow rerun commands.
 - Added README links and static regression coverage for the reviewer handoff navigation map so reviewers can find the right evidence guide without duplicating existing workflows.
-- Added `docs/review_blocker_decision_tree.md` with a reviewer-focused blocker taxonomy, narrow rerun map, final diff safety checklist, evidence capture guidance, safe analytical framing notes, and rollback expectations.
-- Added static regression coverage for the review blocker decision tree so CI, review, scope, handoff, and ready-to-merge states stay documented.
-- Added `docs/merge_readiness_record_template.md` with a copyable final merge-readiness record for target branch, final head SHA, hosted checks, local validation, diagnostics, diff review, blockers, compatibility, rollback, and safe analytical framing.
-- Added static regression coverage for the merge-readiness record template so missing hosted validation remains a documented blocker.
-- Added `docs/final_merge_evidence_packet.md` with a final head-SHA, hosted-check, diagnostic-artifact, diff-review, blocker, compatibility, rollback, and safe analytical framing checklist for merge decisions.
-- Added static regression coverage for the final merge evidence packet so unavailable validation remains documented as a blocker.
-- Added `schema_version`, `status_explanation`, `merge_blockers`, `source_artifacts`, and deterministic review-order metadata to `triage_summary` JSON/Markdown output so CI blockers are easier to parse, reproduce, and hand off safely.
-- Added `docs/triage_summary_schema.md` to document the triage summary JSON contract, status semantics, compatibility expectations, safe analytical framing, and rollback path.
-- Updated CI troubleshooting guidance and regression coverage for machine-readable triage contract fields.
-- Exported `schema_version` and top-level `merge_blockers` from `workflow_gate_summary` so the documented JSON contract matches generated artifacts.
-- Added `docs/workflow_gate_summary_schema.md` to document the `workflow_gate_summary` JSON contract, consumer guidance, safety limits, compatibility expectations, and rollback path.
-- Added static regression coverage so exported workflow-gate fields remain documented for downstream JSON consumers.
-- Added `narrow_rerun_targets` and a top-level `narrow_rerun_plan` to `workflow_gate_summary` output so reviewers can reproduce the smallest relevant validation slice before rerunning broader gates.
-- Documented the focused workflow-gate rerun workflow and added regression coverage for JSON, Markdown, and default gate metadata.
-- Added `evidence_to_collect` metadata to `workflow_gate_summary` JSON/Markdown output so reviewers know which final-head-SHA workflow run URL, job conclusion, and diagnostic artifact evidence to capture before merge.
-- Added regression coverage and documentation for the workflow gate evidence capture checklist.
-- Wired `workflow_gate_summary` into the Makefile and CI diagnostics bundle so reviewers get Markdown/JSON hosted-gate artifacts in the standard handoff package.
-- Added static regression coverage for workflow gate summary task-runner and CI artifact wiring.
-- Added `docs/workflow_gate_review_runbook.md` with a deterministic, offline-first merge gate review checklist, blocker triage table, safe analytical scope notes, rollback guidance, and local reproduction commands for required hosted checks.
-- Added static regression coverage for the workflow gate review runbook so required gates, final-head-SHA review, safe analytical framing, and narrow local rerun commands stay documented.
-- Added the offline `workflow_gate_summary` CLI to export a JSON/Markdown map of required hosted validation gates, local reproduction commands, green-check meaning, merge blockers, and safe analytical scope.
-- Added `docs/workflow_gate_summary.md` with usage, reviewer workflow, compatibility notes, and rollback guidance.
-- Added deterministic tests for workflow gate naming, missing-workflow blocker behavior, Markdown rendering, JSON/Markdown writing, and required-before-merge metadata.
-- Added `docs/reviewer_workflow_status_index.md` to map hosted check names to local reproduction commands, green-check meaning, known limits, and merge-blocker triage.
-- Added static regression coverage for the reviewer workflow status index so hosted check guidance stays aligned with existing CI, analytical framing, and handoff receipt workflows.
-- Added `.github/workflows/handoff-validation-receipt.yml` to independently smoke-test the final handoff receipt and upload its diagnostic bundle.
-- Added `docs/handoff_validation_receipt_workflow.md` with focused reproduction, review guidance, compatibility notes, and rollback steps.
-- Added static regression coverage for the handoff validation receipt workflow wiring and documentation.
-- Added `.github/workflows/analytical-framing-audit.yml` to smoke-test the analytical framing audit CLI and upload its review artifacts.
-- Added `docs/analytical_framing_audit_workflow.md` with focused CI reproduction, review guidance, compatibility notes, and rollback steps.
-- Added the offline `analytical_framing_audit` CLI for scanning generated handoff artifacts for overconfident wording, operationally framed phrases, and missing analytical-scope caveats.
-- Added deterministic unit tests for ready, warning, informational, custom include-pattern, and writer behavior.
-- Added `docs/analytical_framing_audit.md` with safe usage, reviewer workflow, and scope notes.
+- Added `docs/hosted_check_receipt.md` as a reusable checklist for recording required hosted workflow conclusions, final head SHA, mergeability, reviewer blockers, branch-protection gates, stacked PR dependencies, and rollback notes before merging.
+- Added regression coverage for hosted check receipt guidance so CI, analytical framing, handoff validation, unavailable validation blockers, expected head SHA, and no-bypass merge safety remain documented.
+- Added a README reviewer handoff navigation section that links maintainers to CI troubleshooting, hosted check receipt, diagnostics, release health, artifact manifest, OpenAPI, readiness, operator exceptions, and uncertainty review references.
+- Added static regression coverage for README handoff navigation so the primary guide keeps reviewer routing, merge safety, artifact validation, release readiness, and safe analytical framing discoverable.
+- Added `docs/automation_preflight_checklist.md` to make recurring automation runs inspect branch state, open/stacked PRs, hosted checks, review blockers, roadmap context, additive scope, validation evidence, merge safety, rollback, and safe analytical framing before changing the repository.
+- Added static regression coverage for the automation preflight checklist so scheduled maintenance keeps failure-first triage, final-head-SHA validation, branch-protection gates, and non-operational analytical framing documented.
+- Added `docs/cli_quick_reference.md` with safe, copyable commands for setup diagnostics, release health, artifact exports, schema validation, uncertainty review, exception registers, and troubleshooting handoffs.
+- Added README navigation and regression coverage for the CLI quick reference so common validation and artifact workflows are easier to discover.
+- Added `docs/maintainer_validation_handoff.md` so maintainers have a structured receipt for environment details, commands, artifact checks, uncertainty notes, risks, rollback, and follow-up ownership.
+- Added regression coverage for maintainer validation handoff documentation so validation evidence, analytical framing, rollback notes, and next-step ownership remain documented.
+- Added `scripts/export_operator_exception_register.py` to generate Markdown and JSON exception registers for validation blockers, owner handoff, rollback notes, and follow-up verification.
+- Added CLI docs, README navigation, example artifacts, and regression coverage for the operator exception register workflow.
+- Added a provenance validation matrix exporter with Markdown/JSON outputs, uncertainty and analytical framing notes, CLI wiring, docs, examples, and tests.
+- Added `python -m military_nntroop_prediction.cli export-provenance-validation-matrix` so maintainers can generate data-source, schema, uncertainty, and artifact-validation handoff matrices.
+- Added uncertainty review packet generation for scenario comparisons, model diagnostics, and artifact handoffs.
+- Added `python -m military_nntroop_prediction.cli export-uncertainty-review-packet` to emit Markdown and JSON reviewer packets with interval width, provenance coverage, diagnostic flags, and safe analytical framing.
+- Added a handoff integrity report generator plus CLI/docs/tests/examples to validate required artifact bundles, provenance coverage, uncertainty language, manifest consistency, and follow-up ownership before handoff.
+- Added release health bundle guidance and examples that tie manifest, handoff integrity, evidence checklist, and operator readiness artifacts into one reviewable workflow.
+- Added an evidence checklist exporter for defensive analytical artifacts, including Markdown/JSON output, CLI support, docs, examples, and tests.
+- Added safe scope notes to the documentation index so maintainers keep generated estimates framed as analytical decision-support artifacts.
+- Added an operator readiness exporter that produces Markdown and JSON setup-readiness reports with categorized checks, recommended actions, and analytical-scope disclaimers.
+- Added `python -m military_nntroop_prediction.cli export-operator-readiness` plus docs, README navigation, examples, and unit coverage for setup validation handoff.
+- Added reviewer handoff bundle export workflow with Markdown/JSON generation, CLI/docs/README navigation, and tests for packaging reproducible validation evidence without changing model behavior.
+- Added scenario triage summary export workflow with Markdown/JSON artifacts, CLI/docs/README navigation, examples, and unit coverage for sorting analytical scenarios by urgency, confidence, and provenance gaps.
+- Added release notes export workflow with Markdown/JSON outputs, CLI wiring, documentation, examples, and tests for reproducible maintainer handoff.
+- Added release bundle index export workflow with Markdown/JSON outputs, CLI wiring, documentation, examples, and tests to summarize generated artifacts and safe analytical framing for release handoff.
+- Added artifact manifest export workflow with Markdown/JSON outputs, CLI wiring, documentation, examples, and tests to track generated artifact purpose, provenance, validation commands, and handoff notes.
+- Added dashboard export workflow with Markdown/JSON outputs, CLI wiring, documentation, examples, and tests to make analytical scenario comparisons easier to review and hand off.
+- Added API example export workflow with JSON and Markdown outputs, CLI wiring, docs, examples, and tests so downstream users can validate request/response contracts reproducibly.
+- Added OpenAPI export workflow with CLI/docs/tests/examples so API consumers can validate schemas and integration contracts reproducibly.
+- Added release health CLI diagnostics with JSON/Markdown output, documentation, examples, and tests for safe analytical readiness checks.
+- Added setup diagnostics CLI with JSON/Markdown output, documentation, examples, and tests for environment validation and safe defaults.
+- Added CLI entry point docs, tests, and packaging metadata so users can run diagnostics through `military-nn-troop-prediction` after installation.
+- Added packaging metadata and setup guidance for editable installs, runtime dependencies, and local development workflows.
+- Added README quick start, project structure, CLI usage, safety notes, and contribution guidance.
+- Added a project roadmap covering defensive analytics, provenance, uncertainty, reproducibility, CLI ergonomics, and safe model framing.
+- Added MIT license and repository housekeeping docs.
