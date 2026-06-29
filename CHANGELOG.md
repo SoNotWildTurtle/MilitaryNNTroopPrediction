@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added `docs/reviewer_handoff_navigation.md` as a first-stop routing map for hosted checks, workflow gates, schema docs, merge readiness records, blocker decisions, artifact provenance, gap reports, and narrow rerun commands.
+- Added README links and static regression coverage for the reviewer handoff navigation map so reviewers can find the right evidence guide without duplicating existing workflows.
 - Added `docs/review_blocker_decision_tree.md` with a reviewer-focused blocker taxonomy, narrow rerun map, final diff safety checklist, evidence capture guidance, safe analytical framing notes, and rollback expectations.
 - Added static regression coverage for the review blocker decision tree so CI, review, scope, handoff, and ready-to-merge states stay documented.
 - Added `docs/merge_readiness_record_template.md` with a copyable final merge-readiness record for target branch, final head SHA, hosted checks, local validation, diagnostics, diff review, blockers, compatibility, rollback, and safe analytical framing.
