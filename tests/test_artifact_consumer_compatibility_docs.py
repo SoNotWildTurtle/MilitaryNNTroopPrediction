@@ -9,12 +9,36 @@ model inference, or deployment workflows.
 from __future__ import annotations
 
 from pathlib import Path
+import re
 import unittest
 
 
 ROOT = Path(__file__).resolve().parents[1]
 DOC = ROOT / "docs" / "artifact_consumer_compatibility.md"
 CHANGELOG = ROOT / "CHANGELOG.md"
+
+
+def normalized_text(value: str) -> str:
+    """Return text normalized for prose checks while preserving behavior checks.
+
+    These documentation tests should fail when required guidance disappears, but they
+    should not fail because a human-facing guide changes harmless capitalization,
+    wraps a line differently, or uses punctuation such as a hyphen or underscore in a
+    heading, filename-adjacent phrase, or PR-head-SHA phrase.
+    """
+
+    normalized = value.lower().replace("_", " ").replace("-", " ")
+    return re.sub(r"\s+", " ", normalized).strip()
+
+
+def assert_normalized_contains(
+    test_case: unittest.TestCase,
+    needle: str,
+    haystack: str,
+) -> None:
+    """Assert that prose contains a phrase without brittle formatting coupling."""
+
+    test_case.assertIn(normalized_text(needle), normalized_text(haystack))
 
 
 class ArtifactConsumerCompatibilityDocsTests(unittest.TestCase):
@@ -56,7 +80,7 @@ class ArtifactConsumerCompatibilityDocsTests(unittest.TestCase):
             "empty optional lists",
         ]:
             with self.subTest(term=term):
-                self.assertIn(term, content)
+                assert_normalized_contains(self, term, content)
 
     def test_recommended_parsing_order_mentions_core_handoff_artifacts(self) -> None:
         content = DOC.read_text(encoding="utf-8")
@@ -82,7 +106,7 @@ class ArtifactConsumerCompatibilityDocsTests(unittest.TestCase):
                 self.assertIn(artifact, content)
 
     def test_merge_blockers_and_wrong_head_checks_are_documented(self) -> None:
-        content = DOC.read_text(encoding="utf-8").lower()
+        content = DOC.read_text(encoding="utf-8")
 
         for blocker in [
             "missing",
@@ -99,7 +123,7 @@ class ArtifactConsumerCompatibilityDocsTests(unittest.TestCase):
             "required hosted gate",
         ]:
             with self.subTest(blocker=blocker):
-                self.assertIn(blocker, content)
+                assert_normalized_contains(self, blocker, content)
 
     def test_related_docs_and_narrow_commands_remain_discoverable(self) -> None:
         content = DOC.read_text(encoding="utf-8")
@@ -126,7 +150,7 @@ class ArtifactConsumerCompatibilityDocsTests(unittest.TestCase):
 
     def test_documents_compatibility_rollback_migration_and_changelog(self) -> None:
         doc = DOC.read_text(encoding="utf-8")
-        changelog = CHANGELOG.read_text(encoding="utf-8").lower()
+        changelog = CHANGELOG.read_text(encoding="utf-8")
 
         self.assertIn("changes no runtime behavior", doc)
         self.assertIn("public API", doc)
@@ -137,7 +161,7 @@ class ArtifactConsumerCompatibilityDocsTests(unittest.TestCase):
         self.assertIn("migration note", doc)
         self.assertIn("old and new field names", doc)
         self.assertIn("additive, deprecated, or breaking", doc)
-        self.assertIn("artifact consumer compatibility", changelog)
+        assert_normalized_contains(self, "artifact consumer compatibility", changelog)
 
 
 if __name__ == "__main__":
