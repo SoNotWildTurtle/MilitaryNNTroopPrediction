@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added `docs/merge_readiness_record_template.md` with a copyable final merge-readiness record for target branch, final head SHA, hosted checks, local validation, diagnostics, diff review, blockers, compatibility, rollback, and safe analytical framing.
+- Added static regression coverage for the merge-readiness record template so missing hosted validation remains a documented blocker.
 - Added `docs/final_merge_evidence_packet.md` with a final head-SHA, hosted-check, diagnostic-artifact, diff-review, blocker, compatibility, rollback, and safe analytical framing checklist for merge decisions.
 - Added static regression coverage for the final merge evidence packet so unavailable validation remains documented as a blocker.
 - Added `schema_version`, `status_explanation`, `merge_blockers`, `source_artifacts`, and deterministic review-order metadata to `triage_summary` JSON/Markdown output so CI blockers are easier to parse, reproduce, and hand off safely.
