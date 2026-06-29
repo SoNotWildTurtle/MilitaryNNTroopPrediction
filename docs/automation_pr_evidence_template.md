@@ -2,7 +2,7 @@
 
 Use this template when an automation-maintained pull request needs a concise, reviewable description that ties the change to validation evidence, safe analytical framing, compatibility, rollback, and merge blockers. It is intentionally additive and does not replace `docs/automation_run_preflight.md`, `docs/validation_evidence_crosswalk.md`, `docs/hosted_check_evidence_log.md`, `docs/merge_readiness_record_template.md`, or `docs/post_merge_verification_receipt.md`.
 
-The template is documentation-only. It does not run prediction workflows, fetch live data, change model behavior, bypass branch protection, or imply operational certainty. Predictive outputs and generated artifacts must remain framed as analytical estimates, synthetic fixtures, static previews, diagnostics, or reviewer handoff evidence.
+The template is documentation-only. It does not run prediction workflows, does not fetch live data, change model behavior, bypass branch protection, or imply operational certainty. Predictive outputs and generated artifacts must remain framed as analytical estimates, synthetic fixtures, static previews, diagnostics, or reviewer handoff evidence.
 
 ## Copyable PR body
 
