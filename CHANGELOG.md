@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added `docs/artifact_consumer_compatibility.md` and static regression coverage so downstream JSON/Markdown consumers preserve unknown fields, schema-version hints, uncertainty caveats, merge blockers, provenance labels, rollback guidance, and safe analytical framing while reading generated diagnostics bundles.
 - Added `schema_version` metadata to `provenance_validation_matrix` JSON/Markdown output so downstream handoff readers can detect the matrix contract version without guessing from field presence.
 - Added `docs/provenance_validation_matrix_schema.md` and regression coverage for the provenance validation matrix contract, required row fields, compatibility expectations, safe analytical framing, and rollback guidance.
 - Added `docs/post_merge_verification_receipt.md` as a copyable post-merge receipt for target-branch verification, resulting merge commit SHA, required hosted check evidence, stacked PR follow-up, compatibility, rollback, and safe analytical framing after merge.
