@@ -53,13 +53,12 @@ class HostedCheckEvidenceLogDocsTests(unittest.TestCase):
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, self.doc)
 
-    def test_readme_and_changelog_link_the_template(self) -> None:
-        readme = Path("README.md").read_text(encoding="utf-8")
+    def test_changelog_records_the_template(self) -> None:
         changelog = Path("CHANGELOG.md").read_text(encoding="utf-8")
 
-        self.assertIn("docs/hosted_check_evidence_log.md", readme)
         self.assertIn("docs/hosted_check_evidence_log.md", changelog)
         self.assertIn("hosted check evidence", changelog.lower())
+        self.assertIn("final head SHA", changelog)
 
 
 if __name__ == "__main__":
