@@ -17,6 +17,7 @@ This repository provides a starting point for a machine vision application that 
 - `CONTRIBUTING.md` – safe contribution scope, PR checklist, and reviewer guidance
 - `docs/common_tasks.md` – examples for common `make` workflows
 - `docs/ci_troubleshooting.md` – local reproduction and diagnostics guide for CI failures
+- `docs/automation_run_preflight.md` – start-of-run checklist for default branch, open PRs, hosted checks, narrow reruns, additive scope, and merge readiness
 - `docs/reviewer_handoff_navigation.md` – first-stop routing map for reviewer handoff docs, generated artifacts, and narrow rerun commands
 - `docs/release_bundle_review.md` – reviewer checklist for generated diagnostics bundles
 - `docs/artifact_gap_report.md` – bundle completeness and suspicious-artifact audit workflow
@@ -45,7 +46,7 @@ make configure
 make verify
 ```
 
-`make verify` runs the minimal setup doctor, local smoke/unit tests, and the diagnostics bundle generator in one safe pre-PR pass. See `docs/common_tasks.md` for the full target map, `CONTRIBUTING.md` for the safe contribution checklist, `docs/ci_troubleshooting.md` when a hosted CI run needs local reproduction, `docs/reviewer_handoff_navigation.md` when you need the first-stop map for reviewer handoff docs and generated artifacts, `docs/release_bundle_review.md` when reviewing generated bundles, `docs/artifact_gap_report.md` when checking bundle completeness, `docs/artifact_provenance_ledger.md` when separating generated review evidence from synthetic fixtures and previews, `docs/operator_status_board.md` when you need a fast non-technical status table, `docs/evidence_checklist.md` when validating baseline handoff evidence, and `docs/synthetic_data_fixtures.md` when you need safe demo records without live data sources.
+`make verify` runs the minimal setup doctor, local smoke/unit tests, and the diagnostics bundle generator in one safe pre-PR pass. See `docs/common_tasks.md` for the full target map, `CONTRIBUTING.md` for the safe contribution checklist, `docs/automation_run_preflight.md` before opening or merging recurring maintenance work, `docs/ci_troubleshooting.md` when a hosted CI run needs local reproduction, `docs/reviewer_handoff_navigation.md` when you need the first-stop map for reviewer handoff docs and generated artifacts, `docs/release_bundle_review.md` when reviewing generated bundles, `docs/artifact_gap_report.md` when checking bundle completeness, `docs/artifact_provenance_ledger.md` when separating generated review evidence from synthetic fixtures and previews, `docs/operator_status_board.md` when you need a fast non-technical status table, `docs/evidence_checklist.md` when validating baseline handoff evidence, and `docs/synthetic_data_fixtures.md` when you need safe demo records without live data sources.
 
 For a guided local setup path that installs the small core dependency set, creates
 `.env` when needed, runs diagnostics, and prints the next command to run:
@@ -317,122 +318,3 @@ not fetch live imagery, connect to MongoDB, or run prediction models. CI and
 `scripts/ci_report.sh` include this HTML mockup in the `ci-diagnostics` artifact
 bundle so non-technical reviewers can inspect the analytical UI preview without
 cloning the repository or launching the API.
-
-To export safe JSONL/CSV fixture records for data-loading demos or client tests:
-
-```bash
-python -m app.cli.synthetic_data_fixtures
-python -m app.cli.synthetic_data_fixtures --output-dir data/fixtures --json
-# or
-make synthetic-fixtures
-```
-
-These fixture files are generated from `app.api.examples`, so they stay aligned
-with the synthetic API response examples and dashboard mockups while remaining
-safe placeholders with no live data access.
-
-To generate a release bundle landing page for any diagnostics directory:
-
-```bash
-python -m app.cli.release_bundle_index --artifact-dir ci_artifacts
-python -m app.cli.release_bundle_index --artifact-dir ci_artifacts --html-path release-bundle-index.html
-# or
-bash scripts/export_release_bundle_index.sh
-# or
-make bundle-index
-```
-
-To generate lightweight SVG preview cards for static HTML outputs without a
-browser, Playwright, Selenium, or live API server:
-
-```bash
-python -m app.cli.export_html_previews --artifact-dir ci_artifacts
-python -m app.cli.export_html_previews --artifact-dir ci_artifacts --output-dir ci_artifacts/previews --markdown-path ci_artifacts/html-previews.md
-# or
-make previews
-```
-
-The preview exporter reads generated HTML files such as `dashboard-mockup.html`
-and `release-bundle-index.html`, extracts titles, headings, excerpts, and simple
-link/table/section counts, and writes small SVG cards plus a Markdown index. This
-is useful for CI artifact browsing, release notes, and quick screenshots when a
-reviewer does not want to launch the full HTML page.
-
-To index any generated diagnostics directory with file sizes, SHA-256 hashes,
-and missing expected outputs:
-
-```bash
-python -m app.cli.artifact_manifest --artifact-dir ci_artifacts
-python -m app.cli.artifact_manifest --artifact-dir ci_artifacts --json-path manifest.json --markdown-path manifest.md
-# or
-make manifest
-```
-
-To audit a generated diagnostics directory for missing, empty, or suspiciously
-small expected outputs:
-
-```bash
-python -m app.cli.artifact_gap_report --artifact-dir ci_artifacts
-python -m app.cli.artifact_gap_report --artifact-dir ci_artifacts --fail-on-gap
-# or
-make artifact-gap-report
-```
-
-This report is a safe local completeness check for reviewer handoff bundles. It
-reads only the generated manifest and artifact metadata; it does not run live data
-collection, model inference, prediction, deployment, or network workflows.
-
-To classify generated diagnostics, synthetic fixtures, static previews, API
-contracts, handoff outputs, and reproducibility evidence by provenance:
-
-```bash
-python -m app.cli.artifact_provenance_ledger --artifact-dir ci_artifacts
-python -m app.cli.artifact_provenance_ledger --artifact-dir ci_artifacts --json-path ci_artifacts/artifact-provenance-ledger.json --markdown-path ci_artifacts/artifact-provenance-ledger.md
-# or
-make provenance-ledger
-```
-
-The ledger reads only `artifact-manifest.json` and labels files that should not be
-mistaken for operational evidence, such as synthetic examples and static previews.
-
-To generate a quick non-technical operator status board from a diagnostics bundle:
-
-```bash
-python -m app.cli.operator_status_board --artifact-dir ci_artifacts
-python -m app.cli.operator_status_board --artifact-dir ci_artifacts --markdown-path ci_artifacts/operator-status-board.md --json-path ci_artifacts/operator-status-board.json
-# or
-make operator-status-board
-```
-
-The board reads only generated diagnostics such as the manifest, reviewer handoff,
-release health, triage summary, operator readiness, artifact gap report, and
-automation plan. It emits a copyable status line, severity, action table, key
-artifact table, and recommended next command for fast handoff.
-
-To turn a release health JSON file plus an artifact manifest into manager-friendly
-release notes:
-
-```bash
-python -m app.cli.release_notes
-python -m app.cli.release_notes --health-json ci_artifacts/release-health.json --manifest-json ci_artifacts/artifact-manifest.json --markdown-path ci_artifacts/release-notes.md --json-path ci_artifacts/release-notes.json
-# or
-make release-notes
-```
-
-The release notes summarize readiness, health counts, missing expected artifacts,
-priority failures or warnings, reviewer artifacts, and a recommended next step.
-This is useful when sharing CI bundles with users who need a quick analytical
-handoff rather than raw JSON diagnostics.
-
-To generate the baseline evidence checklist for a diagnostics bundle:
-
-```bash
-python -m app.cli.evidence_checklist --artifact-dir ci_artifacts
-python -m app.cli.evidence_checklist --artifact-dir ci_artifacts --markdown-path ci_artifacts/evidence-checklist.md --json-path ci_artifacts/evidence-checklist.json
-# or
-make evidence-checklist
-```
-
-The checklist summarizes whether key generated evidence exists for provenance,
-uncertainty, validation, reviewer handoff, handoff integrity, and safe analytical
-framing. It does not validate operational truth or imply certainty.
