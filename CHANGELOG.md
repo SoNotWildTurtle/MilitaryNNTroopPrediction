@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added `docs/review_blocker_decision_tree.md` with a reviewer-focused blocker taxonomy, narrow rerun map, final diff safety checklist, evidence capture guidance, safe analytical framing notes, and rollback expectations.
+- Added static regression coverage for the review blocker decision tree so CI, review, scope, handoff, and ready-to-merge states stay documented.
 - Added `docs/merge_readiness_record_template.md` with a copyable final merge-readiness record for target branch, final head SHA, hosted checks, local validation, diagnostics, diff review, blockers, compatibility, rollback, and safe analytical framing.
 - Added static regression coverage for the merge-readiness record template so missing hosted validation remains a documented blocker.
 - Added `docs/final_merge_evidence_packet.md` with a final head-SHA, hosted-check, diagnostic-artifact, diff-review, blocker, compatibility, rollback, and safe analytical framing checklist for merge decisions.
