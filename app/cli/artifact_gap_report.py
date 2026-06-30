@@ -42,6 +42,10 @@ MIN_SIZE_BYTES: Dict[str, int] = {
     "operator-readiness.json": 20,
     "automation-plan.md": 20,
     "automation-plan.json": 20,
+    "implementation-acceptance-checklist.md": 20,
+    "implementation-acceptance-checklist.json": 20,
+    "implementation-acceptance-handoff.md": 20,
+    "implementation-acceptance-handoff.json": 20,
 }
 
 

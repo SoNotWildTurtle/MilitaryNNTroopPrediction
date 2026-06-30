@@ -13,6 +13,11 @@ This is intended to make handoffs safer and faster. The manifest proves what was
 generated; the gap report tells a reviewer whether the bundle looks complete
 enough to trust before opening larger HTML, Markdown, or JSON artifacts.
 
+Implementation acceptance checklist and handoff files are first-class expected
+artifacts. If either the Markdown, JSON, or CLI help capture is missing after
+`make ci-report`, the report should stay blocked until the diagnostics bundle is
+regenerated or the missing output is explained.
+
 ## Usage
 
 ```bash
