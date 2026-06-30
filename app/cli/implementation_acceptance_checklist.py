@@ -17,7 +17,7 @@ from typing import Any, Dict, Iterable, Mapping, Sequence
 
 DEFAULT_MARKDOWN_NAME = "implementation-acceptance-checklist.md"
 DEFAULT_JSON_NAME = "implementation-acceptance-checklist.json"
-SCHEMA_VERSION = "1.1"
+SCHEMA_VERSION = "1.2"
 
 SAFE_SCOPE = (
     "Acceptance gates are for lawful defensive analytical repository maintenance, "
@@ -158,6 +158,21 @@ def _gate_summary(gates: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
     }
 
 
+def _gate_evidence_manifest(gates: Sequence[Mapping[str, Any]]) -> Sequence[Dict[str, Any]]:
+    return [
+        {
+            "gate_id": str(gate.get("gate_id", "unknown")),
+            "title": str(gate.get("title", "Untitled acceptance gate")),
+            "blocking_if_missing": bool(gate.get("blocking_if_missing")),
+            "evidence_status": "not_collected",
+            "evidence_sources": [],
+            "reviewer_notes": "",
+            "missing_evidence_blocks_merge": bool(gate.get("blocking_if_missing")),
+        }
+        for gate in gates
+    ]
+
+
 def build_acceptance_checklist(
     source: Mapping[str, Any] | None = None,
     generated_at: datetime | None = None,
@@ -205,6 +220,7 @@ def build_acceptance_checklist(
         },
         "acceptance_gates": acceptance_gates,
         "gate_summary": _gate_summary(acceptance_gates),
+        "gate_evidence_manifest": _gate_evidence_manifest(acceptance_gates),
         "focus_gate_hints": gate_hints,
         "validation_commands": validation_commands,
         "merge_blockers": merge_blockers,
@@ -216,6 +232,7 @@ def build_acceptance_checklist(
             "diff_review_for_deletions_secrets_generated_artifacts_and_unsupported_claims",
             "compatibility_and_rollback_notes",
             "safe_analytical_framing_confirmation",
+            "gate_evidence_manifest_updates",
             "next_follow_up_task",
         ],
         "compatibility_notes": (
@@ -268,6 +285,27 @@ def _markdown_lines(checklist: Mapping[str, Any]) -> Iterable[str]:
     for gate in checklist["acceptance_gates"]:
         required = str(gate["required_evidence"]).replace("|", "\\|")
         yield f"| `{gate['gate_id']}` {gate['title']} | {required} | {gate['blocking_if_missing']} |"
+    yield ""
+    yield "## Gate evidence manifest"
+    yield ""
+    yield "| Gate | Evidence status | Evidence sources | Missing evidence blocks merge |"
+    yield "| --- | --- | --- | --- |"
+    evidence_manifest = checklist.get("gate_evidence_manifest", [])
+    if not isinstance(evidence_manifest, Sequence) or isinstance(evidence_manifest, (str, bytes)):
+        evidence_manifest = []
+    for entry in evidence_manifest:
+        if not isinstance(entry, Mapping):
+            continue
+        sources = entry.get("evidence_sources", [])
+        if isinstance(sources, Sequence) and not isinstance(sources, (str, bytes)):
+            source_count = len(sources)
+        else:
+            source_count = "unknown"
+        yield (
+            f"| `{entry.get('gate_id', 'unknown')}` {entry.get('title', '')} | "
+            f"{entry.get('evidence_status', 'not_collected')} | {source_count} | "
+            f"{entry.get('missing_evidence_blocks_merge', True)} |"
+        )
     yield ""
     yield "## Focus-specific hints"
     yield ""
