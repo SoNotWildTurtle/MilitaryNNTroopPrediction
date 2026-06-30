@@ -17,7 +17,7 @@ A blank checklist can be generated without `--decision-record-path`, but the JSO
 
 ## Current schema version
 
-`schema_version` is currently `1.3`.
+`schema_version` is currently `1.3` for the checklist producer. The downstream `implementation_acceptance_handoff` artifact uses its own additive `schema_version` and may include additional evidence-status diagnostics derived from the checklist manifest.
 
 Consumers should preserve unknown fields and should treat new top-level fields as additive unless release notes explicitly state otherwise. A consumer that only understands an older schema can still read `candidate`, `acceptance_gates`, `merge_blockers`, and `handoff_fields_to_capture` while ignoring newer gate-summary and evidence-readiness fields.
 
@@ -120,13 +120,22 @@ Accepted ready statuses are `collected` and `verified`. Reviewers should record 
 - `ready_statuses`
 - `review_decision_rule`
 
+When emitted by `implementation_acceptance_handoff`, the same summary also includes evidence-status diagnostics so reviewers can audit edited manifests without scraping the completed rows:
+
+- `status_counts` — count of normalized `evidence_status` values.
+- `known_statuses` — statuses the handoff generator recognizes for compatibility review.
+- `unknown_statuses` — unexpected statuses preserved from reviewer-edited input.
+- `unknown_status_gate_ids` — gate IDs that used unknown statuses.
+- `status_review_warning` — `true` when unknown statuses require reviewer confirmation.
+- `status_review_rule` — reminder that unknown statuses are preserved but not ready before merge.
+
 A blocking evidence row is ready only when all of the following are true:
 
 1. `evidence_status` is `collected` or `verified`.
 2. `evidence_sources` contains at least one source.
 3. `missing_evidence_blocks_merge` is `false`.
 
-Generated checklists therefore begin with `ready_for_merge_evidence_review: false`. That is expected template behavior, not a CLI failure.
+Generated checklists therefore begin with `ready_for_merge_evidence_review: false`. That is expected template behavior, not a CLI failure. Unknown statuses in a downstream handoff remain merge blockers until reviewers normalize the row or provide collected/verified evidence.
 
 ## Compatibility and Rollback
 
