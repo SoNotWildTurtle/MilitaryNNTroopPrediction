@@ -37,7 +37,7 @@ class ImplementationAcceptanceChecklistTests(unittest.TestCase):
             generated_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
         )
 
-        self.assertEqual(checklist["schema_version"], "1.2")
+        self.assertEqual(checklist["schema_version"], "1.3")
         self.assertEqual(checklist["status"], "ready_for_review_planning")
         self.assertEqual(checklist["candidate"]["candidate_id"], "candidate-03")
         self.assertIn("avoid wording", " ".join(checklist["focus_gate_hints"]))
@@ -102,6 +102,21 @@ class ImplementationAcceptanceChecklistTests(unittest.TestCase):
         self.assertIn("Gate evidence manifest", markdown)
         self.assertIn("not_collected", markdown)
 
+    def test_gate_evidence_readiness_summary_reports_missing_blocking_rows(self) -> None:
+        checklist = build_acceptance_checklist(generated_at=datetime(2026, 1, 1, tzinfo=timezone.utc))
+        summary = checklist["gate_evidence_readiness_summary"]
+        markdown = render_markdown(checklist)
+
+        self.assertFalse(summary["ready_for_merge_evidence_review"])
+        self.assertEqual(summary["blocking_rows"], checklist["gate_summary"]["blocking_gates"])
+        self.assertEqual(summary["ready_blocking_rows"], 0)
+        self.assertEqual(summary["missing_blocking_rows"], checklist["gate_summary"]["blocking_gates"])
+        self.assertEqual(summary["missing_blocking_gate_ids"], checklist["gate_summary"]["blocking_gate_ids"])
+        self.assertEqual(summary["ready_statuses"], ["collected", "verified"])
+        self.assertIn("gate_evidence_readiness_summary", checklist["handoff_fields_to_capture"])
+        self.assertIn("Gate evidence readiness summary", markdown)
+        self.assertIn("Ready for merge evidence review: False", markdown)
+
     def test_writers_create_markdown_and_json_outputs(self) -> None:
         checklist = build_acceptance_checklist(
             {
@@ -127,6 +142,7 @@ class ImplementationAcceptanceChecklistTests(unittest.TestCase):
         self.assertEqual(parsed["candidate"]["candidate_id"], "candidate-04")
         self.assertEqual(parsed["gate_summary"]["blocking_gates"], 6)
         self.assertEqual(parsed["gate_evidence_manifest"][0]["evidence_status"], "not_collected")
+        self.assertEqual(parsed["gate_evidence_readiness_summary"]["missing_blocking_rows"], 6)
         self.assertIn("revert", parsed["rollback_notes"].lower())
 
 
