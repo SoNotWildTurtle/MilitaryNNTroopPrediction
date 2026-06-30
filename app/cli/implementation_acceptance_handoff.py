@@ -140,8 +140,8 @@ def build_acceptance_handoff(
             "prediction models, APIs, database schemas, generated analytical outputs, or live data workflows."
         ),
         "rollback_notes": (
-            "Delete the generated handoff artifact or revert the handoff CLI/docs/tests PR. Do not delete "
-            "unrelated acceptance checklist, validation, or analytical-safety tooling."
+            "Rollback by deleting the generated handoff artifact or reverting the handoff CLI/docs/tests PR. "
+            "Do not delete unrelated acceptance checklist, validation, or analytical-safety tooling."
         ),
     }
 
