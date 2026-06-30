@@ -238,3 +238,225 @@ bash scripts/test.sh
 # or
 make test
 ```
+
+For a fuller local pre-PR verification pass that also creates the diagnostic
+
+```bash
+make verify
+```
+
+CI also creates a `ci-diagnostics` artifact bundle on every run, even failed
+runs. The bundle includes the Python and pip versions, `pip freeze`, doctor JSON,
+release health reports, generated release notes, the generated FastAPI OpenAPI
+contract, synthetic API response examples, safe JSONL/CSV synthetic data fixtures,
+a self-contained static dashboard mockup, a reviewer-friendly release bundle
+index page, lightweight SVG previews for static HTML outputs, SHA-256 artifact
+manifests, diagnostic artifact gap reports, artifact provenance ledgers, operator
+readiness briefs, operator status boards, automation plans, evidence checklists,
+and the current help output for the doctor, quickstart, release health, release
+notes, OpenAPI export, API example export, dashboard mockup export, synthetic
+fixture export, release bundle index, HTML preview export, artifact manifest,
+artifact gap report, artifact provenance ledger, operator readiness, operator
+status board, evidence checklist, and automation plan CLIs. To build the same
+bundle locally:
+
+```bash
+bash scripts/ci_report.sh
+# or
+make ci-report
+```
+
+Open `ci_artifacts/release-bundle-index.html` first when reviewing a local or CI
+bundle. It links the release health summary, OpenAPI contract, synthetic examples,
+dashboard mockup, synthetic data fixtures, artifact manifest, artifact gap report,
+artifact provenance ledger, operator readiness, operator status board, automation
+plan, baseline evidence checklist, and all indexed bundle files from one static,
+dependency-free page. Use `docs/release_bundle_review.md` as the checklist for
+confirming the bundle is complete before handing it to another reviewer.
+
+If hosted CI fails, follow `docs/ci_troubleshooting.md` or run the short helper:
+
+```bash
+make ci-triage
+```
+
+It prints the exact local reproduction command, the expected artifact landing
+page, and the narrow targets to rerun when a generated artifact is missing.
+
+To export only the API contract without launching the server:
+
+```bash
+python -m app.cli.export_openapi
+python -m app.cli.export_openapi --json-path openapi.json --markdown-path openapi-summary.md
+# or
+make openapi
+```
+
+To export synthetic API response examples for dashboard mockups, docs, and
+client tests without MongoDB, Sentinel Hub, TensorFlow, YOLO, or live imagery:
+
+```bash
+python -m app.cli.export_api_examples
+python -m app.cli.export_api_examples --json-path api-response-examples.json --markdown-path api-response-examples.md
+# or
+bash scripts/export_api_examples.sh
+# or
+make examples
+```
+
+To turn those same safe examples into a self-contained HTML dashboard preview:
+
+```bash
+python -m app.cli.export_dashboard_mockup
+python -m app.cli.export_dashboard_mockup --html-path dashboard-mockup.html
+# or
+bash scripts/export_dashboard_mockup.sh
+# or
+make dashboard
+```
+
+The generated page is static and dependency-free. It is intended for user
+onboarding, dashboard prototyping, screenshots, and API client planning; it does
+not fetch live imagery, connect to MongoDB, or run prediction models. CI and
+`scripts/ci_report.sh` include this HTML mockup in the `ci-diagnostics` artifact
+bundle so non-technical reviewers can inspect the analytical UI preview without
+cloning the repository or launching the API.
+
+To export safe JSONL/CSV fixture records for data-loading demos or client tests:
+
+```bash
+python -m app.cli.synthetic_data_fixtures
+python -m app.cli.synthetic_data_fixtures --output-dir data/fixtures --json
+# or
+make synthetic-fixtures
+```
+
+These fixture files are generated from `app.api.examples`, so they stay aligned
+with the synthetic API response examples and dashboard mockups while remaining
+safe placeholders with no live data access.
+
+To generate a release bundle landing page for any diagnostics directory:
+
+```bash
+python -m app.cli.release_bundle_index --artifact-dir ci_artifacts
+python -m app.cli.release_bundle_index --artifact-dir ci_artifacts --html-path release-bundle-index.html
+# or
+bash scripts/export_release_bundle_index.sh
+# or
+make bundle-index
+```
+
+To generate lightweight SVG preview cards for static HTML outputs without a
+browser, Playwright, Selenium, or live API server:
+
+```bash
+python -m app.cli.export_html_previews --artifact-dir ci_artifacts
+python -m app.cli.export_html_previews --artifact-dir ci_artifacts --output-dir ci_artifacts/previews --markdown-path ci_artifacts/html-previews.md
+# or
+make previews
+```
+
+The preview exporter reads generated HTML files such as `dashboard-mockup.html`
+and `release-bundle-index.html`, extracts titles, headings, excerpts, and simple
+link/table/section counts, and writes small SVG cards plus a Markdown index. This
+is useful for CI artifact browsing, release notes, and quick screenshots when a
+reviewer does not want to launch the full HTML page.
+
+To index any generated diagnostics directory with file sizes, SHA-256 hashes,
+and missing expected outputs:
+
+```bash
+python -m app.cli.artifact_manifest --artifact-dir ci_artifacts
+python -m app.cli.artifact_manifest --artifact-dir ci_artifacts --json-path manifest.json --markdown-path manifest.md
+# or
+make manifest
+```
+
+To audit a generated diagnostics directory for missing, empty, or suspiciously
+small expected outputs:
+
+```bash
+python -m app.cli.artifact_gap_report --artifact-dir ci_artifacts
+python -m app.cli.artifact_gap_report --artifact-dir ci_artifacts --fail-on-gap
+# or
+make artifact-gap-report
+```
+
+This report is a safe local completeness check for reviewer handoff bundles. It
+reads only the generated manifest and artifact metadata; it does not run live data
+collection, model inference, prediction, deployment, or network workflows.
+
+To classify generated diagnostics, synthetic fixtures, static previews, API
+contracts, handoff outputs, and reproducibility evidence by provenance:
+
+```bash
+python -m app.cli.artifact_provenance_ledger --artifact-dir ci_artifacts
+python -m app.cli.artifact_provenance_ledger --artifact-dir ci_artifacts --json-path ci_artifacts/artifact-provenance-ledger.json --markdown-path ci_artifacts/artifact-provenance-ledger.md
+# or
+make provenance-ledger
+```
+
+The ledger reads only `artifact-manifest.json` and labels files that should not be
+mistaken for operational evidence, such as synthetic examples and static previews.
+
+To generate a quick non-technical operator status board from a diagnostics bundle:
+
+```bash
+python -m app.cli.operator_status_board --artifact-dir ci_artifacts
+python -m app.cli.operator_status_board --artifact-dir ci_artifacts --markdown-path ci_artifacts/operator-status-board.md --json-path ci_artifacts/operator-status-board.json
+# or
+make operator-status-board
+```
+
+The board reads only generated diagnostics such as the manifest, reviewer handoff,
+release health, triage summary, operator readiness, artifact gap report, and
+automation plan. It emits a copyable status line, severity, action table, key
+artifact table, and recommended next command for fast handoff.
+
+To turn a release health JSON file plus an artifact manifest into manager-friendly
+release notes:
+
+```bash
+python -m app.cli.release_notes
+python -m app.cli.release_notes --health-json ci_artifacts/release-health.json --manifest-json ci_artifacts/artifact-manifest.json --markdown-path ci_artifacts/release-notes.md --json-path ci_artifacts/release-notes.json
+# or
+make release-notes
+```
+
+The release notes summarize readiness, health counts, missing expected artifacts,
+priority failures or warnings, reviewer artifacts, and a recommended next step.
+This is useful when sharing CI bundles with users who need a quick analytical
+handoff rather than raw JSON diagnostics.
+
+To generate the baseline evidence checklist for a diagnostics bundle:
+
+```bash
+python -m app.cli.evidence_checklist --artifact-dir ci_artifacts
+python -m app.cli.evidence_checklist --artifact-dir ci_artifacts --markdown-path ci_artifacts/evidence-checklist.md --json-path ci_artifacts/evidence-checklist.json
+# or
+make evidence-checklist
+```
+
+The checklist summarizes whether key generated evidence exists for provenance,
+uncertainty, validation, reviewer handoff, handoff integrity, and safe analytical
+framing. It does not validate operational truth or imply certainty.
+
+To generate an offline continuity brief before selecting a new maintenance increment:
+
+```bash
+python -m app.cli.run_continuity_brief
+python -m app.cli.run_continuity_brief --markdown-path ci_artifacts/run-continuity-brief.md --json-path ci_artifacts/run-continuity-brief.json
+```
+
+The brief reads `CHANGELOG.md`, `goals.md`, and `docs/next_run_decision_register.md`; scores focus areas for user friendliness, validation, provenance, diagnostics, and automation planning; and reports blockers when continuity context is missing. It is planning evidence only and does not collect live data, run detection, run prediction, or imply operational certainty.
+
+To turn the offline next-increment candidate matrix into a machine-readable run decision record:
+
+```bash
+python -m app.cli.next_increment_candidates \
+  --no-markdown \
+  --json-path /tmp/next-increment-candidates.json \
+  --decision-record-path /tmp/run-decision-record.json
+```
+
+The decision record captures the selected candidate, alternatives considered, required merge evidence, validation plan, blockers, compatibility notes, rollback notes, safe analytical framing, and next follow-up candidate. It is repository-maintenance evidence only and does not run live data collection, detection, prediction, or operational tasking.
