@@ -29,7 +29,7 @@ _EXPECTED_ARTIFACT_ROWS = [
     ("operator-readiness.md", "Launch/no-launch readiness brief generated from diagnostics."),
     ("operator-readiness.json", "Machine-readable operator readiness brief generated from diagnostics."),
     ("operator-status-board.md", "Quick non-technical operator readiness board generated from diagnostics."),
-    ("operator-status-board.json", "Machine-readable operator status board."),
+    ("operator-status-board.json", "Machine-readable operator status board generated from diagnostics."),
     ("operator-session-plan.md", "Ranked next-session operator checklist generated from diagnostics."),
     ("operator-session-plan.json", "Machine-readable ranked next-session operator checklist."),
     ("operator-runbook-index.md", "Operator command, documentation, artifact, and safe-scope map."),
