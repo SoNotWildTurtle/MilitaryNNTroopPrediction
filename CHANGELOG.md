@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added `docs/implementation_acceptance_schema.md` and static regression coverage so downstream reviewers and release-bundle consumers can validate implementation acceptance JSON fields, gate-evidence readiness rules, compatibility expectations, rollback guidance, and safe analytical framing without scraping CLI code.
 - Promoted implementation acceptance checklist and handoff artifacts to first-class diagnostics provenance/gap-report artifacts so reviewers can see missing, undersized, and provenance-labeled acceptance evidence in the standard bundle without treating it as live analytical truth.
 - Wired the offline `implementation_acceptance_checklist` and `implementation_acceptance_handoff` CLIs into `scripts/ci_report.sh`, added CI-bundle documentation, and added static regression coverage so reviewer evidence handoff artifacts are generated automatically in the standard diagnostics bundle without running live collection, detection, prediction, or operational workflows.
 - Added `gate_evidence_manifest` metadata to the offline `implementation_acceptance_checklist` CLI, documentation, and tests so reviewers can track per-gate evidence status, evidence sources, notes, and merge-blocking missing evidence without scraping Markdown or claiming validation before evidence is collected.

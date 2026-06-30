@@ -44,6 +44,8 @@ The JSON output uses `schema_version: "1.3"` and includes:
 
 Consumers should preserve unknown fields so future additive schema keys do not break existing readers.
 
+For a field-by-field consumer contract, see `docs/implementation_acceptance_schema.md`. That schema guide documents top-level keys, candidate fields, gate rows, evidence-manifest readiness rules, compatibility expectations, rollback guidance, and safe analytical framing for downstream bundle readers.
+
 ## Gate summary review use
 
 `gate_summary` is intended for dashboards, release-bundle readers, and handoff validators that need to check acceptance-gate shape without parsing Markdown tables. A reviewer can compare `gate_summary.blocking_gates` with the number of gate rows in `acceptance_gates` and require concrete evidence for every ID in `gate_summary.blocking_gate_ids` before merge.
