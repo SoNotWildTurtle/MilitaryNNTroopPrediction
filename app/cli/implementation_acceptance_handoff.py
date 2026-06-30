@@ -181,6 +181,26 @@ def build_acceptance_handoff(
     }
 
 
+def _strict_validation_blockers(handoff: Mapping[str, Any]) -> Sequence[str]:
+    blockers = handoff.get("merge_blockers", [])
+    if isinstance(blockers, Sequence) and not isinstance(blockers, (str, bytes)):
+        normalized_blockers = [str(blocker) for blocker in blockers if str(blocker)]
+    else:
+        normalized_blockers = ["merge_blockers is not a parseable sequence."]
+    readiness = handoff.get("gate_evidence_readiness_summary", {})
+    if not isinstance(readiness, Mapping):
+        normalized_blockers.append("gate_evidence_readiness_summary is missing or malformed.")
+    elif not bool(readiness.get("ready_for_merge_evidence_review")):
+        normalized_blockers.append("Gate evidence readiness summary is not ready for merge evidence review.")
+    return normalized_blockers
+
+
+def strict_validation_passed(handoff: Mapping[str, Any]) -> bool:
+    """Return True when a handoff has no merge blockers and ready evidence rows."""
+
+    return not _strict_validation_blockers(handoff)
+
+
 def _markdown_lines(handoff: Mapping[str, Any]) -> Iterable[str]:
     yield "# Implementation Acceptance Evidence Handoff"
     yield ""
@@ -258,8 +278,6 @@ def _markdown_lines(handoff: Mapping[str, Any]) -> Iterable[str]:
     yield ""
     yield str(handoff["safe_scope"])
     yield ""
-    yield "## Compatibility and rollback"
-    yield ""
     yield f"- Compatibility: {handoff['compatibility_notes']}"
     yield f"- Rollback: {handoff['rollback_notes']}"
 
@@ -293,6 +311,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--json-path", type=Path, default=Path(DEFAULT_JSON_NAME), help="JSON output path.")
     parser.add_argument("--no-markdown", action="store_true", help="Skip Markdown output.")
     parser.add_argument("--no-json", action="store_true", help="Skip JSON output.")
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help=(
+            "Exit with status 1 when generated handoff evidence still has merge blockers or is not ready "
+            "for merge evidence review. Use after reviewers have filled the offline checklist evidence rows."
+        ),
+    )
     return parser
 
 
@@ -309,6 +335,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"Wrote implementation acceptance handoff JSON to {json_path}")
     if markdown_path is None and json_path is None:
         print("No outputs requested; remove --no-markdown or --no-json to write files.")
+    strict_blockers = _strict_validation_blockers(handoff) if args.strict else []
+    if strict_blockers:
+        print("Strict implementation acceptance handoff validation failed:")
+        for blocker in strict_blockers:
+            print(f"- {blocker}")
+        return 1
+    if args.strict:
+        print("Strict implementation acceptance handoff validation passed.")
     return 0
 
 
