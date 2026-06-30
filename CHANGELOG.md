@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added the offline `run_continuity_brief` CLI, documentation, and deterministic tests so recurring maintenance runs can generate a machine-readable roadmap/changelog/decision-register summary, avoid duplicating recent work, and select one cohesive additive next increment with blocker visibility and safe analytical framing.
 - Added `docs/next_run_decision_register.md` and static regression coverage so recurring automation runs select blocker-first, functional, mergeable next increments; avoid duplicate process-only docs; and record exact validation, rollback, safe analytical framing, and next-run follow-up fields.
 - Added `docs/repository_incremental_growth_plan.md` and static regression coverage so recurring repository maintenance preserves durable near-term, medium-term, and long-term repository goals, selects mergeable cohesive increments, avoids duplicated or fragmented busywork, and records follow-up work without replacing existing runbooks.
 - Added `docs/automation_pr_evidence_template.md` and static regression coverage as an automation PR evidence template so final head SHA, required hosted checks, local validation, diff review, compatibility impact, rollback path, blockers, and safe analytical framing are captured consistently in reviewable pull request descriptions without replacing existing runbooks.
