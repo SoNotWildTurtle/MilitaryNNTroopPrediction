@@ -17,7 +17,8 @@ from typing import Any, Dict, Iterable, Mapping, Sequence
 
 DEFAULT_MARKDOWN_NAME = "implementation-acceptance-checklist.md"
 DEFAULT_JSON_NAME = "implementation-acceptance-checklist.json"
-SCHEMA_VERSION = "1.2"
+SCHEMA_VERSION = "1.3"
+READY_EVIDENCE_STATUSES = {"collected", "verified"}
 
 SAFE_SCOPE = (
     "Acceptance gates are for lawful defensive analytical repository maintenance, "
@@ -173,6 +174,46 @@ def _gate_evidence_manifest(gates: Sequence[Mapping[str, Any]]) -> Sequence[Dict
     ]
 
 
+def _entry_sources(entry: Mapping[str, Any]) -> Sequence[Any]:
+    sources = entry.get("evidence_sources", [])
+    if isinstance(sources, Sequence) and not isinstance(sources, (str, bytes)):
+        return sources
+    return []
+
+
+def _evidence_ready(entry: Mapping[str, Any]) -> bool:
+    status = str(entry.get("evidence_status", "not_collected")).lower()
+    return (
+        status in READY_EVIDENCE_STATUSES
+        and bool(_entry_sources(entry))
+        and not bool(entry.get("missing_evidence_blocks_merge", True))
+    )
+
+
+def _gate_evidence_readiness_summary(manifest: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
+    entries = [entry for entry in manifest if isinstance(entry, Mapping)]
+    blocking_entries = [entry for entry in entries if bool(entry.get("blocking_if_missing"))]
+    ready_blocking_entries = [entry for entry in blocking_entries if _evidence_ready(entry)]
+    missing_blocking_gate_ids = [
+        str(entry.get("gate_id", "unknown"))
+        for entry in blocking_entries
+        if not _evidence_ready(entry)
+    ]
+    return {
+        "total_manifest_rows": len(entries),
+        "blocking_rows": len(blocking_entries),
+        "ready_blocking_rows": len(ready_blocking_entries),
+        "missing_blocking_rows": len(missing_blocking_gate_ids),
+        "missing_blocking_gate_ids": missing_blocking_gate_ids,
+        "ready_for_merge_evidence_review": not missing_blocking_gate_ids,
+        "ready_statuses": sorted(READY_EVIDENCE_STATUSES),
+        "review_decision_rule": (
+            "A blocking evidence row is ready only when status is collected or verified, "
+            "at least one evidence source is recorded, and missing_evidence_blocks_merge is false."
+        ),
+    }
+
+
 def build_acceptance_checklist(
     source: Mapping[str, Any] | None = None,
     generated_at: datetime | None = None,
@@ -203,6 +244,7 @@ def build_acceptance_checklist(
         gate_hints.append("capture final-head-SHA, hosted checks, local validation, rollback, and safe framing evidence")
 
     acceptance_gates = [dict(gate) for gate in BASE_ACCEPTANCE_GATES]
+    evidence_manifest = _gate_evidence_manifest(acceptance_gates)
 
     return {
         "generated_at": generated_at.isoformat(),
@@ -220,7 +262,8 @@ def build_acceptance_checklist(
         },
         "acceptance_gates": acceptance_gates,
         "gate_summary": _gate_summary(acceptance_gates),
-        "gate_evidence_manifest": _gate_evidence_manifest(acceptance_gates),
+        "gate_evidence_manifest": evidence_manifest,
+        "gate_evidence_readiness_summary": _gate_evidence_readiness_summary(evidence_manifest),
         "focus_gate_hints": gate_hints,
         "validation_commands": validation_commands,
         "merge_blockers": merge_blockers,
@@ -233,6 +276,7 @@ def build_acceptance_checklist(
             "compatibility_and_rollback_notes",
             "safe_analytical_framing_confirmation",
             "gate_evidence_manifest_updates",
+            "gate_evidence_readiness_summary",
             "next_follow_up_task",
         ],
         "compatibility_notes": (
@@ -296,16 +340,27 @@ def _markdown_lines(checklist: Mapping[str, Any]) -> Iterable[str]:
     for entry in evidence_manifest:
         if not isinstance(entry, Mapping):
             continue
-        sources = entry.get("evidence_sources", [])
-        if isinstance(sources, Sequence) and not isinstance(sources, (str, bytes)):
-            source_count = len(sources)
-        else:
-            source_count = "unknown"
+        source_count = len(_entry_sources(entry))
         yield (
             f"| `{entry.get('gate_id', 'unknown')}` {entry.get('title', '')} | "
             f"{entry.get('evidence_status', 'not_collected')} | {source_count} | "
             f"{entry.get('missing_evidence_blocks_merge', True)} |"
         )
+    yield ""
+    yield "## Gate evidence readiness summary"
+    yield ""
+    readiness = checklist.get("gate_evidence_readiness_summary", {})
+    if not isinstance(readiness, Mapping):
+        readiness = {}
+    yield f"- Ready for merge evidence review: {readiness.get('ready_for_merge_evidence_review', False)}"
+    yield f"- Ready blocking rows: {readiness.get('ready_blocking_rows', 0)} / {readiness.get('blocking_rows', 'unknown')}"
+    missing_gate_ids = readiness.get("missing_blocking_gate_ids", [])
+    if isinstance(missing_gate_ids, Sequence) and not isinstance(missing_gate_ids, (str, bytes)):
+        missing_gate_text = ", ".join(str(gate_id) for gate_id in missing_gate_ids) or "none"
+    else:
+        missing_gate_text = "unknown"
+    yield f"- Missing blocking gate IDs: {missing_gate_text}"
+    yield f"- Review decision rule: {readiness.get('review_decision_rule', 'Blocking evidence rows require sources before merge.')}"
     yield ""
     yield "## Focus-specific hints"
     yield ""
