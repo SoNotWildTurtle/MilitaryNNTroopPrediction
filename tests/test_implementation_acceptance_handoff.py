@@ -12,7 +12,9 @@ from app.cli.implementation_acceptance_checklist import build_acceptance_checkli
 from app.cli.implementation_acceptance_handoff import (
     SAFE_SCOPE,
     build_acceptance_handoff,
+    main,
     render_markdown,
+    strict_validation_passed,
     write_outputs,
 )
 
@@ -58,6 +60,7 @@ class ImplementationAcceptanceHandoffTests(unittest.TestCase):
         self.assertEqual(handoff["gate_evidence_readiness_summary"]["missing_blocking_gate_ids"], [])
         self.assertEqual(handoff["gate_evidence_readiness_summary"]["status_counts"], {"verified": 6})
         self.assertFalse(handoff["gate_evidence_readiness_summary"]["status_review_warning"])
+        self.assertTrue(strict_validation_passed(handoff))
         self.assertEqual(len(handoff["completed_gate_evidence_manifest"]), 6)
         self.assertIn("Completed gate evidence manifest", markdown)
         self.assertIn("Ready for merge evidence review: True", markdown)
@@ -76,6 +79,7 @@ class ImplementationAcceptanceHandoffTests(unittest.TestCase):
         self.assertEqual(handoff["status"], "blocked_missing_evidence")
         self.assertIn("scope-framing", handoff["gate_evidence_readiness_summary"]["missing_blocking_gate_ids"])
         self.assertTrue(any("scope-framing" in blocker for blocker in handoff["merge_blockers"]))
+        self.assertFalse(strict_validation_passed(handoff))
 
     def test_unknown_evidence_status_is_preserved_and_warns_reviewers(self) -> None:
         checklist = self._completed_checklist()
@@ -94,6 +98,7 @@ class ImplementationAcceptanceHandoffTests(unittest.TestCase):
         self.assertTrue(readiness["status_review_warning"])
         self.assertIn("Unknown evidence statuses: needs human review", markdown)
         self.assertTrue(any("Unknown evidence_status values" in blocker for blocker in handoff["merge_blockers"]))
+        self.assertFalse(strict_validation_passed(handoff))
 
     def test_empty_or_invalid_source_is_blocked_safely(self) -> None:
         handoff = build_acceptance_handoff(generated_at=datetime(2026, 1, 1, tzinfo=timezone.utc))
@@ -103,6 +108,7 @@ class ImplementationAcceptanceHandoffTests(unittest.TestCase):
         self.assertIn("No gate_evidence_manifest rows", handoff["merge_blockers"][0])
         self.assertFalse(handoff["gate_evidence_readiness_summary"]["ready_for_merge_evidence_review"])
         self.assertEqual(handoff["gate_evidence_readiness_summary"]["status_counts"], {})
+        self.assertFalse(strict_validation_passed(handoff))
         self.assertIn("not operational tasking", markdown)
 
     def test_writers_create_markdown_and_json_outputs(self) -> None:
@@ -123,6 +129,25 @@ class ImplementationAcceptanceHandoffTests(unittest.TestCase):
         self.assertEqual(parsed["gate_evidence_readiness_summary"]["ready_blocking_rows"], 6)
         self.assertEqual(parsed["gate_evidence_readiness_summary"]["status_counts"], {"verified": 6})
         self.assertIn("rollback", parsed["rollback_notes"].lower())
+
+    def test_strict_cli_fails_when_handoff_has_blockers(self) -> None:
+        exit_code = main(["--no-markdown", "--no-json", "--strict"])
+
+        self.assertEqual(exit_code, 1)
+
+    def test_strict_cli_passes_for_completed_evidence_manifest(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            checklist_path = Path(temp_dir) / "checklist.json"
+            checklist_path.write_text(json.dumps(self._completed_checklist()), encoding="utf-8")
+            exit_code = main([
+                "--checklist-json",
+                str(checklist_path),
+                "--no-markdown",
+                "--no-json",
+                "--strict",
+            ])
+
+        self.assertEqual(exit_code, 0)
 
 
 if __name__ == "__main__":
