@@ -8,7 +8,12 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
-from app.cli.next_increment_candidates import build_candidate_recipes, render_markdown, write_outputs
+from app.cli.next_increment_candidates import (
+    build_candidate_recipes,
+    build_decision_record,
+    render_markdown,
+    write_outputs,
+)
 
 
 class NextIncrementCandidateTests(unittest.TestCase):
@@ -81,7 +86,48 @@ class NextIncrementCandidateTests(unittest.TestCase):
         self.assertEqual(report["status"], "blocked")
         self.assertEqual(len(report["blockers"]), 2)
 
-    def test_writers_create_markdown_and_json(self) -> None:
+    def test_build_decision_record_captures_selected_candidate_and_merge_evidence(self) -> None:
+        report = build_candidate_recipes(
+            generated_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+            changelog_text="# Changelog\n\n## Unreleased\n\n- Added validation evidence.\n",
+            goals_text=(
+                "1. Automate validation evidence capture.\n"
+                "2. Provide an interactive setup CLI to write environment variables into a .env file.\n"
+            ),
+        )
+
+        record = build_decision_record(report)
+
+        self.assertEqual(record["schema_version"], "1.0")
+        self.assertEqual(record["status"], "ready_for_implementation")
+        self.assertIsNotNone(record["selected_candidate"])
+        self.assertIn("final_head_sha", record["required_evidence_before_merge"])
+        self.assertTrue(
+            any(
+                "--decision-record-path" in command
+                for command in record["validation_plan"]
+            )
+        )
+        self.assertIn("not operational tasking", record["safe_scope"])
+        self.assertIn("Hosted required checks", record["merge_blockers"][-1])
+
+    def test_decision_record_can_select_explicit_candidate_id(self) -> None:
+        report = build_candidate_recipes(
+            generated_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+            changelog_text="# Changelog\n\n## Unreleased\n\n- Added validation evidence.\n",
+            goals_text=(
+                "1. Create tools to visualize predictions and track changes over time.\n"
+                "2. Provide an interactive setup CLI to write environment variables into a .env file.\n"
+            ),
+        )
+
+        record = build_decision_record(report, selected_candidate_id="candidate-05")
+
+        self.assertEqual(record["selected_candidate"]["candidate_id"], "candidate-05")
+        self.assertEqual(record["selected_candidate_id_requested"], "candidate-05")
+        self.assertIn("explicit candidate ID", record["selection_reason"])
+
+    def test_writers_create_markdown_json_and_decision_record(self) -> None:
         report = build_candidate_recipes(
             generated_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
             changelog_text="# Changelog\n\n## Unreleased\n\n- Added validation evidence.\n",
@@ -90,14 +136,18 @@ class NextIncrementCandidateTests(unittest.TestCase):
         with TemporaryDirectory() as temp_dir:
             markdown_path = Path(temp_dir) / "candidates.md"
             json_path = Path(temp_dir) / "candidates.json"
+            decision_record_path = Path(temp_dir) / "decision-record.json"
 
-            write_outputs(report, markdown_path, json_path)
+            write_outputs(report, markdown_path, json_path, decision_record_path=decision_record_path)
             markdown = markdown_path.read_text(encoding="utf-8")
             parsed = json.loads(json_path.read_text(encoding="utf-8"))
+            decision_record = json.loads(decision_record_path.read_text(encoding="utf-8"))
 
         self.assertIn("# Next Increment Candidates", markdown)
         self.assertEqual(parsed["generated_at"], "2026-01-01T00:00:00+00:00")
         self.assertIn("candidate_recipes", parsed)
+        self.assertIn("selected_candidate", decision_record)
+        self.assertIn("rollback", decision_record["rollback_notes"])
 
 
 if __name__ == "__main__":
