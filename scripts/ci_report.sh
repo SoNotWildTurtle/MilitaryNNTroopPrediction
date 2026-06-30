@@ -17,6 +17,7 @@ mkdir -p "${ARTIFACT_DIR}"
 "${PYTHON_BIN}" -m app.cli.export_api_examples --json-path "${ARTIFACT_DIR}/api-response-examples.json" --markdown-path "${ARTIFACT_DIR}/api-response-examples.md"
 "${PYTHON_BIN}" -m app.cli.export_dashboard_mockup --html-path "${ARTIFACT_DIR}/dashboard-mockup.html"
 "${PYTHON_BIN}" -m app.cli.synthetic_data_fixtures --output-dir "${ARTIFACT_DIR}/synthetic-fixtures" --json > "${ARTIFACT_DIR}/synthetic-fixtures-summary.json"
+"${PYTHON_BIN}" -m app.cli.next_increment_candidates --markdown-path "${ARTIFACT_DIR}/next-increment-candidates.md" --json-path "${ARTIFACT_DIR}/next-increment-candidates.json" --decision-record-path "${ARTIFACT_DIR}/run-decision-record.json"
 "${PYTHON_BIN}" -m app.cli.quickstart --help > "${ARTIFACT_DIR}/quickstart-help.txt"
 "${PYTHON_BIN}" -m app.cli.doctor --help > "${ARTIFACT_DIR}/doctor-help.txt"
 "${PYTHON_BIN}" -m app.cli.release_health --help > "${ARTIFACT_DIR}/release-health-help.txt"
@@ -41,6 +42,7 @@ mkdir -p "${ARTIFACT_DIR}"
 "${PYTHON_BIN}" -m app.cli.artifact_gap_report --help > "${ARTIFACT_DIR}/artifact-gap-report-help.txt"
 "${PYTHON_BIN}" -m app.cli.artifact_provenance_ledger --help > "${ARTIFACT_DIR}/artifact-provenance-ledger-help.txt"
 "${PYTHON_BIN}" -m app.cli.synthetic_data_fixtures --help > "${ARTIFACT_DIR}/synthetic-data-fixtures-help.txt"
+"${PYTHON_BIN}" -m app.cli.next_increment_candidates --help > "${ARTIFACT_DIR}/next-increment-candidates-help.txt"
 "${PYTHON_BIN}" -m app.cli.export_openapi --help > "${ARTIFACT_DIR}/export-openapi-help.txt"
 "${PYTHON_BIN}" -m app.cli.export_api_examples --help > "${ARTIFACT_DIR}/export-api-examples-help.txt"
 "${PYTHON_BIN}" -m app.cli.export_dashboard_mockup --help > "${ARTIFACT_DIR}/export-dashboard-mockup-help.txt"
@@ -57,6 +59,7 @@ Files:
 - pip-freeze.txt: installed package versions for reproducibility.
 - doctor-minimal.json: machine-readable core setup diagnostics.
 - release health/release notes/reviewer handoff/operator digest/operator readiness/operator status board/operator session plan/operator runbook index/operator next steps/uncertainty review packet/handoff integrity report/evidence checklist/decision log/operator exception register/handoff validation receipt/workflow gate summary/provenance validation matrix/automation plan artifacts: generated local readiness, review, uncertainty, command-map, cross-artifact integrity, baseline evidence, analytical decision, prioritized exception queue, final receipt, hosted gate map, provenance gate matrix, and next-run guidance.
+- next-increment-candidates.md/json and run-decision-record.json: offline roadmap/changelog candidate recipes plus selected-run merge evidence, validation, blocker, rollback, and follow-up fields for non-duplicative automation handoff.
 - reviewer-handoff-validation.txt/json: reviewer handoff contract validation results.
 - triage-summary.md/json: CI failure triage summary with narrow rerun targets.
 - artifact-gap-report.md/json: diagnostic bundle completeness and suspicious-artifact report.
