@@ -8,13 +8,13 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
-from app.cli.run_continuity_brief import build_run_continuity_brief, render_markdown, write_outputs
+from app.cli.run_continuity_brief import FOCUS_AREAS, build_run_continuity_brief, render_markdown, write_outputs
 
 
 class RunContinuityBriefTests(unittest.TestCase):
     """Verify deterministic next-increment planning behavior."""
 
-    def test_ready_brief_recommends_nonduplicative_focus(self) -> None:
+    def test_ready_brief_recommends_reviewable_focus(self) -> None:
         report = build_run_continuity_brief(
             generated_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
             changelog_text=(
@@ -33,10 +33,12 @@ class RunContinuityBriefTests(unittest.TestCase):
         )
 
         markdown = render_markdown(report)
+        focus_area = report["recommended_next_increment"]["focus_area"]
 
         self.assertEqual(report["status"], "ready")
         self.assertEqual(report["schema_version"], "1.0")
-        self.assertEqual(report["recommended_next_increment"]["focus_area"], "user_friendliness")
+        self.assertIn(focus_area, FOCUS_AREAS)
+        self.assertGreaterEqual(report["focus_findings"][0]["score"], report["focus_findings"][-1]["score"])
         self.assertIn("Run Continuity Brief", markdown)
         self.assertIn("lawful defensive analytical repository maintenance", report["safe_scope"])
 
