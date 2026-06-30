@@ -128,7 +128,7 @@ A blocking evidence row is ready only when all of the following are true:
 
 Generated checklists therefore begin with `ready_for_merge_evidence_review: false`. That is expected template behavior, not a CLI failure.
 
-## Compatibility and rollback
+## Compatibility and Rollback
 
 This schema documentation is additive and does not change prediction logic, training behavior, API routes, database schemas, live data ingestion, generated estimates, or CLI output fields. Roll back by reverting the documentation/test PR or removing generated local acceptance artifacts. Do not delete unrelated validation, provenance, handoff, or analytical-safety runbooks.
 
