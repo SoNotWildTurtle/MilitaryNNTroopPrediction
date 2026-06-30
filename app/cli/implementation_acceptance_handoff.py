@@ -278,6 +278,9 @@ def _markdown_lines(handoff: Mapping[str, Any]) -> Iterable[str]:
     yield ""
     yield str(handoff["safe_scope"])
     yield ""
+
+    yield "## Compatibility and rollback"
+    yield ""
     yield f"- Compatibility: {handoff['compatibility_notes']}"
     yield f"- Rollback: {handoff['rollback_notes']}"
 
