@@ -17,7 +17,7 @@ from typing import Any, Dict, Iterable, Mapping, Sequence
 
 DEFAULT_MARKDOWN_NAME = "implementation-acceptance-checklist.md"
 DEFAULT_JSON_NAME = "implementation-acceptance-checklist.json"
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "1.1"
 
 SAFE_SCOPE = (
     "Acceptance gates are for lawful defensive analytical repository maintenance, "
@@ -136,6 +136,28 @@ def _selected_candidate(source: Mapping[str, Any]) -> Mapping[str, Any]:
     return {}
 
 
+def _gate_summary(gates: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
+    gate_ids = [str(gate.get("gate_id", "unknown")) for gate in gates]
+    blocking_gate_ids = [
+        str(gate.get("gate_id", "unknown"))
+        for gate in gates
+        if bool(gate.get("blocking_if_missing"))
+    ]
+    nonblocking_gate_ids = [gate_id for gate_id in gate_ids if gate_id not in blocking_gate_ids]
+    return {
+        "total_gates": len(gates),
+        "blocking_gates": len(blocking_gate_ids),
+        "nonblocking_gates": len(nonblocking_gate_ids),
+        "gate_ids": gate_ids,
+        "blocking_gate_ids": blocking_gate_ids,
+        "nonblocking_gate_ids": nonblocking_gate_ids,
+        "review_decision_rule": (
+            "Every blocking gate requires concrete PR, artifact, or hosted-check evidence before merge. "
+            "Missing or unavailable evidence is a merge blocker, not a warning."
+        ),
+    }
+
+
 def build_acceptance_checklist(
     source: Mapping[str, Any] | None = None,
     generated_at: datetime | None = None,
@@ -165,6 +187,8 @@ def build_acceptance_checklist(
     if not gate_hints:
         gate_hints.append("capture final-head-SHA, hosted checks, local validation, rollback, and safe framing evidence")
 
+    acceptance_gates = [dict(gate) for gate in BASE_ACCEPTANCE_GATES]
+
     return {
         "generated_at": generated_at.isoformat(),
         "schema_version": SCHEMA_VERSION,
@@ -179,7 +203,8 @@ def build_acceptance_checklist(
             "suggested_artifact": candidate.get("suggested_artifact"),
             "rationale": candidate.get("rationale"),
         },
-        "acceptance_gates": [dict(gate) for gate in BASE_ACCEPTANCE_GATES],
+        "acceptance_gates": acceptance_gates,
+        "gate_summary": _gate_summary(acceptance_gates),
         "focus_gate_hints": gate_hints,
         "validation_commands": validation_commands,
         "merge_blockers": merge_blockers,
@@ -226,6 +251,16 @@ def _markdown_lines(checklist: Mapping[str, Any]) -> Iterable[str]:
     if candidate.get("rationale"):
         yield f"- Rationale: {candidate['rationale']}"
     yield ""
+    yield "## Acceptance gate summary"
+    yield ""
+    gate_summary = checklist.get("gate_summary", {})
+    if not isinstance(gate_summary, Mapping):
+        gate_summary = {}
+    yield f"- Total gates: {gate_summary.get('total_gates', 'unknown')}"
+    yield f"- Blocking gates: {gate_summary.get('blocking_gates', 'unknown')}"
+    yield f"- Nonblocking gates: {gate_summary.get('nonblocking_gates', 'unknown')}"
+    yield f"- Review decision rule: {gate_summary.get('review_decision_rule', 'Every blocking gate requires evidence before merge.')}"
+    yield ""
     yield "## Acceptance gates"
     yield ""
     yield "| Gate | Required evidence | Blocking if missing |"
@@ -257,8 +292,6 @@ def _markdown_lines(checklist: Mapping[str, Any]) -> Iterable[str]:
     yield "## Safe analytical scope"
     yield ""
     yield str(checklist["safe_scope"])
-    yield ""
-    yield "## Compatibility and rollback"
     yield ""
     yield f"- Compatibility: {checklist['compatibility_notes']}"
     yield f"- Rollback: {checklist['rollback_notes']}"
