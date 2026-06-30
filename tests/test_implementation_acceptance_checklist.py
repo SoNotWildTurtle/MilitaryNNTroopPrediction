@@ -117,6 +117,19 @@ class ImplementationAcceptanceChecklistTests(unittest.TestCase):
         self.assertIn("Gate evidence readiness summary", markdown)
         self.assertIn("Ready for merge evidence review: False", markdown)
 
+    def test_schema_documentation_covers_machine_readable_contract(self) -> None:
+        checklist_doc = Path("docs/implementation_acceptance_checklist.md").read_text(encoding="utf-8")
+        schema_doc = Path("docs/implementation_acceptance_schema.md").read_text(encoding="utf-8")
+
+        self.assertIn("docs/implementation_acceptance_schema.md", checklist_doc)
+        self.assertIn("schema_version` is currently `1.3`", schema_doc)
+        self.assertIn("gate_evidence_manifest", schema_doc)
+        self.assertIn("gate_evidence_readiness_summary", schema_doc)
+        self.assertIn("missing_evidence_blocks_merge", schema_doc)
+        self.assertIn("not operational tasking", schema_doc)
+        self.assertIn("not be presented as live intelligence", schema_doc)
+        self.assertIn("Rollback", schema_doc)
+
     def test_writers_create_markdown_and_json_outputs(self) -> None:
         checklist = build_acceptance_checklist(
             {
