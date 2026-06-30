@@ -147,7 +147,8 @@ class NextIncrementCandidateTests(unittest.TestCase):
         self.assertEqual(parsed["generated_at"], "2026-01-01T00:00:00+00:00")
         self.assertIn("candidate_recipes", parsed)
         self.assertIn("selected_candidate", decision_record)
-        self.assertIn("rollback", decision_record["rollback_notes"])
+        self.assertIn("revert", decision_record["rollback_notes"].lower())
+        self.assertIn("compatible", decision_record["rollback_notes"].lower())
 
 
 if __name__ == "__main__":
