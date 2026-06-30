@@ -12,14 +12,16 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, Mapping, Sequence
 
 DEFAULT_MARKDOWN_NAME = "implementation-acceptance-handoff.md"
 DEFAULT_JSON_NAME = "implementation-acceptance-handoff.json"
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "1.1"
 READY_EVIDENCE_STATUSES = {"collected", "verified"}
+KNOWN_EVIDENCE_STATUSES = READY_EVIDENCE_STATUSES | {"not_collected", "needs_update", "blocked"}
 
 SAFE_SCOPE = (
     "Implementation acceptance handoff artifacts are repository-maintenance "
@@ -55,13 +57,17 @@ def _entry_sources(entry: Mapping[str, Any]) -> Sequence[Any]:
     return []
 
 
+def _status_value(entry: Mapping[str, Any]) -> str:
+    return str(entry.get("evidence_status", "not_collected")).lower()
+
+
 def _normalized_entry(entry: Mapping[str, Any]) -> Dict[str, Any]:
     sources = [str(source) for source in _entry_sources(entry) if str(source)]
     return {
         "gate_id": str(entry.get("gate_id", "unknown")),
         "title": str(entry.get("title", "Untitled acceptance gate")),
         "blocking_if_missing": bool(entry.get("blocking_if_missing")),
-        "evidence_status": str(entry.get("evidence_status", "not_collected")).lower(),
+        "evidence_status": _status_value(entry),
         "evidence_sources": sources,
         "reviewer_notes": str(entry.get("reviewer_notes", "")),
         "missing_evidence_blocks_merge": bool(entry.get("missing_evidence_blocks_merge", True)),
@@ -70,10 +76,31 @@ def _normalized_entry(entry: Mapping[str, Any]) -> Dict[str, Any]:
 
 def _evidence_ready(entry: Mapping[str, Any]) -> bool:
     return (
-        str(entry.get("evidence_status", "not_collected")).lower() in READY_EVIDENCE_STATUSES
+        _status_value(entry) in READY_EVIDENCE_STATUSES
         and bool(_entry_sources(entry))
         and not bool(entry.get("missing_evidence_blocks_merge", True))
     )
+
+
+def _status_diagnostics(entries: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
+    status_counts = dict(sorted(Counter(_status_value(entry) for entry in entries).items()))
+    unknown_statuses = sorted(status for status in status_counts if status not in KNOWN_EVIDENCE_STATUSES)
+    unknown_gate_ids = [
+        str(entry.get("gate_id", "unknown"))
+        for entry in entries
+        if _status_value(entry) in unknown_statuses
+    ]
+    return {
+        "status_counts": status_counts,
+        "known_statuses": sorted(KNOWN_EVIDENCE_STATUSES),
+        "unknown_statuses": unknown_statuses,
+        "unknown_status_gate_ids": unknown_gate_ids,
+        "status_review_warning": bool(unknown_statuses),
+        "status_review_rule": (
+            "Unexpected evidence_status values are preserved for compatibility, but reviewers should "
+            "treat unknown statuses as not ready until the row has collected or verified evidence."
+        ),
+    }
 
 
 def _readiness_summary(entries: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
@@ -84,7 +111,7 @@ def _readiness_summary(entries: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
         if not _evidence_ready(entry)
     ]
     ready_blocking_rows = len(blocking_entries) - len(missing_blocking_gate_ids)
-    return {
+    summary = {
         "total_manifest_rows": len(entries),
         "blocking_rows": len(blocking_entries),
         "ready_blocking_rows": ready_blocking_rows,
@@ -97,6 +124,8 @@ def _readiness_summary(entries: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
             "at least one evidence source is recorded, and missing_evidence_blocks_merge is false."
         ),
     }
+    summary.update(_status_diagnostics(entries))
+    return summary
 
 
 def build_acceptance_handoff(
@@ -114,6 +143,12 @@ def build_acceptance_handoff(
         blockers.append("No gate_evidence_manifest rows were provided in the source checklist.")
     for gate_id in readiness["missing_blocking_gate_ids"]:
         blockers.append(f"Blocking gate `{gate_id}` still needs collected or verified evidence sources.")
+    if readiness["unknown_statuses"]:
+        blockers.append(
+            "Unknown evidence_status values require reviewer confirmation before merge: "
+            + ", ".join(readiness["unknown_statuses"])
+            + "."
+        )
     if not checklist.get("candidate"):
         blockers.append("Source checklist does not include selected candidate metadata for reviewer context.")
 
@@ -174,12 +209,25 @@ def _markdown_lines(handoff: Mapping[str, Any]) -> Iterable[str]:
         missing_gate_text = ", ".join(str(gate_id) for gate_id in missing_gate_ids) or "none"
     else:
         missing_gate_text = "unknown"
+    unknown_statuses = readiness.get("unknown_statuses", [])
+    if isinstance(unknown_statuses, Sequence) and not isinstance(unknown_statuses, (str, bytes)):
+        unknown_status_text = ", ".join(str(status) for status in unknown_statuses) or "none"
+    else:
+        unknown_status_text = "unknown"
+    status_counts = readiness.get("status_counts", {})
+    if isinstance(status_counts, Mapping) and status_counts:
+        status_count_text = ", ".join(f"{status}: {count}" for status, count in sorted(status_counts.items()))
+    else:
+        status_count_text = "none"
     yield "## Readiness summary"
     yield ""
     yield f"- Ready for merge evidence review: {readiness.get('ready_for_merge_evidence_review', False)}"
     yield f"- Ready blocking rows: {readiness.get('ready_blocking_rows', 0)} / {readiness.get('blocking_rows', 'unknown')}"
     yield f"- Missing blocking gate IDs: {missing_gate_text}"
+    yield f"- Evidence status counts: {status_count_text}"
+    yield f"- Unknown evidence statuses: {unknown_status_text}"
     yield f"- Review decision rule: {readiness.get('review_decision_rule', 'Blocking evidence rows require sources before merge.')}"
+    yield f"- Status review rule: {readiness.get('status_review_rule', 'Unknown statuses require reviewer confirmation before merge.')}"
     yield ""
 
     yield "## Completed gate evidence manifest"
