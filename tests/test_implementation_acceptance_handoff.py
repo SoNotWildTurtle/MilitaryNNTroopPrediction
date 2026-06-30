@@ -65,6 +65,7 @@ class ImplementationAcceptanceHandoffTests(unittest.TestCase):
         self.assertIn("Completed gate evidence manifest", markdown)
         self.assertIn("Ready for merge evidence review: True", markdown)
         self.assertIn("Evidence status counts: verified: 6", markdown)
+        self.assertIn("## Compatibility and rollback", markdown)
         self.assertIn(SAFE_SCOPE, markdown)
 
     def test_missing_blocking_evidence_remains_a_merge_blocker(self) -> None:
@@ -124,6 +125,7 @@ class ImplementationAcceptanceHandoffTests(unittest.TestCase):
             parsed = json.loads(json_path.read_text(encoding="utf-8"))
 
         self.assertIn("# Implementation Acceptance Evidence Handoff", markdown)
+        self.assertIn("## Compatibility and rollback", markdown)
         self.assertEqual(parsed["generated_at"], "2026-01-01T00:00:00+00:00")
         self.assertEqual(parsed["status"], "ready_for_review")
         self.assertEqual(parsed["gate_evidence_readiness_summary"]["ready_blocking_rows"], 6)
