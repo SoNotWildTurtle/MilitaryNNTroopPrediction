@@ -18,7 +18,9 @@ from typing import Any, Dict, Iterable, List, Mapping, Sequence
 DEFAULT_REPOSITORY_ROOT = Path(".")
 DEFAULT_MARKDOWN_NAME = "next-increment-candidates.md"
 DEFAULT_JSON_NAME = "next-increment-candidates.json"
+DEFAULT_DECISION_RECORD_NAME = "run-decision-record.json"
 SCHEMA_VERSION = "1.0"
+DECISION_RECORD_SCHEMA_VERSION = "1.0"
 
 SAFE_SCOPE = (
     "Use these candidates only for lawful defensive analytical repository maintenance, "
@@ -59,6 +61,16 @@ VALIDATION_COMMANDS: Sequence[str] = (
     "python -m compileall app tests",
     "python -m unittest discover -s tests -p 'test_*.py'",
     "python -m app.cli.next_increment_candidates --no-markdown --json-path /tmp/next-increment-candidates.json",
+)
+
+DECISION_RECORD_REQUIRED_EVIDENCE: Sequence[str] = (
+    "final_head_sha",
+    "hosted_required_checks",
+    "local_validation_commands",
+    "diff_review_for_deletions_secrets_generated_artifacts_and_unsupported_claims",
+    "compatibility_and_rollback_notes",
+    "safe_analytical_framing_confirmation",
+    "next_follow_up_candidate",
 )
 
 
@@ -210,6 +222,76 @@ def build_candidate_report(repository_root: Path = DEFAULT_REPOSITORY_ROOT) -> D
     )
 
 
+def _select_candidate(report: Mapping[str, Any], selected_candidate_id: str | None = None) -> Mapping[str, Any] | None:
+    candidates = list(report.get("candidate_recipes", []))
+    if selected_candidate_id:
+        for candidate in candidates:
+            if candidate.get("candidate_id") == selected_candidate_id:
+                return candidate
+        return None
+    recommended = report.get("recommended_candidate")
+    if isinstance(recommended, Mapping):
+        return recommended
+    return candidates[0] if candidates else None
+
+
+def build_decision_record(report: Mapping[str, Any], selected_candidate_id: str | None = None) -> Dict[str, Any]:
+    """Build a machine-readable one-run decision record from candidate output."""
+
+    selected = _select_candidate(report, selected_candidate_id)
+    candidates = list(report.get("candidate_recipes", []))
+    alternatives = [
+        {
+            "candidate_id": candidate.get("candidate_id"),
+            "title": candidate.get("title"),
+            "focus_area": candidate.get("focus_area"),
+            "status": candidate.get("status"),
+            "novelty_score": candidate.get("novelty_score"),
+            "reason_not_selected": "Lower deterministic novelty score or weaker fit for the current one-run increment.",
+        }
+        for candidate in candidates
+        if not selected or candidate.get("candidate_id") != selected.get("candidate_id")
+    ]
+    inherited_blockers = [str(blocker) for blocker in report.get("blockers", [])]
+    merge_blockers = list(inherited_blockers)
+    merge_blockers.append("Hosted required checks, review-thread status, and final diff safety review must be captured before merge.")
+    validation_plan = list(selected.get("validation_commands", VALIDATION_COMMANDS)) if selected else list(VALIDATION_COMMANDS)
+    validation_plan.append(
+        "python -m app.cli.next_increment_candidates --no-markdown --json-path /tmp/next-increment-candidates.json --decision-record-path /tmp/run-decision-record.json"
+    )
+
+    return {
+        "generated_at": report.get("generated_at"),
+        "schema_version": DECISION_RECORD_SCHEMA_VERSION,
+        "status": "blocked" if inherited_blockers or selected is None else "ready_for_implementation",
+        "source_candidate_schema_version": report.get("schema_version"),
+        "selected_candidate": selected,
+        "selected_candidate_id_requested": selected_candidate_id,
+        "selection_reason": (
+            "Selected by deterministic candidate score from local roadmap and changelog context."
+            if selected and not selected_candidate_id
+            else "Selected by explicit candidate ID override after local candidate generation."
+            if selected
+            else "No candidate could be selected from the available report."
+        ),
+        "alternatives_considered": alternatives,
+        "required_evidence_before_merge": list(DECISION_RECORD_REQUIRED_EVIDENCE),
+        "validation_plan": validation_plan,
+        "merge_blockers": merge_blockers,
+        "safe_scope": report.get("safe_scope", SAFE_SCOPE),
+        "compatibility_notes": (
+            "Decision records are additive JSON evidence for maintainers. They do not change model behavior, "
+            "data ingestion, APIs, schemas consumed by prediction clients, or generated diagnostics unless explicitly requested."
+        ),
+        "rollback_notes": (
+            "Remove the generated decision-record JSON or revert the CLI/docs PR. Existing candidate Markdown/JSON outputs remain compatible."
+        ),
+        "next_follow_up_candidate": (
+            "Wire the decision-record artifact into ci_report.sh and release bundle indexing once reviewers confirm the standalone JSON shape."
+        ),
+    }
+
+
 def _markdown_lines(report: Mapping[str, Any]) -> Iterable[str]:
     yield "# Next Increment Candidates"
     yield ""
@@ -271,8 +353,14 @@ def render_markdown(report: Mapping[str, Any]) -> str:
     return "\n".join(_markdown_lines(report)).rstrip() + "\n"
 
 
-def write_outputs(report: Mapping[str, Any], markdown_path: Path | None, json_path: Path | None) -> None:
-    """Write requested Markdown and JSON outputs."""
+def write_outputs(
+    report: Mapping[str, Any],
+    markdown_path: Path | None,
+    json_path: Path | None,
+    decision_record_path: Path | None = None,
+    selected_candidate_id: str | None = None,
+) -> None:
+    """Write requested Markdown, candidate JSON, and decision-record JSON outputs."""
 
     if markdown_path is not None:
         markdown_path.parent.mkdir(parents=True, exist_ok=True)
@@ -280,6 +368,10 @@ def write_outputs(report: Mapping[str, Any], markdown_path: Path | None, json_pa
     if json_path is not None:
         json_path.parent.mkdir(parents=True, exist_ok=True)
         json_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    if decision_record_path is not None:
+        decision_record_path.parent.mkdir(parents=True, exist_ok=True)
+        record = build_decision_record(report, selected_candidate_id=selected_candidate_id)
+        decision_record_path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -292,6 +384,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--markdown-path", type=Path, default=None, help="Markdown output path.")
     parser.add_argument("--json-path", type=Path, default=None, help="JSON output path.")
+    parser.add_argument(
+        "--decision-record-path",
+        type=Path,
+        default=None,
+        help="Optional machine-readable JSON run decision record output path.",
+    )
+    parser.add_argument(
+        "--selected-candidate-id",
+        default=None,
+        help="Optional candidate ID to mark as selected in the decision record.",
+    )
     parser.add_argument("--no-markdown", action="store_true", help="Skip Markdown output.")
     parser.add_argument("--no-json", action="store_true", help="Skip JSON output.")
     return parser
@@ -302,13 +405,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     report = build_candidate_report(args.repository_root)
     markdown_path = None if args.no_markdown else (args.markdown_path or args.repository_root / DEFAULT_MARKDOWN_NAME)
     json_path = None if args.no_json else (args.json_path or args.repository_root / DEFAULT_JSON_NAME)
-    write_outputs(report, markdown_path, json_path)
+    write_outputs(
+        report,
+        markdown_path,
+        json_path,
+        decision_record_path=args.decision_record_path,
+        selected_candidate_id=args.selected_candidate_id,
+    )
     if markdown_path is not None:
         print(f"Wrote next-increment candidate Markdown to {markdown_path}")
     if json_path is not None:
         print(f"Wrote next-increment candidate JSON to {json_path}")
-    if markdown_path is None and json_path is None:
-        print("No outputs requested; remove --no-markdown or --no-json to write candidate files.")
+    if args.decision_record_path is not None:
+        print(f"Wrote run decision record JSON to {args.decision_record_path}")
+    if markdown_path is None and json_path is None and args.decision_record_path is None:
+        print("No outputs requested; remove --no-markdown or --no-json or provide --decision-record-path to write files.")
     return 0 if report["status"] != "blocked" else 1
 
 

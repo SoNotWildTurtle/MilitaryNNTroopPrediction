@@ -27,6 +27,7 @@ This repository provides a starting point for a machine vision application that 
 - `docs/evidence_checklist.md` – baseline evidence checklist workflow for analytical handoff bundles
 - `docs/synthetic_data_fixtures.md` – safe local fixture workflow for demos and client tests
 - `docs/run_continuity_brief.md` – offline roadmap/changelog/decision-register brief for choosing the next non-duplicative maintenance increment
+- `docs/run_decision_record.md` – machine-readable run decision record emitted by the candidate CLI for selected candidate, merge evidence, validation, blockers, rollback, and next follow-up capture
 - `.env.example` – copyable first-run configuration template
 - `.github/workflows/ci.yml` – GitHub Actions smoke checks for pushes and pull requests
 - `requirements-core.txt` – minimal packages for API, doctor, and CI smoke checks
@@ -48,7 +49,7 @@ make configure
 make verify
 ```
 
-`make verify` runs the minimal setup doctor, local smoke/unit tests, and the diagnostics bundle generator in one safe pre-PR pass. See `docs/common_tasks.md` for the full target map, `CONTRIBUTING.md` for the safe contribution checklist, `docs/automation_run_preflight.md` before opening or merging recurring maintenance work, `docs/ci_troubleshooting.md` when a hosted CI run needs local reproduction, `docs/validation_failure_reproduction_matrix.md` when you need to map a hosted CI, CLI, schema, artifact, documentation, or analytical-framing failure to the narrowest safe rerun, `docs/reviewer_handoff_navigation.md` when you need the first-stop map for reviewer handoff docs and generated artifacts, `docs/release_bundle_review.md` when reviewing generated bundles, `docs/artifact_gap_report.md` when checking bundle completeness, `docs/artifact_provenance_ledger.md` when separating generated review evidence from synthetic fixtures and previews, `docs/operator_status_board.md` when you need a fast non-technical status table, `docs/evidence_checklist.md` when validating baseline handoff evidence, `docs/synthetic_data_fixtures.md` when you need safe demo records without live data sources, and `docs/run_continuity_brief.md` when selecting the next cohesive non-duplicative maintenance increment from roadmap, changelog, and decision-register context.
+`make verify` runs the minimal setup doctor, local smoke/unit tests, and the diagnostics bundle generator in one safe pre-PR pass. See `docs/common_tasks.md` for the full target map, `CONTRIBUTING.md` for the safe contribution checklist, `docs/automation_run_preflight.md` before opening or merging recurring maintenance work, `docs/ci_troubleshooting.md` when a hosted CI run needs local reproduction, `docs/validation_failure_reproduction_matrix.md` when you need to map a hosted CI, CLI, schema, artifact, documentation, or analytical-framing failure to the narrowest safe rerun, `docs/reviewer_handoff_navigation.md` when you need the first-stop map for reviewer handoff docs and generated artifacts, `docs/release_bundle_review.md` when reviewing generated bundles, `docs/artifact_gap_report.md` when checking bundle completeness, `docs/artifact_provenance_ledger.md` when separating generated review evidence from synthetic fixtures and previews, `docs/operator_status_board.md` when you need a fast non-technical status table, `docs/evidence_checklist.md` when validating baseline handoff evidence, `docs/synthetic_data_fixtures.md` when you need safe demo records without live data sources, `docs/run_continuity_brief.md` when selecting the next cohesive non-duplicative maintenance increment from roadmap, changelog, and decision-register context, and `docs/run_decision_record.md` when turning the selected next-increment candidate into a machine-readable merge-evidence, validation, blocker, rollback, and follow-up record.
 
 For a guided local setup path that installs the small core dependency set, creates
 `.env` when needed, runs diagnostics, and prints the next command to run:
@@ -238,7 +239,6 @@ make test
 ```
 
 For a fuller local pre-PR verification pass that also creates the diagnostic
-artifact bundle:
 
 ```bash
 make verify
@@ -448,3 +448,14 @@ python -m app.cli.run_continuity_brief --markdown-path ci_artifacts/run-continui
 ```
 
 The brief reads `CHANGELOG.md`, `goals.md`, and `docs/next_run_decision_register.md`; scores focus areas for user friendliness, validation, provenance, diagnostics, and automation planning; and reports blockers when continuity context is missing. It is planning evidence only and does not collect live data, run detection, run prediction, or imply operational certainty.
+
+To turn the offline next-increment candidate matrix into a machine-readable run decision record:
+
+```bash
+python -m app.cli.next_increment_candidates \
+  --no-markdown \
+  --json-path /tmp/next-increment-candidates.json \
+  --decision-record-path /tmp/run-decision-record.json
+```
+
+The decision record captures the selected candidate, alternatives considered, required merge evidence, validation plan, blockers, compatibility notes, rollback notes, safe analytical framing, and next follow-up candidate. It is repository-maintenance evidence only and does not run live data collection, detection, prediction, or operational tasking.
