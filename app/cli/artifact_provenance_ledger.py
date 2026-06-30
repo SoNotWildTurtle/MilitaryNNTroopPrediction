@@ -50,6 +50,11 @@ CATEGORY_RULES: tuple[tuple[str, str, str], ...] = (
         "Generated release readiness evidence for review gates and operator handoff.",
     ),
     (
+        "implementation-acceptance-",
+        "implementation_acceptance_evidence",
+        "Generated implementation acceptance checklist or completed-evidence handoff for reviewer merge gates.",
+    ),
+    (
         "reviewer-handoff",
         "handoff",
         "Generated reviewer handoff artifact intended for human and machine review.",
