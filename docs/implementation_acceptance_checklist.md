@@ -30,10 +30,11 @@ A blank checklist is useful when candidate context is unavailable, but `status` 
 
 ## JSON contract
 
-The JSON output uses `schema_version: "1.0"` and includes:
+The JSON output uses `schema_version: "1.1"` and includes:
 
 - `candidate` — selected candidate ID, title, focus area, status, suggested artifact, and rationale when available.
 - `acceptance_gates` — blocking reviewer gates for safe framing, additive compatibility, validation evidence, artifact provenance, uncertainty/risk visibility, and rollback recovery.
+- `gate_summary` — machine-readable gate totals, blocking gate counts, nonblocking gate counts, gate IDs, blocking gate IDs, nonblocking gate IDs, and the review decision rule that missing blocking evidence remains a merge blocker.
 - `focus_gate_hints` — focus-specific evidence hints for setup validation, artifact provenance, uncertainty review, operator handoff, or scenario comparison increments.
 - `validation_commands` — candidate-provided commands, or conservative default compile/unit/CI-report commands when candidate context is absent.
 - `merge_blockers` — inherited decision-record blockers, or default hosted-check and unresolved-review blockers.
@@ -41,14 +42,21 @@ The JSON output uses `schema_version: "1.0"` and includes:
 
 Consumers should preserve unknown fields so future additive schema keys do not break existing readers.
 
+## Gate summary review use
+
+`gate_summary` is intended for dashboards, release-bundle readers, and handoff validators that need to check acceptance-gate shape without parsing Markdown tables. A reviewer can compare `gate_summary.blocking_gates` with the number of gate rows in `acceptance_gates` and require concrete evidence for every ID in `gate_summary.blocking_gate_ids` before merge.
+
+The field is additive. Existing consumers that only read `acceptance_gates`, `merge_blockers`, or `handoff_fields_to_capture` can ignore it safely.
+
 ## Reviewer workflow
 
 1. Confirm the selected candidate matches the actual PR scope and does not duplicate recently merged work.
 2. Verify every `blocking_if_missing` gate has concrete evidence in the PR body, generated artifacts, or linked CI run.
-3. Check that generated, synthetic, preview, and reviewer-only artifacts are labeled before handoff.
-4. Confirm uncertainty notes and limitations are visible before any status-positive language.
-5. Reproduce the narrowest validation command first when a hosted or local check fails.
-6. Treat unavailable hosted validation, unresolved review threads, or missing final-head-SHA evidence as merge blockers.
+3. Check `gate_summary.blocking_gate_ids` against the PR evidence list so machine-readable and Markdown views agree.
+4. Check that generated, synthetic, preview, and reviewer-only artifacts are labeled before handoff.
+5. Confirm uncertainty notes and limitations are visible before any status-positive language.
+6. Reproduce the narrowest validation command first when a hosted or local check fails.
+7. Treat unavailable hosted validation, unresolved review threads, or missing final-head-SHA evidence as merge blockers.
 
 ## Compatibility and rollback
 
