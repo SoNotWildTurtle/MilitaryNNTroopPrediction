@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added the offline `implementation_acceptance_checklist` CLI, documentation, and deterministic tests so selected next-increment candidates can be converted into reviewer-ready acceptance gates for safe analytical framing, additive compatibility, validation evidence, artifact provenance, uncertainty/risk visibility, rollback, merge blockers, and handoff fields without running live data or prediction workflows.
 - Added the offline `next_increment_candidates` CLI, documentation, and deterministic tests so recurring maintenance runs can turn roadmap/changelog context into candidate PR recipes with duplicate-work warnings, validation commands, safe analytical framing, and additive Markdown/JSON outputs.
 - Added the offline `run_continuity_brief` CLI, documentation, and deterministic tests so recurring maintenance runs can generate a machine-readable roadmap/changelog/decision-register summary, avoid duplicating recent work, and select one cohesive additive next increment with blocker visibility and safe analytical framing.
 - Added `docs/next_run_decision_register.md` and static regression coverage so recurring automation runs select blocker-first, functional, mergeable next increments; avoid duplicate process-only docs; and record exact validation, rollback, safe analytical framing, and next-run follow-up fields.
