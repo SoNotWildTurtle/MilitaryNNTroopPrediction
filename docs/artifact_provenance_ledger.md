@@ -1,6 +1,6 @@
 # Artifact provenance ledger
 
-`app.cli.artifact_provenance_ledger` creates a read-only Markdown and JSON ledger that classifies files already present in a diagnostics bundle. It helps reviewers explain which artifacts are environment evidence, generated review evidence, synthetic fixtures, static previews, API contracts, and bundle-integrity records.
+`app.cli.artifact_provenance_ledger` creates a read-only Markdown and JSON ledger that classifies files already present in a diagnostics bundle. It helps reviewers explain which artifacts are environment evidence, generated review evidence, implementation acceptance evidence, synthetic fixtures, static previews, API contracts, and bundle-integrity records.
 
 The command does **not** run ingestion, prediction, database, network collection, deployment, or live data workflows. It only reads an existing `artifact-manifest.json` and writes provenance summaries.
 
@@ -28,8 +28,10 @@ Open `artifact-provenance-ledger.md` after `release-bundle-index.html`, `reviewe
 
 - Which files are synthetic examples or static previews rather than analytical evidence?
 - Which files are environment evidence for reproducibility?
-- Which files are release-gate, handoff, CI-triage, or bundle-integrity outputs?
+- Which files are release-gate, implementation-acceptance, handoff, CI-triage, or bundle-integrity outputs?
 - Whether expected artifacts were missing when the ledger was generated.
+
+Implementation acceptance artifacts use the `implementation_acceptance_evidence` category. These files are reviewer merge evidence: they can show which acceptance gates, final-head-SHA checks, rollback notes, and blockers were recorded, but they do not prove that an analytical estimate is true.
 
 The JSON output includes:
 
@@ -41,8 +43,8 @@ The JSON output includes:
 
 ## Compatibility and rollback
 
-The ledger is additive. Existing artifact manifests, handoff files, status boards, release notes, and API examples keep their current shapes. To roll back the feature, remove the `make provenance-ledger` target and the CI report calls that generate `artifact-provenance-ledger.md/json`; other diagnostics still work independently.
+The ledger is additive. Existing artifact manifests, handoff files, implementation acceptance files, status boards, release notes, and API examples keep their current shapes. To roll back the feature, remove the `implementation-acceptance-*` provenance rule and the related tests; other diagnostics still work independently.
 
 ## Safe scope
 
-Keep provenance classification limited to generated local diagnostics, synthetic examples, documentation artifacts, and review metadata. Do not use the ledger to claim live data validity or operational certainty.
+Keep provenance classification limited to generated local diagnostics, synthetic examples, documentation artifacts, and review metadata. Do not use the ledger to claim live data validity or certainty.
