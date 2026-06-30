@@ -40,6 +40,11 @@ FOCUS_AREAS: Mapping[str, Sequence[str]] = {
         "guide",
         "status board",
         "handoff",
+        "gui",
+        "visualize",
+        "visualization",
+        "map",
+        "alert",
     ),
     "validation_and_ci": (
         "ci",
@@ -73,6 +78,7 @@ FOCUS_AREAS: Mapping[str, Sequence[str]] = {
     ),
     "automation_planning": (
         "automation",
+        "automate",
         "next-run",
         "decision",
         "roadmap",
