@@ -293,6 +293,8 @@ def _markdown_lines(checklist: Mapping[str, Any]) -> Iterable[str]:
     yield ""
     yield str(checklist["safe_scope"])
     yield ""
+    yield "## Compatibility and rollback"
+    yield ""
     yield f"- Compatibility: {checklist['compatibility_notes']}"
     yield f"- Rollback: {checklist['rollback_notes']}"
 
