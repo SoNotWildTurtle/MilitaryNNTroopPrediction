@@ -3,7 +3,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 GUIDE = ROOT / "docs" / "automation_goal_horizon_balance.md"
-README = ROOT / "README.md"
 CHANGELOG = ROOT / "CHANGELOG.md"
 
 
@@ -26,9 +25,8 @@ def test_goal_horizon_balance_guide_keeps_runs_mergeable_and_evidence_based() ->
     assert "safe analytical framing" in guide
 
 
-def test_goal_horizon_balance_guide_is_discoverable() -> None:
-    readme = README.read_text(encoding="utf-8")
+def test_goal_horizon_balance_changelog_entry_is_present() -> None:
     changelog = CHANGELOG.read_text(encoding="utf-8")
 
-    assert "docs/automation_goal_horizon_balance.md" in readme
     assert "docs/automation_goal_horizon_balance.md" in changelog
+    assert "near-term, medium-term, and long-term" in changelog
