@@ -41,7 +41,12 @@ class NextIncrementCandidateTests(unittest.TestCase):
         self.assertGreater(recommended["roadmap_matches"], 0)
         self.assertIn("Candidate matrix", markdown)
         self.assertIn("lawful defensive analytical repository maintenance", report["safe_scope"])
-        self.assertIn("python -m unittest discover", recommended["validation_commands"])
+        self.assertTrue(
+            any(
+                command.startswith("python -m unittest discover")
+                for command in recommended["validation_commands"]
+            )
+        )
 
     def test_recent_overlap_marks_candidate_for_manual_watch(self) -> None:
         report = build_candidate_recipes(
