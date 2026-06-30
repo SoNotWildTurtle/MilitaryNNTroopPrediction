@@ -67,6 +67,44 @@ class ArtifactProvenanceLedgerTests(unittest.TestCase):
         self.assertIn("synthetic_fixture", markdown)
         self.assertIn("not operational evidence", markdown)
 
+    def test_ledger_classifies_implementation_acceptance_evidence(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            artifact_dir = Path(temp_dir)
+            (artifact_dir / "artifact-manifest.json").write_text(
+                json.dumps(
+                    {
+                        "missing_expected": [],
+                        "files": [
+                            {
+                                "path": "implementation-acceptance-checklist.json",
+                                "size_bytes": 64,
+                                "sha256": "d" * 64,
+                                "description": "acceptance gates",
+                            },
+                            {
+                                "path": "implementation-acceptance-handoff.md",
+                                "size_bytes": 96,
+                                "sha256": "e" * 64,
+                                "description": "acceptance handoff",
+                            },
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            ledger = build_provenance_ledger(artifact_dir)
+            markdown = render_markdown(ledger)
+
+        self.assertEqual(ledger["category_counts"]["implementation_acceptance_evidence"], 2)
+        self.assertNotIn("implementation-acceptance-handoff.md", ledger["non_operational_artifacts"])
+        handoff_entry = next(
+            entry for entry in ledger["entries"] if entry["path"] == "implementation-acceptance-handoff.md"
+        )
+        self.assertTrue(handoff_entry["operational_claim"])
+        self.assertIn("implementation_acceptance_evidence", markdown)
+        self.assertIn("reviewer merge gates", markdown)
+
     def test_ledger_flags_missing_manifest_safely(self) -> None:
         with TemporaryDirectory() as temp_dir:
             ledger = build_provenance_ledger(Path(temp_dir))
