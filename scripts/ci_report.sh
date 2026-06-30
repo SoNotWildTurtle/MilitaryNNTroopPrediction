@@ -18,6 +18,8 @@ mkdir -p "${ARTIFACT_DIR}"
 "${PYTHON_BIN}" -m app.cli.export_dashboard_mockup --html-path "${ARTIFACT_DIR}/dashboard-mockup.html"
 "${PYTHON_BIN}" -m app.cli.synthetic_data_fixtures --output-dir "${ARTIFACT_DIR}/synthetic-fixtures" --json > "${ARTIFACT_DIR}/synthetic-fixtures-summary.json"
 "${PYTHON_BIN}" -m app.cli.next_increment_candidates --markdown-path "${ARTIFACT_DIR}/next-increment-candidates.md" --json-path "${ARTIFACT_DIR}/next-increment-candidates.json" --decision-record-path "${ARTIFACT_DIR}/run-decision-record.json"
+"${PYTHON_BIN}" -m app.cli.implementation_acceptance_checklist --decision-record-path "${ARTIFACT_DIR}/run-decision-record.json" --markdown-path "${ARTIFACT_DIR}/implementation-acceptance-checklist.md" --json-path "${ARTIFACT_DIR}/implementation-acceptance-checklist.json"
+"${PYTHON_BIN}" -m app.cli.implementation_acceptance_handoff --checklist-json "${ARTIFACT_DIR}/implementation-acceptance-checklist.json" --markdown-path "${ARTIFACT_DIR}/implementation-acceptance-handoff.md" --json-path "${ARTIFACT_DIR}/implementation-acceptance-handoff.json"
 "${PYTHON_BIN}" -m app.cli.quickstart --help > "${ARTIFACT_DIR}/quickstart-help.txt"
 "${PYTHON_BIN}" -m app.cli.doctor --help > "${ARTIFACT_DIR}/doctor-help.txt"
 "${PYTHON_BIN}" -m app.cli.release_health --help > "${ARTIFACT_DIR}/release-health-help.txt"
@@ -32,6 +34,8 @@ mkdir -p "${ARTIFACT_DIR}"
 "${PYTHON_BIN}" -m app.cli.uncertainty_review_packet --help > "${ARTIFACT_DIR}/uncertainty-review-packet-help.txt"
 "${PYTHON_BIN}" -m app.cli.handoff_integrity_report --help > "${ARTIFACT_DIR}/handoff-integrity-report-help.txt"
 "${PYTHON_BIN}" -m app.cli.evidence_checklist --help > "${ARTIFACT_DIR}/evidence-checklist-help.txt"
+"${PYTHON_BIN}" -m app.cli.implementation_acceptance_checklist --help > "${ARTIFACT_DIR}/implementation-acceptance-checklist-help.txt"
+"${PYTHON_BIN}" -m app.cli.implementation_acceptance_handoff --help > "${ARTIFACT_DIR}/implementation-acceptance-handoff-help.txt"
 "${PYTHON_BIN}" -m app.cli.decision_log --help > "${ARTIFACT_DIR}/decision-log-help.txt"
 "${PYTHON_BIN}" -m app.cli.operator_exception_register --help > "${ARTIFACT_DIR}/operator-exception-register-help.txt"
 "${PYTHON_BIN}" -m app.cli.handoff_validation_receipt --help > "${ARTIFACT_DIR}/handoff-validation-receipt-help.txt"
@@ -58,8 +62,9 @@ Files:
 - pip-version.txt: pip version used by CI.
 - pip-freeze.txt: installed package versions for reproducibility.
 - doctor-minimal.json: machine-readable core setup diagnostics.
-- release health/release notes/reviewer handoff/operator digest/operator readiness/operator status board/operator session plan/operator runbook index/operator next steps/uncertainty review packet/handoff integrity report/evidence checklist/decision log/operator exception register/handoff validation receipt/workflow gate summary/provenance validation matrix/automation plan artifacts: generated local readiness, review, uncertainty, command-map, cross-artifact integrity, baseline evidence, analytical decision, prioritized exception queue, final receipt, hosted gate map, provenance gate matrix, and next-run guidance.
+- release health/release notes/reviewer handoff/operator digest/operator readiness/operator status board/operator session plan/operator runbook index/operator next steps/uncertainty review packet/handoff integrity report/evidence checklist/implementation acceptance checklist/implementation acceptance handoff/decision log/operator exception register/handoff validation receipt/workflow gate summary/provenance validation matrix/automation plan artifacts: generated local readiness, review, uncertainty, command-map, cross-artifact integrity, baseline evidence, implementation gate evidence, completed acceptance handoff, analytical decision, prioritized exception queue, final receipt, hosted gate map, provenance gate matrix, and next-run guidance.
 - next-increment-candidates.md/json and run-decision-record.json: offline roadmap/changelog candidate recipes plus selected-run merge evidence, validation, blocker, rollback, and follow-up fields for non-duplicative automation handoff.
+- implementation-acceptance-checklist.md/json and implementation-acceptance-handoff.md/json: offline acceptance gates plus completed-evidence handoff readiness summary for reviewer merge evidence.
 - reviewer-handoff-validation.txt/json: reviewer handoff contract validation results.
 - triage-summary.md/json: CI failure triage summary with narrow rerun targets.
 - artifact-gap-report.md/json: diagnostic bundle completeness and suspicious-artifact report.
@@ -107,6 +112,7 @@ SUMMARY
 "${PYTHON_BIN}" -m app.cli.uncertainty_review_packet --artifact-dir "${ARTIFACT_DIR}" --markdown-path "${ARTIFACT_DIR}/uncertainty-review-packet.md" --json-path "${ARTIFACT_DIR}/uncertainty-review-packet.json"
 "${PYTHON_BIN}" -m app.cli.handoff_integrity_report --artifact-dir "${ARTIFACT_DIR}" --markdown-path "${ARTIFACT_DIR}/handoff-integrity-report.md" --json-path "${ARTIFACT_DIR}/handoff-integrity-report.json"
 "${PYTHON_BIN}" -m app.cli.evidence_checklist --artifact-dir "${ARTIFACT_DIR}" --markdown-path "${ARTIFACT_DIR}/evidence-checklist.md" --json-path "${ARTIFACT_DIR}/evidence-checklist.json"
+"${PYTHON_BIN}" -m app.cli.implementation_acceptance_handoff --checklist-json "${ARTIFACT_DIR}/implementation-acceptance-checklist.json" --markdown-path "${ARTIFACT_DIR}/implementation-acceptance-handoff.md" --json-path "${ARTIFACT_DIR}/implementation-acceptance-handoff.json"
 "${PYTHON_BIN}" -m app.cli.artifact_manifest --artifact-dir "${ARTIFACT_DIR}" --json-path "${ARTIFACT_DIR}/artifact-manifest.json" --markdown-path "${ARTIFACT_DIR}/artifact-manifest.md"
 "${PYTHON_BIN}" -m app.cli.artifact_provenance_ledger --artifact-dir "${ARTIFACT_DIR}" --json-path "${ARTIFACT_DIR}/artifact-provenance-ledger.json" --markdown-path "${ARTIFACT_DIR}/artifact-provenance-ledger.md"
 "${PYTHON_BIN}" -m app.cli.handoff_validation_receipt --artifact-dir "${ARTIFACT_DIR}" --markdown-path "${ARTIFACT_DIR}/handoff-validation-receipt.md" --json-path "${ARTIFACT_DIR}/handoff-validation-receipt.json"
