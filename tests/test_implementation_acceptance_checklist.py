@@ -37,7 +37,7 @@ class ImplementationAcceptanceChecklistTests(unittest.TestCase):
             generated_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
         )
 
-        self.assertEqual(checklist["schema_version"], "1.0")
+        self.assertEqual(checklist["schema_version"], "1.1")
         self.assertEqual(checklist["status"], "ready_for_review_planning")
         self.assertEqual(checklist["candidate"]["candidate_id"], "candidate-03")
         self.assertIn("avoid wording", " ".join(checklist["focus_gate_hints"]))
@@ -75,6 +75,19 @@ class ImplementationAcceptanceChecklistTests(unittest.TestCase):
         self.assertTrue(all(gate["blocking_if_missing"] for gate in checklist["acceptance_gates"]))
         self.assertTrue(any("manifest" in hint for hint in checklist["focus_gate_hints"]))
 
+    def test_gate_summary_counts_blocking_gates_for_machine_readers(self) -> None:
+        checklist = build_acceptance_checklist(generated_at=datetime(2026, 1, 1, tzinfo=timezone.utc))
+        summary = checklist["gate_summary"]
+        markdown = render_markdown(checklist)
+
+        self.assertEqual(summary["total_gates"], len(checklist["acceptance_gates"]))
+        self.assertEqual(summary["blocking_gates"], len(checklist["acceptance_gates"]))
+        self.assertEqual(summary["nonblocking_gates"], 0)
+        self.assertIn("validation-evidence", summary["blocking_gate_ids"])
+        self.assertIn("Missing or unavailable evidence is a merge blocker", summary["review_decision_rule"])
+        self.assertIn("Acceptance gate summary", markdown)
+        self.assertIn("Blocking gates: 6", markdown)
+
     def test_writers_create_markdown_and_json_outputs(self) -> None:
         checklist = build_acceptance_checklist(
             {
@@ -98,6 +111,7 @@ class ImplementationAcceptanceChecklistTests(unittest.TestCase):
         self.assertIn("operator handoff", markdown.lower())
         self.assertEqual(parsed["generated_at"], "2026-01-01T00:00:00+00:00")
         self.assertEqual(parsed["candidate"]["candidate_id"], "candidate-04")
+        self.assertEqual(parsed["gate_summary"]["blocking_gates"], 6)
         self.assertIn("revert", parsed["rollback_notes"].lower())
 
 
