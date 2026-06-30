@@ -50,15 +50,18 @@ class ImplementationAcceptanceHandoffTests(unittest.TestCase):
         )
         markdown = render_markdown(handoff)
 
-        self.assertEqual(handoff["schema_version"], "1.0")
+        self.assertEqual(handoff["schema_version"], "1.1")
         self.assertEqual(handoff["status"], "ready_for_review")
         self.assertEqual(handoff["candidate"]["candidate_id"], "candidate-07")
         self.assertEqual(handoff["merge_blockers"], [])
         self.assertTrue(handoff["gate_evidence_readiness_summary"]["ready_for_merge_evidence_review"])
         self.assertEqual(handoff["gate_evidence_readiness_summary"]["missing_blocking_gate_ids"], [])
+        self.assertEqual(handoff["gate_evidence_readiness_summary"]["status_counts"], {"verified": 6})
+        self.assertFalse(handoff["gate_evidence_readiness_summary"]["status_review_warning"])
         self.assertEqual(len(handoff["completed_gate_evidence_manifest"]), 6)
         self.assertIn("Completed gate evidence manifest", markdown)
         self.assertIn("Ready for merge evidence review: True", markdown)
+        self.assertIn("Evidence status counts: verified: 6", markdown)
         self.assertIn(SAFE_SCOPE, markdown)
 
     def test_missing_blocking_evidence_remains_a_merge_blocker(self) -> None:
@@ -74,6 +77,24 @@ class ImplementationAcceptanceHandoffTests(unittest.TestCase):
         self.assertIn("scope-framing", handoff["gate_evidence_readiness_summary"]["missing_blocking_gate_ids"])
         self.assertTrue(any("scope-framing" in blocker for blocker in handoff["merge_blockers"]))
 
+    def test_unknown_evidence_status_is_preserved_and_warns_reviewers(self) -> None:
+        checklist = self._completed_checklist()
+        checklist["gate_evidence_manifest"][0]["evidence_status"] = "Needs Human Review"
+        handoff = build_acceptance_handoff(
+            checklist,
+            generated_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        )
+        readiness = handoff["gate_evidence_readiness_summary"]
+        markdown = render_markdown(handoff)
+
+        self.assertEqual(handoff["status"], "blocked_missing_evidence")
+        self.assertEqual(readiness["status_counts"], {"needs human review": 1, "verified": 5})
+        self.assertEqual(readiness["unknown_statuses"], ["needs human review"])
+        self.assertEqual(readiness["unknown_status_gate_ids"], ["scope-framing"])
+        self.assertTrue(readiness["status_review_warning"])
+        self.assertIn("Unknown evidence statuses: needs human review", markdown)
+        self.assertTrue(any("Unknown evidence_status values" in blocker for blocker in handoff["merge_blockers"]))
+
     def test_empty_or_invalid_source_is_blocked_safely(self) -> None:
         handoff = build_acceptance_handoff(generated_at=datetime(2026, 1, 1, tzinfo=timezone.utc))
         markdown = render_markdown(handoff)
@@ -81,6 +102,7 @@ class ImplementationAcceptanceHandoffTests(unittest.TestCase):
         self.assertEqual(handoff["status"], "blocked_missing_evidence")
         self.assertIn("No gate_evidence_manifest rows", handoff["merge_blockers"][0])
         self.assertFalse(handoff["gate_evidence_readiness_summary"]["ready_for_merge_evidence_review"])
+        self.assertEqual(handoff["gate_evidence_readiness_summary"]["status_counts"], {})
         self.assertIn("not operational tasking", markdown)
 
     def test_writers_create_markdown_and_json_outputs(self) -> None:
@@ -99,6 +121,7 @@ class ImplementationAcceptanceHandoffTests(unittest.TestCase):
         self.assertEqual(parsed["generated_at"], "2026-01-01T00:00:00+00:00")
         self.assertEqual(parsed["status"], "ready_for_review")
         self.assertEqual(parsed["gate_evidence_readiness_summary"]["ready_blocking_rows"], 6)
+        self.assertEqual(parsed["gate_evidence_readiness_summary"]["status_counts"], {"verified": 6})
         self.assertIn("rollback", parsed["rollback_notes"].lower())
 
 
