@@ -265,9 +265,10 @@ def _markdown_lines(report: Mapping[str, Any]) -> Iterable[str]:
     yield "| Focus area | Score | Roadmap matches | Recent-change matches | Rationale |"
     yield "| --- | ---: | ---: | ---: | --- |"
     for finding in report["focus_findings"]:
+        rationale = str(finding["rationale"]).replace("|", "\\|")
         yield (
             f"| `{finding['name']}` | {finding['score']} | {finding['roadmap_matches']} | "
-            f"{finding['recent_change_matches']} | {str(finding['rationale']).replace('|', '\\|')} |"
+            f"{finding['recent_change_matches']} | {rationale} |"
         )
     yield ""
     yield "## Recent changes inspected"
