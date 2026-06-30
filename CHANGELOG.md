@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Promoted implementation acceptance checklist and handoff artifacts to first-class diagnostics provenance/gap-report artifacts so reviewers can see missing, undersized, and provenance-labeled acceptance evidence in the standard bundle without treating it as live analytical truth.
 - Wired the offline `implementation_acceptance_checklist` and `implementation_acceptance_handoff` CLIs into `scripts/ci_report.sh`, added CI-bundle documentation, and added static regression coverage so reviewer evidence handoff artifacts are generated automatically in the standard diagnostics bundle without running live collection, detection, prediction, or operational workflows.
 - Added `gate_evidence_manifest` metadata to the offline `implementation_acceptance_checklist` CLI, documentation, and tests so reviewers can track per-gate evidence status, evidence sources, notes, and merge-blocking missing evidence without scraping Markdown or claiming validation before evidence is collected.
 - Added machine-readable `gate_summary` metadata to the offline `implementation_acceptance_checklist` CLI, documentation, and tests so reviewers and downstream handoff tools can count total, blocking, and nonblocking acceptance gates without parsing Markdown while preserving safe analytical framing and backwards-compatible JSON consumers.
