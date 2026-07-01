@@ -77,7 +77,7 @@ Block merge when any of the following are true:
 
 This guide is additive. It does not change generated predictions, model training, API routes, database schemas, live data ingestion, or analytical estimates. Existing handoff consumers can continue to ignore `release_bundle_target_projection`, `artifact_manifest_supplied`, and `manifest_evidence`.
 
-Rollback by reverting this documentation and the optional manifest-enrichment CLI/tests PR. Do not delete implementation acceptance handoff, artifact manifest, gap-report, or diagnostic bundle tooling.
+Rollback by reverting this documentation and its static coverage, or by reverting the optional manifest-enrichment CLI/tests PR. Do not delete implementation acceptance handoff, artifact manifest, gap-report, or diagnostic bundle tooling.
 
 ## Follow-up implementation path
 
