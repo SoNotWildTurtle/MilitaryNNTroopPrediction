@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added `docs/handoff_manifest_status_review.md` and static coverage for manifest-backed presence/integrity review of implementation acceptance handoff release bundle target projections, including safe default statuses, narrow regeneration commands, merge blockers, compatibility notes, rollback guidance, and safe analytical framing.
 - Added optional `--decision-record-json` support to `implementation_acceptance_handoff` so generated handoff JSON/Markdown can include a safe `release_bundle_target_projection` from `run-decision-record.json` while preserving unknown future keys, marking presence/integrity as unchecked until manifest validation, and avoiding any change to prediction, ingestion, API, database, or live analytical behavior.
 - Added `docs/run_decision_record_bundle_targets.md` and static regression coverage so reviewers can validate run decision record bundle target artifacts, review order, narrow offline reproduction commands, merge blockers, rollback guidance, and safe analytical framing without treating generated evidence as operational truth.
 - Added `documentation_index` metadata to generated run decision record JSON, documented the additive schema field, and added regression coverage so downstream handoff consumers can route reviewers to `docs/run_decision_record_navigation.md` without treating the link as validation evidence or changing predictive/runtime behavior.
@@ -58,16 +59,3 @@
 - Added static regression coverage for workflow gate summary task-runner and CI artifact wiring.
 - Added `docs/workflow_gate_review_runbook.md` with a deterministic, offline-first merge gate review checklist, blocker triage table, safe analytical scope notes, rollback guidance, and local reproduction commands for required hosted checks.
 - Added static regression coverage for the workflow gate review runbook so required gates, final-head-SHA review, safe analytical framing, and narrow local rerun commands stay documented.
-- Added the offline `workflow_gate_summary` CLI to export a JSON/Markdown map of required hosted validation gates, local reproduction commands, green-check meaning, merge blockers, and safe analytical scope.
-- Added `docs/workflow_gate_summary.md` with usage, reviewer workflow, compatibility notes, and rollback guidance.
-- Added deterministic tests for workflow gate naming, missing-workflow blocker behavior, Markdown rendering, JSON/Markdown writing, and required-before-merge metadata.
-- Added `docs/reviewer_workflow_status_index.md` to map hosted check names to local reproduction commands, green-check meaning, known limits, and merge-blocker triage.
-- Added static regression coverage for the reviewer workflow status index so hosted check guidance stays aligned with existing CI, analytical framing, and handoff receipt workflows.
-- Added `.github/workflows/handoff-validation-receipt.yml` to independently smoke-test the final handoff receipt and upload its diagnostic bundle.
-- Added `docs/handoff_validation_receipt_workflow.md` with focused reproduction, review guidance, compatibility notes, and rollback steps.
-- Added static regression coverage for the handoff validation receipt workflow wiring and documentation.
-- Added `.github/workflows/analytical-framing-audit.yml` to smoke-test the analytical framing audit CLI and upload its review artifacts.
-- Added `docs/analytical_framing_audit_workflow.md` with focused CI reproduction, review guidance, compatibility notes, and rollback steps.
-- Added the offline `analytical_framing_audit` CLI for scanning generated handoff artifacts for overconfident wording, operationally framed phrases, and missing analytical-scope caveats.
-- Added deterministic unit tests for ready, warning, informational, custom include-pattern, and writer behavior.
-- Added `docs/analytical_framing_audit.md` with safe usage, reviewer workflow, and scope notes.
