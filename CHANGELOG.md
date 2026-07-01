@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added optional `--artifact-manifest-json` support to `implementation_acceptance_handoff` so release bundle target projections can populate manifest-backed `presence_status`, `integrity_status`, and `manifest_evidence` fields from exact artifact-manifest path, size, and SHA-256 evidence while preserving `not_checked` defaults when no manifest is supplied and avoiding prediction, ingestion, API, database, or live analytical behavior changes.
 - Added `docs/handoff_manifest_status_review.md` and static coverage for manifest-backed presence/integrity review of implementation acceptance handoff release bundle target projections, including safe default statuses, narrow regeneration commands, merge blockers, compatibility notes, rollback guidance, and safe analytical framing.
 - Added optional `--decision-record-json` support to `implementation_acceptance_handoff` so generated handoff JSON/Markdown can include a safe `release_bundle_target_projection` from `run-decision-record.json` while preserving unknown future keys, marking presence/integrity as unchecked until manifest validation, and avoiding any change to prediction, ingestion, API, database, or live analytical behavior.
 - Added `docs/run_decision_record_bundle_targets.md` and static regression coverage so reviewers can validate run decision record bundle target artifacts, review order, narrow offline reproduction commands, merge blockers, rollback guidance, and safe analytical framing without treating generated evidence as operational truth.

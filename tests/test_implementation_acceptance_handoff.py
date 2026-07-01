@@ -60,7 +60,29 @@ class ImplementationAcceptanceHandoffTests(unittest.TestCase):
                     "role": "acceptance_handoff",
                     "review_purpose": "Confirm blocking gate evidence is ready for review.",
                 },
+                {
+                    "path": "ci_artifacts/missing-release-note.md",
+                    "role": "missing_fixture",
+                    "review_purpose": "Exercise manifest absence without blocking gate evidence readiness.",
+                },
                 {"path": "", "role": "ignored_empty_path"},
+            ],
+        }
+
+    def _artifact_manifest(self) -> dict:
+        return {
+            "schema_version": "1.0",
+            "files": [
+                {
+                    "path": "ci_artifacts/run-decision-record.json",
+                    "size_bytes": 4096,
+                    "sha256": "a" * 64,
+                },
+                {
+                    "path": "ci_artifacts/implementation-acceptance-handoff.json",
+                    "size_bytes": 0,
+                    "sha256": "",
+                },
             ],
         }
 
@@ -71,7 +93,7 @@ class ImplementationAcceptanceHandoffTests(unittest.TestCase):
         )
         markdown = render_markdown(handoff)
 
-        self.assertEqual(handoff["schema_version"], "1.2")
+        self.assertEqual(handoff["schema_version"], "1.3")
         self.assertEqual(handoff["status"], "ready_for_review")
         self.assertEqual(handoff["candidate"]["candidate_id"], "candidate-07")
         self.assertEqual(handoff["merge_blockers"], [])
@@ -83,8 +105,10 @@ class ImplementationAcceptanceHandoffTests(unittest.TestCase):
         self.assertEqual(len(handoff["completed_gate_evidence_manifest"]), 6)
         self.assertIn("release_bundle_target_projection", handoff["handoff_fields_captured"])
         self.assertEqual(handoff["release_bundle_target_projection"]["target_count"], 0)
+        self.assertFalse(handoff["release_bundle_target_projection"]["artifact_manifest_supplied"])
         self.assertIn("Completed gate evidence manifest", markdown)
         self.assertIn("Release bundle target projection", markdown)
+        self.assertIn("Artifact manifest supplied: False", markdown)
         self.assertIn("Ready for merge evidence review: True", markdown)
         self.assertIn("Evidence status counts: verified: 6", markdown)
         self.assertIn("## Compatibility and rollback", markdown)
@@ -100,16 +124,44 @@ class ImplementationAcceptanceHandoffTests(unittest.TestCase):
         markdown = render_markdown(handoff)
 
         self.assertEqual(projection["source_schema_version"], "2.4")
-        self.assertEqual(projection["target_count"], 2)
+        self.assertEqual(projection["target_count"], 3)
         self.assertEqual(projection["targets"][0]["path"], "ci_artifacts/run-decision-record.json")
         self.assertEqual(projection["targets"][0]["role"], "decision_record")
         self.assertEqual(projection["targets"][0]["future_key"], "preserved")
         self.assertEqual(projection["targets"][0]["presence_status"], "not_checked")
         self.assertEqual(projection["targets"][0]["integrity_status"], "not_checked")
+        self.assertFalse(projection["targets"][0]["manifest_evidence"]["artifact_manifest_supplied"])
         self.assertIn("navigation metadata", projection["safe_scope"])
         self.assertIn("not validate model quality", projection["safe_scope"])
         self.assertIn("ci_artifacts/implementation-acceptance-handoff.json", markdown)
         self.assertIn("not_checked", markdown)
+
+    def test_artifact_manifest_enriches_release_bundle_target_statuses(self) -> None:
+        handoff = build_acceptance_handoff(
+            self._completed_checklist(),
+            generated_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+            decision_record=self._decision_record_with_release_targets(),
+            artifact_manifest=self._artifact_manifest(),
+        )
+        projection = handoff["release_bundle_target_projection"]
+        targets = projection["targets"]
+        markdown = render_markdown(handoff)
+
+        self.assertTrue(projection["artifact_manifest_supplied"])
+        self.assertEqual(targets[0]["presence_status"], "present")
+        self.assertEqual(targets[0]["integrity_status"], "hash_recorded")
+        self.assertEqual(targets[0]["manifest_evidence"]["size_bytes"], 4096)
+        self.assertEqual(targets[1]["presence_status"], "present")
+        self.assertEqual(targets[1]["integrity_status"], "needs_review")
+        self.assertIn("lacks a non-empty SHA-256", targets[1]["manifest_evidence"]["review_note"])
+        self.assertEqual(targets[2]["presence_status"], "missing")
+        self.assertEqual(targets[2]["integrity_status"], "needs_review")
+        self.assertIn("not found", targets[2]["manifest_evidence"]["review_note"])
+        self.assertEqual(handoff["status"], "ready_for_review")
+        self.assertTrue(strict_validation_passed(handoff))
+        self.assertIn("Artifact manifest supplied: True", markdown)
+        self.assertIn("hash_recorded", markdown)
+        self.assertIn("missing", markdown)
 
     def test_missing_blocking_evidence_remains_a_merge_blocker(self) -> None:
         checklist = self._completed_checklist()
@@ -160,6 +212,7 @@ class ImplementationAcceptanceHandoffTests(unittest.TestCase):
             self._completed_checklist(),
             generated_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
             decision_record=self._decision_record_with_release_targets(),
+            artifact_manifest=self._artifact_manifest(),
         )
         with TemporaryDirectory() as temp_dir:
             markdown_path = Path(temp_dir) / "handoff.md"
@@ -175,7 +228,8 @@ class ImplementationAcceptanceHandoffTests(unittest.TestCase):
         self.assertEqual(parsed["status"], "ready_for_review")
         self.assertEqual(parsed["gate_evidence_readiness_summary"]["ready_blocking_rows"], 6)
         self.assertEqual(parsed["gate_evidence_readiness_summary"]["status_counts"], {"verified": 6})
-        self.assertEqual(parsed["release_bundle_target_projection"]["target_count"], 2)
+        self.assertEqual(parsed["release_bundle_target_projection"]["target_count"], 3)
+        self.assertEqual(parsed["release_bundle_target_projection"]["targets"][0]["integrity_status"], "hash_recorded")
         self.assertIn("rollback", parsed["rollback_notes"].lower())
 
     def test_strict_cli_fails_when_handoff_has_blockers(self) -> None:
@@ -187,13 +241,17 @@ class ImplementationAcceptanceHandoffTests(unittest.TestCase):
         with TemporaryDirectory() as temp_dir:
             checklist_path = Path(temp_dir) / "checklist.json"
             decision_record_path = Path(temp_dir) / "run-decision-record.json"
+            artifact_manifest_path = Path(temp_dir) / "artifact-manifest.json"
             checklist_path.write_text(json.dumps(self._completed_checklist()), encoding="utf-8")
             decision_record_path.write_text(json.dumps(self._decision_record_with_release_targets()), encoding="utf-8")
+            artifact_manifest_path.write_text(json.dumps(self._artifact_manifest()), encoding="utf-8")
             exit_code = main([
                 "--checklist-json",
                 str(checklist_path),
                 "--decision-record-json",
                 str(decision_record_path),
+                "--artifact-manifest-json",
+                str(artifact_manifest_path),
                 "--no-markdown",
                 "--no-json",
                 "--strict",
