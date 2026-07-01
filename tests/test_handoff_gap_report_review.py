@@ -75,7 +75,7 @@ class HandoffGapReportReviewTests(unittest.TestCase):
         )
         markdown = render_markdown(review)
 
-        self.assertEqual(review["schema_version"], "1.0")
+        self.assertEqual(review["schema_version"], "1.1")
         self.assertEqual(review["status"], "ready_for_review")
         self.assertEqual(review["target_count"], 3)
         self.assertTrue(review["artifact_gap_report_supplied"])
@@ -84,6 +84,8 @@ class HandoffGapReportReviewTests(unittest.TestCase):
         self.assertTrue(all(target["gap_status"] == "gap_clear" for target in review["reviewed_targets"]))
         self.assertIn("Artifact gap report supplied: True", markdown)
         self.assertIn("gap_clear", markdown)
+        self.assertIn("Reviewer next actions", markdown)
+        self.assertIn("Attach the gap-review JSON/Markdown", markdown)
         self.assertIn(SAFE_SCOPE, markdown)
 
     def test_gap_report_missing_and_suspicious_targets_block_review(self) -> None:
@@ -103,9 +105,13 @@ class HandoffGapReportReviewTests(unittest.TestCase):
         self.assertEqual(review["gap_summary"]["suspicious_path_count"], 1)
         self.assertEqual(review["gap_summary"]["blocking_target_count"], 2)
         self.assertEqual(len(review["merge_blockers"]), 2)
+        self.assertEqual(len(review["reviewer_next_actions"]), 2)
+        self.assertTrue(all(action["priority"] == "blocking" for action in review["reviewer_next_actions"]))
         self.assertFalse(strict_validation_passed(review))
         self.assertIn("missing_in_gap_report", markdown)
         self.assertIn("suspicious_in_gap_report", markdown)
+        self.assertIn("Regenerate the missing release bundle artifact", markdown)
+        self.assertIn("explicitly disposition the suspicious artifact", markdown)
         self.assertIn("not operational tasking", markdown)
 
     def test_missing_inputs_block_safely(self) -> None:
@@ -117,8 +123,12 @@ class HandoffGapReportReviewTests(unittest.TestCase):
         self.assertEqual(review["target_count"], 0)
         self.assertTrue(any("No release bundle target paths" in blocker for blocker in review["merge_blockers"]))
         self.assertTrue(any("No parseable artifact gap report" in blocker for blocker in review["merge_blockers"]))
+        self.assertEqual(len(review["reviewer_next_actions"]), 2)
+        self.assertTrue(any("implementation_acceptance_handoff" in action["narrow_rerun"] for action in review["reviewer_next_actions"]))
+        self.assertTrue(any("artifact_gap_report" in action["narrow_rerun"] for action in review["reviewer_next_actions"]))
         self.assertFalse(strict_validation_passed(review))
         self.assertIn("No release bundle targets", markdown)
+        self.assertIn("Regenerate implementation acceptance handoff", markdown)
 
     def test_writers_create_markdown_and_json_outputs(self) -> None:
         review = build_gap_report_review(
@@ -137,6 +147,7 @@ class HandoffGapReportReviewTests(unittest.TestCase):
         self.assertEqual(parsed["generated_at"], "2026-01-01T00:00:00+00:00")
         self.assertEqual(parsed["status"], "ready_for_review")
         self.assertEqual(parsed["gap_summary"]["blocking_target_count"], 0)
+        self.assertEqual(parsed["reviewer_next_actions"][0]["priority"], "review")
         self.assertIn("rollback", parsed["rollback_notes"].lower())
 
     def test_strict_cli_fails_when_gap_report_is_missing(self) -> None:
