@@ -52,7 +52,7 @@ Block merge when any of the following are true:
 - A manifest row for a target has no SHA-256 hash or a zero-byte size.
 - `artifact-gap-report.json` still reports the target as missing or suspicious.
 - The handoff projection is being described as prediction validation, operational certainty, targeting support, or real-world movement proof.
-- Required hosted checks for the final head SHA are unavailable, queued, cancelled, or failing.
+- required hosted checks for the final head SHA are unavailable, queued, cancelled, or failing.
 
 ## Compatibility and rollback
 
