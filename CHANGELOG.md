@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added deterministic `reviewer_next_actions[]` guidance to the offline `handoff_gap_report_review` JSON/Markdown output so missing handoff targets, missing gap reports, missing release bundle artifacts, suspicious artifacts, and clear reviews each produce narrow reviewer rerun actions without changing prediction, ingestion, API, database, or live analytical behavior.
 - Added optional `--artifact-manifest-json` support to `implementation_acceptance_handoff` so release bundle target projections can populate manifest-backed `presence_status`, `integrity_status`, and `manifest_evidence` fields from exact artifact-manifest path, size, and SHA-256 evidence while preserving `not_checked` defaults when no manifest is supplied and avoiding prediction, ingestion, API, database, or live analytical behavior changes.
 - Added `docs/handoff_manifest_status_review.md` and static coverage for manifest-backed presence/integrity review of implementation acceptance handoff release bundle target projections, including safe default statuses, narrow regeneration commands, merge blockers, compatibility notes, rollback guidance, and safe analytical framing.
 - Added optional `--decision-record-json` support to `implementation_acceptance_handoff` so generated handoff JSON/Markdown can include a safe `release_bundle_target_projection` from `run-decision-record.json` while preserving unknown future keys, marking presence/integrity as unchecked until manifest validation, and avoiding any change to prediction, ingestion, API, database, or live analytical behavior.

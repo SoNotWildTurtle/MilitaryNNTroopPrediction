@@ -54,13 +54,25 @@ The CI bundle uses non-strict generation because the artifact is reviewer-naviga
 | `suspicious_in_gap_report` | Target path appears in suspicious generated-artifact evidence. | Treat as a blocker until a reviewer confirms the artifact is expected and safe. |
 | `not_checked` | No parseable artifact-gap-report JSON was supplied. | Treat as unavailable validation, not a pass. |
 
+## Reviewer next actions
+
+The JSON and Markdown outputs include `reviewer_next_actions[]`, a deterministic handoff queue that turns the gap-review result into narrow reviewer work:
+
+- missing handoff targets produce a blocking action to regenerate `implementation-acceptance-handoff.json` with decision-record and artifact-manifest context;
+- missing or unparsable artifact gap reports produce a blocking action to regenerate `artifact-gap-report.json` from the same diagnostics directory;
+- `missing_in_gap_report` targets produce a blocking action to regenerate the missing release bundle artifact or correct stale target metadata;
+- `suspicious_in_gap_report` targets produce a blocking action to explicitly disposition the suspicious artifact before merge;
+- clear reviews produce a review action to attach the JSON/Markdown evidence and cross-check manifest statuses before merge.
+
+Each action includes `priority`, `action`, `rationale`, and `narrow_rerun` fields so automation and reviewers can rerun the smallest relevant command rather than repeating broad workflows first.
+
 ## Review order
 
 1. Generate the artifact manifest and artifact gap report from the same diagnostics directory.
 2. Generate the implementation acceptance handoff from the same decision record and manifest evidence.
 3. Run `handoff_gap_report_review` with both JSON inputs.
-4. Open `handoff-gap-report-review.json` and inspect `reviewed_targets[]`.
-5. Treat any `gap_blocks_merge=true` target as a blocker until regeneration, correction, or explicit reviewer disposition.
+4. Open `handoff-gap-report-review.json` and inspect `reviewed_targets[]` plus `reviewer_next_actions[]`.
+5. Treat any `gap_blocks_merge=true` target or blocking `reviewer_next_actions[]` entry as a blocker until regeneration, correction, or explicit reviewer disposition.
 6. Cross-check `presence_status`, `integrity_status`, and `gap_status`; a target should not be considered ready when manifest evidence is present but the gap report still flags it as missing or suspicious.
 
 ## JSON contract
@@ -73,11 +85,12 @@ Top-level fields:
 - `reviewed_targets[]`: per-target `path`, `role`, `presence_status`, `integrity_status`, `gap_status`, `gap_blocks_merge`, and `review_note`.
 - `gap_summary`: counts for missing paths, suspicious paths, and blocking reviewed targets.
 - `merge_blockers`: exact blocker strings for release-gate handoff.
+- `reviewer_next_actions[]`: deterministic `priority`, `action`, `rationale`, and `narrow_rerun` guidance for the smallest useful next step.
 - `safe_scope`, `compatibility_notes`, and `rollback_notes`: reviewer guardrails that must remain visible.
 
 ## Compatibility
 
-This is additive. Existing implementation acceptance handoff, artifact manifest, artifact gap report, diagnostics bundle, and decision-record workflows remain usable without this CLI. Consumers can ignore the new handoff gap-review artifacts until they opt in.
+This is additive. Existing implementation acceptance handoff, artifact manifest, artifact gap report, diagnostics bundle, and decision-record workflows remain usable without this CLI. Consumers can ignore unknown `reviewer_next_actions[]` entries or new schema versions until they opt in.
 
 ## Rollback
 
