@@ -17,9 +17,9 @@ A blank checklist can be generated without `--decision-record-path`, but the JSO
 
 ## Current schema version
 
-`schema_version` is currently `1.3` for the checklist producer. The downstream `implementation_acceptance_handoff` artifact uses its own additive `schema_version` and may include additional evidence-status diagnostics derived from the checklist manifest.
+`schema_version` is currently `1.3` for the checklist producer. The downstream `implementation_acceptance_handoff` artifact uses its own additive `schema_version` and may include additional evidence-status diagnostics and an optional `release_bundle_target_projection` derived from a run decision record.
 
-Consumers should preserve unknown fields and should treat new top-level fields as additive unless release notes explicitly state otherwise. A consumer that only understands an older schema can still read `candidate`, `acceptance_gates`, `merge_blockers`, and `handoff_fields_to_capture` while ignoring newer gate-summary and evidence-readiness fields.
+Consumers should preserve unknown fields and should treat new top-level fields as additive unless release notes explicitly state otherwise. A consumer that only understands an older schema can still read `candidate`, `acceptance_gates`, `merge_blockers`, and `handoff_fields_to_capture` while ignoring newer gate-summary, evidence-readiness, and release-bundle projection fields.
 
 ## Top-level fields
 
@@ -35,6 +35,7 @@ Consumers should preserve unknown fields and should treat new top-level fields a
 | `gate_summary` | object | yes | Machine-readable gate counts, IDs, and blocking review rule. |
 | `gate_evidence_manifest` | array | yes | Reviewer-fillable evidence rows for every gate. |
 | `gate_evidence_readiness_summary` | object | yes | Merge-evidence readiness totals derived from the manifest. |
+| `release_bundle_target_projection` | object | handoff only | Optional handoff projection of `release_bundle_targets` from `run-decision-record.json`. |
 | `focus_gate_hints` | array | yes | Focus-specific evidence hints. |
 | `validation_commands` | array | yes | Narrow local commands expected before broader validation. |
 | `merge_blockers` | array | yes | Hosted-check, review-thread, or inherited blocker reminders. |
@@ -136,6 +137,28 @@ A blocking evidence row is ready only when all of the following are true:
 3. `missing_evidence_blocks_merge` is `false`.
 
 Generated checklists therefore begin with `ready_for_merge_evidence_review: false`. That is expected template behavior, not a CLI failure. Unknown statuses in a downstream handoff remain merge blockers until reviewers normalize the row or provide collected/verified evidence.
+
+## Release bundle target projection
+
+`implementation_acceptance_handoff` can copy navigation metadata from a decision record into the generated handoff:
+
+```bash
+python -m app.cli.implementation_acceptance_handoff \
+  --checklist-json /tmp/implementation-acceptance-checklist.json \
+  --decision-record-json /tmp/run-decision-record.json \
+  --markdown-path /tmp/implementation-acceptance-handoff.md \
+  --json-path /tmp/implementation-acceptance-handoff.json
+```
+
+The emitted `release_bundle_target_projection` object includes:
+
+- `source_schema_version` copied from the decision record when available.
+- `target_count` for non-empty target paths.
+- `targets[]` entries preserving `path`, `role`, `review_purpose`, and unknown future keys.
+- `presence_status` and `integrity_status`, both set to `not_checked` until an artifact manifest or checksum layer validates generated files.
+- `projection_rule` and `safe_scope` strings for downstream consumers.
+
+This projection is navigation metadata only. It helps reviewers find release-bundle evidence without scraping Markdown, but it does not validate model quality, prove predictions, identify real-world troop movement, or authorize operational use.
 
 ## Strict handoff validation mode
 

@@ -45,6 +45,25 @@ class ImplementationAcceptanceHandoffTests(unittest.TestCase):
         checklist["gate_evidence_manifest"] = completed_rows
         return checklist
 
+    def _decision_record_with_release_targets(self) -> dict:
+        return {
+            "schema_version": "2.4",
+            "release_bundle_targets": [
+                {
+                    "path": "ci_artifacts/run-decision-record.json",
+                    "role": "decision_record",
+                    "review_purpose": "Confirm selected candidate and merge evidence.",
+                    "future_key": "preserved",
+                },
+                {
+                    "path": "ci_artifacts/implementation-acceptance-handoff.json",
+                    "role": "acceptance_handoff",
+                    "review_purpose": "Confirm blocking gate evidence is ready for review.",
+                },
+                {"path": "", "role": "ignored_empty_path"},
+            ],
+        }
+
     def test_completed_manifest_is_preserved_and_marked_ready(self) -> None:
         handoff = build_acceptance_handoff(
             self._completed_checklist(),
@@ -52,7 +71,7 @@ class ImplementationAcceptanceHandoffTests(unittest.TestCase):
         )
         markdown = render_markdown(handoff)
 
-        self.assertEqual(handoff["schema_version"], "1.1")
+        self.assertEqual(handoff["schema_version"], "1.2")
         self.assertEqual(handoff["status"], "ready_for_review")
         self.assertEqual(handoff["candidate"]["candidate_id"], "candidate-07")
         self.assertEqual(handoff["merge_blockers"], [])
@@ -62,11 +81,35 @@ class ImplementationAcceptanceHandoffTests(unittest.TestCase):
         self.assertFalse(handoff["gate_evidence_readiness_summary"]["status_review_warning"])
         self.assertTrue(strict_validation_passed(handoff))
         self.assertEqual(len(handoff["completed_gate_evidence_manifest"]), 6)
+        self.assertIn("release_bundle_target_projection", handoff["handoff_fields_captured"])
+        self.assertEqual(handoff["release_bundle_target_projection"]["target_count"], 0)
         self.assertIn("Completed gate evidence manifest", markdown)
+        self.assertIn("Release bundle target projection", markdown)
         self.assertIn("Ready for merge evidence review: True", markdown)
         self.assertIn("Evidence status counts: verified: 6", markdown)
         self.assertIn("## Compatibility and rollback", markdown)
         self.assertIn(SAFE_SCOPE, markdown)
+
+    def test_release_bundle_targets_are_projected_from_decision_record(self) -> None:
+        handoff = build_acceptance_handoff(
+            self._completed_checklist(),
+            generated_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+            decision_record=self._decision_record_with_release_targets(),
+        )
+        projection = handoff["release_bundle_target_projection"]
+        markdown = render_markdown(handoff)
+
+        self.assertEqual(projection["source_schema_version"], "2.4")
+        self.assertEqual(projection["target_count"], 2)
+        self.assertEqual(projection["targets"][0]["path"], "ci_artifacts/run-decision-record.json")
+        self.assertEqual(projection["targets"][0]["role"], "decision_record")
+        self.assertEqual(projection["targets"][0]["future_key"], "preserved")
+        self.assertEqual(projection["targets"][0]["presence_status"], "not_checked")
+        self.assertEqual(projection["targets"][0]["integrity_status"], "not_checked")
+        self.assertIn("navigation metadata", projection["safe_scope"])
+        self.assertIn("not validate model quality", projection["safe_scope"])
+        self.assertIn("ci_artifacts/implementation-acceptance-handoff.json", markdown)
+        self.assertIn("not_checked", markdown)
 
     def test_missing_blocking_evidence_remains_a_merge_blocker(self) -> None:
         checklist = self._completed_checklist()
@@ -116,6 +159,7 @@ class ImplementationAcceptanceHandoffTests(unittest.TestCase):
         handoff = build_acceptance_handoff(
             self._completed_checklist(),
             generated_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+            decision_record=self._decision_record_with_release_targets(),
         )
         with TemporaryDirectory() as temp_dir:
             markdown_path = Path(temp_dir) / "handoff.md"
@@ -125,11 +169,13 @@ class ImplementationAcceptanceHandoffTests(unittest.TestCase):
             parsed = json.loads(json_path.read_text(encoding="utf-8"))
 
         self.assertIn("# Implementation Acceptance Evidence Handoff", markdown)
+        self.assertIn("## Release bundle target projection", markdown)
         self.assertIn("## Compatibility and rollback", markdown)
         self.assertEqual(parsed["generated_at"], "2026-01-01T00:00:00+00:00")
         self.assertEqual(parsed["status"], "ready_for_review")
         self.assertEqual(parsed["gate_evidence_readiness_summary"]["ready_blocking_rows"], 6)
         self.assertEqual(parsed["gate_evidence_readiness_summary"]["status_counts"], {"verified": 6})
+        self.assertEqual(parsed["release_bundle_target_projection"]["target_count"], 2)
         self.assertIn("rollback", parsed["rollback_notes"].lower())
 
     def test_strict_cli_fails_when_handoff_has_blockers(self) -> None:
@@ -140,10 +186,14 @@ class ImplementationAcceptanceHandoffTests(unittest.TestCase):
     def test_strict_cli_passes_for_completed_evidence_manifest(self) -> None:
         with TemporaryDirectory() as temp_dir:
             checklist_path = Path(temp_dir) / "checklist.json"
+            decision_record_path = Path(temp_dir) / "run-decision-record.json"
             checklist_path.write_text(json.dumps(self._completed_checklist()), encoding="utf-8")
+            decision_record_path.write_text(json.dumps(self._decision_record_with_release_targets()), encoding="utf-8")
             exit_code = main([
                 "--checklist-json",
                 str(checklist_path),
+                "--decision-record-json",
+                str(decision_record_path),
                 "--no-markdown",
                 "--no-json",
                 "--strict",
