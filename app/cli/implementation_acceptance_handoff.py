@@ -19,7 +19,7 @@ from typing import Any, Dict, Iterable, Mapping, Sequence
 
 DEFAULT_MARKDOWN_NAME = "implementation-acceptance-handoff.md"
 DEFAULT_JSON_NAME = "implementation-acceptance-handoff.json"
-SCHEMA_VERSION = "1.2"
+SCHEMA_VERSION = "1.3"
 READY_EVIDENCE_STATUSES = {"collected", "verified"}
 KNOWN_EVIDENCE_STATUSES = READY_EVIDENCE_STATUSES | {"not_collected", "needs_update", "blocked"}
 
@@ -74,13 +74,84 @@ def _normalized_entry(entry: Mapping[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _normalized_release_bundle_target(entry: Mapping[str, Any]) -> Dict[str, Any]:
+def _manifest_file_index(artifact_manifest: Mapping[str, Any] | None) -> Dict[str, Mapping[str, Any]] | None:
+    """Return a path-indexed manifest map when an artifact manifest was supplied."""
+
+    if not artifact_manifest:
+        return None
+    files = _as_entries(artifact_manifest.get("files"))
+    return {
+        str(entry.get("path", "")).strip(): entry
+        for entry in files
+        if str(entry.get("path", "")).strip()
+    }
+
+
+def _positive_size(value: Any) -> bool:
+    try:
+        return int(value) > 0
+    except (TypeError, ValueError):
+        return False
+
+
+def _manifest_status_for_path(path: str, manifest_index: Mapping[str, Mapping[str, Any]] | None) -> Dict[str, Any]:
+    """Build safe reviewer-navigation status for one release bundle target path."""
+
+    if manifest_index is None:
+        return {
+            "presence_status": "not_checked",
+            "integrity_status": "not_checked",
+            "manifest_evidence": {
+                "artifact_manifest_supplied": False,
+                "review_note": "No artifact manifest was supplied; reviewer status remains not_checked.",
+            },
+        }
+
+    manifest_entry = manifest_index.get(path)
+    if manifest_entry is None:
+        return {
+            "presence_status": "missing",
+            "integrity_status": "needs_review",
+            "manifest_evidence": {
+                "artifact_manifest_supplied": True,
+                "path": path,
+                "review_note": "Target path was not found in artifact-manifest.json.",
+            },
+        }
+
+    sha256 = str(manifest_entry.get("sha256", "")).strip()
+    size_bytes = manifest_entry.get("size_bytes")
+    hash_recorded = bool(sha256) and _positive_size(size_bytes)
+    return {
+        "presence_status": "present",
+        "integrity_status": "hash_recorded" if hash_recorded else "needs_review",
+        "manifest_evidence": {
+            "artifact_manifest_supplied": True,
+            "path": path,
+            "size_bytes": size_bytes,
+            "sha256": sha256,
+            "review_note": (
+                "Manifest row includes a SHA-256 hash and positive size."
+                if hash_recorded
+                else "Manifest row is present but lacks a non-empty SHA-256 hash or positive size."
+            ),
+        },
+    }
+
+
+def _normalized_release_bundle_target(
+    entry: Mapping[str, Any],
+    manifest_index: Mapping[str, Mapping[str, Any]] | None = None,
+) -> Dict[str, Any]:
+    path = str(entry.get("path", ""))
+    status_fields = _manifest_status_for_path(path, manifest_index)
     target: Dict[str, Any] = {
-        "path": str(entry.get("path", "")),
+        "path": path,
         "role": str(entry.get("role", "unclassified_artifact")),
         "review_purpose": str(entry.get("review_purpose", "")),
-        "presence_status": "not_checked",
-        "integrity_status": "not_checked",
+        "presence_status": status_fields["presence_status"],
+        "integrity_status": status_fields["integrity_status"],
+        "manifest_evidence": status_fields["manifest_evidence"],
     }
     for key, value in sorted(entry.items()):
         if key not in target:
@@ -88,21 +159,27 @@ def _normalized_release_bundle_target(entry: Mapping[str, Any]) -> Dict[str, Any
     return target
 
 
-def _release_bundle_target_projection(decision_record: Mapping[str, Any] | None) -> Dict[str, Any]:
+def _release_bundle_target_projection(
+    decision_record: Mapping[str, Any] | None,
+    artifact_manifest: Mapping[str, Any] | None = None,
+) -> Dict[str, Any]:
     decision_record = decision_record or {}
+    manifest_index = _manifest_file_index(artifact_manifest)
     targets = [
-        _normalized_release_bundle_target(entry)
+        _normalized_release_bundle_target(entry, manifest_index)
         for entry in _as_entries(decision_record.get("release_bundle_targets"))
         if str(entry.get("path", "")).strip()
     ]
     return {
         "source_schema_version": decision_record.get("schema_version"),
+        "artifact_manifest_supplied": manifest_index is not None,
         "target_count": len(targets),
         "targets": targets,
         "projection_rule": (
             "Projection preserves path, role, review_purpose, and unknown future keys from "
-            "run-decision-record.json while marking presence_status and integrity_status as not_checked "
-            "until an artifact manifest verifies generated bundle files."
+            "run-decision-record.json. When --artifact-manifest-json is supplied, target "
+            "presence_status and integrity_status are derived from exact artifact-manifest.json "
+            "path, size, and SHA-256 evidence; otherwise they remain not_checked."
         ),
         "safe_scope": (
             "Release bundle target projection is navigation metadata for reviewer handoff only; it does "
@@ -170,13 +247,14 @@ def build_acceptance_handoff(
     checklist: Mapping[str, Any] | None = None,
     generated_at: datetime | None = None,
     decision_record: Mapping[str, Any] | None = None,
+    artifact_manifest: Mapping[str, Any] | None = None,
 ) -> Dict[str, Any]:
     """Build a deterministic completed-evidence handoff from checklist JSON."""
 
     checklist = checklist or {}
     generated_at = generated_at or _utc_now()
     entries = [_normalized_entry(entry) for entry in _as_entries(checklist.get("gate_evidence_manifest"))]
-    release_bundle_projection = _release_bundle_target_projection(decision_record)
+    release_bundle_projection = _release_bundle_target_projection(decision_record, artifact_manifest)
     readiness = _readiness_summary(entries)
     blockers = []
     if not entries:
@@ -213,8 +291,9 @@ def build_acceptance_handoff(
             "candidate_context",
         ],
         "compatibility_notes": (
-            "This handoff artifact is additive and reads existing checklist and optional decision-record JSON files. "
-            "It does not change prediction models, APIs, database schemas, generated analytical outputs, or live data workflows."
+            "This handoff artifact is additive and reads existing checklist, optional decision-record JSON, "
+            "and optional artifact-manifest JSON files. It does not change prediction models, APIs, database "
+            "schemas, generated analytical outputs, or live data workflows."
         ),
         "rollback_notes": (
             "Rollback by deleting the generated handoff artifact or reverting the handoff CLI/docs/tests PR. "
@@ -299,6 +378,7 @@ def _markdown_lines(handoff: Mapping[str, Any]) -> Iterable[str]:
     yield "## Release bundle target projection"
     yield ""
     yield f"- Target count: {release_targets.get('target_count', len(targets))}"
+    yield f"- Artifact manifest supplied: {release_targets.get('artifact_manifest_supplied', False)}"
     yield f"- Projection rule: {release_targets.get('projection_rule', 'No release bundle target projection was provided.')}"
     yield f"- Safe scope: {release_targets.get('safe_scope', 'Navigation metadata only; not operational evidence.')}"
     if targets:
@@ -382,6 +462,15 @@ def build_parser() -> argparse.ArgumentParser:
             "as navigation metadata."
         ),
     )
+    parser.add_argument(
+        "--artifact-manifest-json",
+        type=Path,
+        default=None,
+        help=(
+            "Optional artifact-manifest JSON used to enrich projected release bundle targets with manifest-backed "
+            "presence_status and integrity_status reviewer evidence."
+        ),
+    )
     parser.add_argument("--markdown-path", type=Path, default=Path(DEFAULT_MARKDOWN_NAME), help="Markdown output path.")
     parser.add_argument("--json-path", type=Path, default=Path(DEFAULT_JSON_NAME), help="JSON output path.")
     parser.add_argument("--no-markdown", action="store_true", help="Skip Markdown output.")
@@ -401,7 +490,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     checklist = _read_json(args.checklist_json)
     decision_record = _read_json(args.decision_record_json)
-    handoff = build_acceptance_handoff(checklist, decision_record=decision_record)
+    artifact_manifest = _read_json(args.artifact_manifest_json)
+    handoff = build_acceptance_handoff(
+        checklist,
+        decision_record=decision_record,
+        artifact_manifest=artifact_manifest,
+    )
     markdown_path = None if args.no_markdown else args.markdown_path
     json_path = None if args.no_json else args.json_path
     write_outputs(handoff, markdown_path, json_path)
