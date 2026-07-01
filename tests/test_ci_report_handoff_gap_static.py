@@ -13,7 +13,10 @@ class CiReportHandoffGapStaticTests(unittest.TestCase):
         script = Path("scripts/ci_report.sh").read_text(encoding="utf-8")
 
         help_file = "handoff-gap-report-review-help.txt"
-        gap_command = "-m app.cli.artifact_gap_report --artifact-dir"
+        gap_command = (
+            "-m app.cli.artifact_gap_report --artifact-dir \"${ARTIFACT_DIR}\" "
+            "--json-path \"${ARTIFACT_DIR}/artifact-gap-report.json\""
+        )
         enriched_handoff = "--artifact-manifest-json \"${ARTIFACT_DIR}/artifact-manifest.json\""
         review_command = "-m app.cli.handoff_gap_report_review"
         review_json = "handoff-gap-report-review.json"
