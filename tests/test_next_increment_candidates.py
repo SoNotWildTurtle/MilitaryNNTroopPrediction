@@ -111,6 +111,21 @@ class NextIncrementCandidateTests(unittest.TestCase):
         self.assertIn("not operational tasking", record["safe_scope"])
         self.assertIn("Hosted required checks", record["merge_blockers"][-1])
 
+    def test_decision_record_includes_documentation_index_for_handoff_consumers(self) -> None:
+        report = build_candidate_recipes(
+            generated_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+            changelog_text="# Changelog\n\n## Unreleased\n\n- Added validation evidence.\n",
+            goals_text="1. Automate validation evidence capture.\n",
+        )
+
+        record = build_decision_record(report)
+        index = record["documentation_index"]
+
+        self.assertEqual(index["path"], "docs/run_decision_record_navigation.md")
+        self.assertIn("schema", index["purpose"])
+        self.assertIn("rollback", index["purpose"])
+        self.assertIn("safe analytical-framing", index["purpose"])
+
     def test_decision_record_can_select_explicit_candidate_id(self) -> None:
         report = build_candidate_recipes(
             generated_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
@@ -147,6 +162,10 @@ class NextIncrementCandidateTests(unittest.TestCase):
         self.assertEqual(parsed["generated_at"], "2026-01-01T00:00:00+00:00")
         self.assertIn("candidate_recipes", parsed)
         self.assertIn("selected_candidate", decision_record)
+        self.assertEqual(
+            decision_record["documentation_index"]["path"],
+            "docs/run_decision_record_navigation.md",
+        )
         self.assertIn("revert", decision_record["rollback_notes"].lower())
         self.assertIn("compatible", decision_record["rollback_notes"].lower())
 
