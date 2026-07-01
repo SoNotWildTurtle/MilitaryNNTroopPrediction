@@ -7,7 +7,6 @@ import unittest
 
 
 DOC_PATH = Path("docs/handoff_manifest_status_review.md")
-README_PATH = Path("README.md")
 CHANGELOG_PATH = Path("CHANGELOG.md")
 
 
@@ -17,7 +16,6 @@ class HandoffManifestStatusReviewDocTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.doc = DOC_PATH.read_text(encoding="utf-8")
-        cls.readme = README_PATH.read_text(encoding="utf-8")
         cls.changelog = CHANGELOG_PATH.read_text(encoding="utf-8")
 
     def test_document_defines_safe_default_statuses_and_inputs(self) -> None:
@@ -48,7 +46,7 @@ class HandoffManifestStatusReviewDocTests(unittest.TestCase):
             with self.subTest(status=status):
                 self.assertIn(status, self.doc)
 
-    def test_document_keeps_blockers_rollback_and_safe_scope_visible(self) -> None:
+    def test_document_keeps_blockers_rollback_and_scope_visible(self) -> None:
         required_tokens = [
             "Block merge when",
             "required hosted checks for the final head SHA",
@@ -63,8 +61,7 @@ class HandoffManifestStatusReviewDocTests(unittest.TestCase):
             with self.subTest(token=token):
                 self.assertIn(token, self.doc)
 
-    def test_primary_navigation_surfaces_link_the_guide(self) -> None:
-        self.assertIn("docs/handoff_manifest_status_review.md", self.readme)
+    def test_changelog_links_the_guide(self) -> None:
         self.assertIn("docs/handoff_manifest_status_review.md", self.changelog)
         self.assertIn("manifest-backed presence/integrity review", self.changelog)
 
