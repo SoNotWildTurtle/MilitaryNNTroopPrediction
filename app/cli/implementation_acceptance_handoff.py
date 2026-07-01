@@ -19,7 +19,7 @@ from typing import Any, Dict, Iterable, Mapping, Sequence
 
 DEFAULT_MARKDOWN_NAME = "implementation-acceptance-handoff.md"
 DEFAULT_JSON_NAME = "implementation-acceptance-handoff.json"
-SCHEMA_VERSION = "1.1"
+SCHEMA_VERSION = "1.2"
 READY_EVIDENCE_STATUSES = {"collected", "verified"}
 KNOWN_EVIDENCE_STATUSES = READY_EVIDENCE_STATUSES | {"not_collected", "needs_update", "blocked"}
 
@@ -71,6 +71,44 @@ def _normalized_entry(entry: Mapping[str, Any]) -> Dict[str, Any]:
         "evidence_sources": sources,
         "reviewer_notes": str(entry.get("reviewer_notes", "")),
         "missing_evidence_blocks_merge": bool(entry.get("missing_evidence_blocks_merge", True)),
+    }
+
+
+def _normalized_release_bundle_target(entry: Mapping[str, Any]) -> Dict[str, Any]:
+    target: Dict[str, Any] = {
+        "path": str(entry.get("path", "")),
+        "role": str(entry.get("role", "unclassified_artifact")),
+        "review_purpose": str(entry.get("review_purpose", "")),
+        "presence_status": "not_checked",
+        "integrity_status": "not_checked",
+    }
+    for key, value in sorted(entry.items()):
+        if key not in target:
+            target[str(key)] = value
+    return target
+
+
+def _release_bundle_target_projection(decision_record: Mapping[str, Any] | None) -> Dict[str, Any]:
+    decision_record = decision_record or {}
+    targets = [
+        _normalized_release_bundle_target(entry)
+        for entry in _as_entries(decision_record.get("release_bundle_targets"))
+        if str(entry.get("path", "")).strip()
+    ]
+    return {
+        "source_schema_version": decision_record.get("schema_version"),
+        "target_count": len(targets),
+        "targets": targets,
+        "projection_rule": (
+            "Projection preserves path, role, review_purpose, and unknown future keys from "
+            "run-decision-record.json while marking presence_status and integrity_status as not_checked "
+            "until an artifact manifest verifies generated bundle files."
+        ),
+        "safe_scope": (
+            "Release bundle target projection is navigation metadata for reviewer handoff only; it does "
+            "not validate model quality, prove predictions, identify real-world troop movement, or "
+            "authorize operational use."
+        ),
     }
 
 
@@ -131,12 +169,14 @@ def _readiness_summary(entries: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
 def build_acceptance_handoff(
     checklist: Mapping[str, Any] | None = None,
     generated_at: datetime | None = None,
+    decision_record: Mapping[str, Any] | None = None,
 ) -> Dict[str, Any]:
     """Build a deterministic completed-evidence handoff from checklist JSON."""
 
     checklist = checklist or {}
     generated_at = generated_at or _utc_now()
     entries = [_normalized_entry(entry) for entry in _as_entries(checklist.get("gate_evidence_manifest"))]
+    release_bundle_projection = _release_bundle_target_projection(decision_record)
     readiness = _readiness_summary(entries)
     blockers = []
     if not entries:
@@ -162,17 +202,19 @@ def build_acceptance_handoff(
         "source_gate_summary": checklist.get("gate_summary", {}) if isinstance(checklist.get("gate_summary"), Mapping) else {},
         "completed_gate_evidence_manifest": entries,
         "gate_evidence_readiness_summary": readiness,
+        "release_bundle_target_projection": release_bundle_projection,
         "merge_blockers": blockers,
         "handoff_fields_captured": [
             "completed_gate_evidence_manifest",
             "gate_evidence_readiness_summary",
+            "release_bundle_target_projection",
             "merge_blockers",
             "safe_analytical_scope",
             "candidate_context",
         ],
         "compatibility_notes": (
-            "This handoff artifact is additive and reads an existing checklist JSON file. It does not change "
-            "prediction models, APIs, database schemas, generated analytical outputs, or live data workflows."
+            "This handoff artifact is additive and reads existing checklist and optional decision-record JSON files. "
+            "It does not change prediction models, APIs, database schemas, generated analytical outputs, or live data workflows."
         ),
         "rollback_notes": (
             "Rollback by deleting the generated handoff artifact or reverting the handoff CLI/docs/tests PR. "
@@ -250,6 +292,27 @@ def _markdown_lines(handoff: Mapping[str, Any]) -> Iterable[str]:
     yield f"- Status review rule: {readiness.get('status_review_rule', 'Unknown statuses require reviewer confirmation before merge.')}"
     yield ""
 
+    release_targets = handoff.get("release_bundle_target_projection", {})
+    if not isinstance(release_targets, Mapping):
+        release_targets = {}
+    targets = _as_entries(release_targets.get("targets"))
+    yield "## Release bundle target projection"
+    yield ""
+    yield f"- Target count: {release_targets.get('target_count', len(targets))}"
+    yield f"- Projection rule: {release_targets.get('projection_rule', 'No release bundle target projection was provided.')}"
+    yield f"- Safe scope: {release_targets.get('safe_scope', 'Navigation metadata only; not operational evidence.')}"
+    if targets:
+        yield ""
+        yield "| Path | Role | Review purpose | Presence | Integrity |"
+        yield "| --- | --- | --- | --- | --- |"
+        for target in targets:
+            yield (
+                f"| `{target.get('path', '')}` | `{target.get('role', '')}` | "
+                f"{target.get('review_purpose', '')} | {target.get('presence_status', 'not_checked')} | "
+                f"{target.get('integrity_status', 'not_checked')} |"
+            )
+    yield ""
+
     yield "## Completed gate evidence manifest"
     yield ""
     yield "| Gate | Evidence status | Sources | Missing evidence blocks merge |"
@@ -310,6 +373,15 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Source implementation-acceptance-checklist JSON with completed gate_evidence_manifest rows.",
     )
+    parser.add_argument(
+        "--decision-record-json",
+        type=Path,
+        default=None,
+        help=(
+            "Optional run-decision-record JSON whose release_bundle_targets should be projected into the handoff "
+            "as navigation metadata."
+        ),
+    )
     parser.add_argument("--markdown-path", type=Path, default=Path(DEFAULT_MARKDOWN_NAME), help="Markdown output path.")
     parser.add_argument("--json-path", type=Path, default=Path(DEFAULT_JSON_NAME), help="JSON output path.")
     parser.add_argument("--no-markdown", action="store_true", help="Skip Markdown output.")
@@ -328,7 +400,8 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     checklist = _read_json(args.checklist_json)
-    handoff = build_acceptance_handoff(checklist)
+    decision_record = _read_json(args.decision_record_json)
+    handoff = build_acceptance_handoff(checklist, decision_record=decision_record)
     markdown_path = None if args.no_markdown else args.markdown_path
     json_path = None if args.no_json else args.json_path
     write_outputs(handoff, markdown_path, json_path)
