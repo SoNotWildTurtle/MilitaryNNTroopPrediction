@@ -16,7 +16,13 @@ from typing import Any, Dict, Iterable, Mapping, Sequence
 
 DEFAULT_MARKDOWN_NAME = "handoff-gap-report-review.md"
 DEFAULT_JSON_NAME = "handoff-gap-report-review.json"
-SCHEMA_VERSION = "1.1"
+SCHEMA_VERSION = "1.2"
+KNOWN_GAP_STATUSES = (
+    "gap_clear",
+    "missing_in_gap_report",
+    "suspicious_in_gap_report",
+    "not_checked",
+)
 
 SAFE_SCOPE = (
     "Handoff gap-report review artifacts are offline repository-maintenance "
@@ -114,6 +120,16 @@ def _review_target(target: Mapping[str, Any], gap_paths: Mapping[str, set[str]] 
     }
 
 
+def _gap_status_counts(reviewed_targets: Sequence[Mapping[str, Any]]) -> Dict[str, int]:
+    """Return stable counts for known and future gap statuses."""
+
+    counts = {status: 0 for status in KNOWN_GAP_STATUSES}
+    for target in reviewed_targets:
+        status = str(target.get("gap_status", "not_checked"))
+        counts[status] = counts.get(status, 0) + 1
+    return counts
+
+
 def _reviewer_next_actions(
     reviewed_targets: Sequence[Mapping[str, Any]],
     gap_paths: Mapping[str, set[str]] | None,
@@ -207,6 +223,7 @@ def build_gap_report_review(
         blockers.append("No release bundle target paths were available in the handoff input.")
     if gap_paths is None:
         blockers.append("No parseable artifact gap report was supplied for target cross-checking.")
+    gap_status_counts = _gap_status_counts(reviewed_targets)
     return {
         "generated_at": generated_at.isoformat(),
         "schema_version": SCHEMA_VERSION,
@@ -219,6 +236,14 @@ def build_gap_report_review(
             "missing_path_count": len(gap_paths.get("missing", set())) if gap_paths is not None else 0,
             "suspicious_path_count": len(gap_paths.get("suspicious", set())) if gap_paths is not None else 0,
             "blocking_target_count": sum(1 for target in reviewed_targets if target["gap_blocks_merge"]),
+        },
+        "review_status_summary": {
+            "known_gap_statuses": list(KNOWN_GAP_STATUSES),
+            "gap_status_counts": gap_status_counts,
+            "clear_target_count": gap_status_counts.get("gap_clear", 0),
+            "unchecked_target_count": gap_status_counts.get("not_checked", 0),
+            "blocking_target_count": sum(1 for target in reviewed_targets if target["gap_blocks_merge"]),
+            "merge_blocker_count": len(blockers),
         },
         "merge_blockers": blockers,
         "reviewer_next_actions": _reviewer_next_actions(reviewed_targets, gap_paths, blockers),
@@ -258,6 +283,26 @@ def _markdown_lines(review: Mapping[str, Any]) -> Iterable[str]:
     yield f"- Suspicious path count: {summary.get('suspicious_path_count', 0)}"
     yield f"- Blocking target count: {summary.get('blocking_target_count', 0)}"
     yield f"- Review rule: {review.get('review_rule', '')}"
+    status_summary = review.get("review_status_summary", {})
+    if not isinstance(status_summary, Mapping):
+        status_summary = {}
+    status_counts = status_summary.get("gap_status_counts", {})
+    if not isinstance(status_counts, Mapping):
+        status_counts = {}
+    yield ""
+    yield "## Review status summary"
+    yield ""
+    yield f"- Clear target count: {status_summary.get('clear_target_count', 0)}"
+    yield f"- Unchecked target count: {status_summary.get('unchecked_target_count', 0)}"
+    yield f"- Merge blocker count: {status_summary.get('merge_blocker_count', 0)}"
+    yield ""
+    yield "| Gap status | Count |"
+    yield "| --- | --- |"
+    for status in status_summary.get("known_gap_statuses", KNOWN_GAP_STATUSES):
+        yield f"| `{status}` | {status_counts.get(status, 0)} |"
+    unknown_statuses = sorted(str(status) for status in status_counts if status not in KNOWN_GAP_STATUSES)
+    for status in unknown_statuses:
+        yield f"| `{status}` | {status_counts.get(status, 0)} |"
     yield ""
     yield "## Reviewed targets"
     yield ""

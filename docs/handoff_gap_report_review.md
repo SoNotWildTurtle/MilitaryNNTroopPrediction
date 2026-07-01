@@ -54,6 +54,21 @@ The CI bundle uses non-strict generation because the artifact is reviewer-naviga
 | `suspicious_in_gap_report` | Target path appears in suspicious generated-artifact evidence. | Treat as a blocker until a reviewer confirms the artifact is expected and safe. |
 | `not_checked` | No parseable artifact-gap-report JSON was supplied. | Treat as unavailable validation, not a pass. |
 
+## Review status summary
+
+The JSON and Markdown outputs include `review_status_summary`, a deterministic count block for reviewers and downstream automation that should not need to scrape the `reviewed_targets[]` table for basic readiness totals.
+
+Fields:
+
+- `known_gap_statuses`: stable display order for known status counters.
+- `gap_status_counts`: count by `gap_status`, including known statuses with zero counts and preserving future unknown status keys if they appear.
+- `clear_target_count`: number of reviewed targets with `gap_status=gap_clear`.
+- `unchecked_target_count`: number of reviewed targets with `gap_status=not_checked`.
+- `blocking_target_count`: number of reviewed targets whose gap status blocks merge.
+- `merge_blocker_count`: count of top-level blocker strings, including missing-input blockers.
+
+Use this summary for status dashboards, PR handoff packets, and release-gate diagnostics. It remains reviewer-navigation evidence only; it does not validate a model, prove a prediction, or reduce real-world uncertainty by itself.
+
 ## Reviewer next actions
 
 The JSON and Markdown outputs include `reviewer_next_actions[]`, a deterministic handoff queue that turns the gap-review result into narrow reviewer work:
@@ -71,8 +86,8 @@ Each action includes `priority`, `action`, `rationale`, and `narrow_rerun` field
 1. Generate the artifact manifest and artifact gap report from the same diagnostics directory.
 2. Generate the implementation acceptance handoff from the same decision record and manifest evidence.
 3. Run `handoff_gap_report_review` with both JSON inputs.
-4. Open `handoff-gap-report-review.json` and inspect `reviewed_targets[]` plus `reviewer_next_actions[]`.
-5. Treat any `gap_blocks_merge=true` target or blocking `reviewer_next_actions[]` entry as a blocker until regeneration, correction, or explicit reviewer disposition.
+4. Open `handoff-gap-report-review.json` and inspect `review_status_summary`, `reviewed_targets[]`, and `reviewer_next_actions[]`.
+5. Treat any `gap_blocks_merge=true` target, non-zero `review_status_summary.blocking_target_count`, non-zero `review_status_summary.merge_blocker_count`, or blocking `reviewer_next_actions[]` entry as a blocker until regeneration, correction, or explicit reviewer disposition.
 6. Cross-check `presence_status`, `integrity_status`, and `gap_status`; a target should not be considered ready when manifest evidence is present but the gap report still flags it as missing or suspicious.
 
 ## JSON contract
@@ -84,13 +99,14 @@ Top-level fields:
 - `target_count`: number of handoff release bundle target paths reviewed.
 - `reviewed_targets[]`: per-target `path`, `role`, `presence_status`, `integrity_status`, `gap_status`, `gap_blocks_merge`, and `review_note`.
 - `gap_summary`: counts for missing paths, suspicious paths, and blocking reviewed targets.
+- `review_status_summary`: machine-readable readiness counts for known gap statuses, clear targets, unchecked targets, blocking targets, and top-level merge blockers.
 - `merge_blockers`: exact blocker strings for release-gate handoff.
 - `reviewer_next_actions[]`: deterministic `priority`, `action`, `rationale`, and `narrow_rerun` guidance for the smallest useful next step.
 - `safe_scope`, `compatibility_notes`, and `rollback_notes`: reviewer guardrails that must remain visible.
 
 ## Compatibility
 
-This is additive. Existing implementation acceptance handoff, artifact manifest, artifact gap report, diagnostics bundle, and decision-record workflows remain usable without this CLI. Consumers can ignore unknown `reviewer_next_actions[]` entries or new schema versions until they opt in.
+This is additive. Existing implementation acceptance handoff, artifact manifest, artifact gap report, diagnostics bundle, and decision-record workflows remain usable without this CLI. Consumers can ignore unknown `review_status_summary` fields, unknown `reviewer_next_actions[]` entries, or new schema versions until they opt in.
 
 ## Rollback
 
