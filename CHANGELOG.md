@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added `documentation_index` metadata to generated run decision record JSON, documented the additive schema field, and added regression coverage so downstream handoff consumers can route reviewers to `docs/run_decision_record_navigation.md` without treating the link as validation evidence or changing predictive/runtime behavior.
 - Added `docs/run_decision_record_navigation.md` and static regression coverage so reviewers can find the continuity brief, decision record, schema contract, quick reference, and handoff examples from one additive index while preserving merge-blocker visibility, compatibility notes, rollback guidance, and safe analytical framing.
 - Added navigation coverage for the run decision record schema contract so reviewers can find the JSON contract, merge-evidence expectations, validation plan, compatibility notes, rollback path, and safe analytical framing from the existing run decision record guide.
 - Documented strict `implementation_acceptance_handoff --strict` validation mode and added static regression coverage so reviewers know the offline exit-code contract, readiness requirements, merge-blocker behavior, rollback path, and safe analytical limits before wiring it into release gates.
