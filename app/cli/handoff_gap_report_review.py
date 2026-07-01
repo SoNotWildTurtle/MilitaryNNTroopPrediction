@@ -16,13 +16,14 @@ from typing import Any, Dict, Iterable, Mapping, Sequence
 
 DEFAULT_MARKDOWN_NAME = "handoff-gap-report-review.md"
 DEFAULT_JSON_NAME = "handoff-gap-report-review.json"
-SCHEMA_VERSION = "1.2"
+SCHEMA_VERSION = "1.3"
 KNOWN_GAP_STATUSES = (
     "gap_clear",
     "missing_in_gap_report",
     "suspicious_in_gap_report",
     "not_checked",
 )
+KNOWN_ACTION_PRIORITIES = ("blocking", "review")
 
 SAFE_SCOPE = (
     "Handoff gap-report review artifacts are offline repository-maintenance "
@@ -204,6 +205,31 @@ def _reviewer_next_actions(
     return actions
 
 
+def _reviewer_action_summary(actions: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
+    """Summarize reviewer action priorities without requiring consumers to iterate."""
+
+    priority_counts = {priority: 0 for priority in KNOWN_ACTION_PRIORITIES}
+    unknown_priorities: set[str] = set()
+    first_blocking_action = ""
+    for action in actions:
+        priority = str(action.get("priority", "review"))
+        priority_counts[priority] = priority_counts.get(priority, 0) + 1
+        if priority not in KNOWN_ACTION_PRIORITIES:
+            unknown_priorities.add(priority)
+        if priority == "blocking" and not first_blocking_action:
+            first_blocking_action = str(action.get("action", ""))
+    return {
+        "known_priorities": list(KNOWN_ACTION_PRIORITIES),
+        "priority_counts": priority_counts,
+        "action_count": len(actions),
+        "blocking_action_count": priority_counts.get("blocking", 0),
+        "review_action_count": priority_counts.get("review", 0),
+        "unknown_priorities": sorted(unknown_priorities),
+        "has_blocking_actions": priority_counts.get("blocking", 0) > 0,
+        "first_blocking_action": first_blocking_action,
+    }
+
+
 def build_gap_report_review(
     handoff: Mapping[str, Any] | None = None,
     gap_report: Mapping[str, Any] | None = None,
@@ -224,6 +250,7 @@ def build_gap_report_review(
     if gap_paths is None:
         blockers.append("No parseable artifact gap report was supplied for target cross-checking.")
     gap_status_counts = _gap_status_counts(reviewed_targets)
+    reviewer_next_actions = list(_reviewer_next_actions(reviewed_targets, gap_paths, blockers))
     return {
         "generated_at": generated_at.isoformat(),
         "schema_version": SCHEMA_VERSION,
@@ -246,7 +273,8 @@ def build_gap_report_review(
             "merge_blocker_count": len(blockers),
         },
         "merge_blockers": blockers,
-        "reviewer_next_actions": _reviewer_next_actions(reviewed_targets, gap_paths, blockers),
+        "reviewer_next_actions": reviewer_next_actions,
+        "reviewer_action_summary": _reviewer_action_summary(reviewer_next_actions),
         "review_rule": (
             "A release bundle target is clear only when it is not listed in artifact-gap-report missing "
             "or suspicious evidence. Gap review is reviewer-navigation evidence only and must not be "
@@ -303,6 +331,33 @@ def _markdown_lines(review: Mapping[str, Any]) -> Iterable[str]:
     unknown_statuses = sorted(str(status) for status in status_counts if status not in KNOWN_GAP_STATUSES)
     for status in unknown_statuses:
         yield f"| `{status}` | {status_counts.get(status, 0)} |"
+    action_summary = review.get("reviewer_action_summary", {})
+    if not isinstance(action_summary, Mapping):
+        action_summary = {}
+    priority_counts = action_summary.get("priority_counts", {})
+    if not isinstance(priority_counts, Mapping):
+        priority_counts = {}
+    yield ""
+    yield "## Reviewer action summary"
+    yield ""
+    yield f"- Action count: {action_summary.get('action_count', 0)}"
+    yield f"- Blocking action count: {action_summary.get('blocking_action_count', 0)}"
+    yield f"- Review action count: {action_summary.get('review_action_count', 0)}"
+    yield f"- Has blocking actions: {action_summary.get('has_blocking_actions', False)}"
+    first_blocking_action = str(action_summary.get("first_blocking_action", ""))
+    if first_blocking_action:
+        yield f"- First blocking action: {first_blocking_action}"
+    unknown_priorities = action_summary.get("unknown_priorities", [])
+    if isinstance(unknown_priorities, Sequence) and not isinstance(unknown_priorities, (str, bytes)) and unknown_priorities:
+        yield f"- Unknown priorities: {', '.join(str(priority) for priority in unknown_priorities)}"
+    yield ""
+    yield "| Action priority | Count |"
+    yield "| --- | --- |"
+    for priority in action_summary.get("known_priorities", KNOWN_ACTION_PRIORITIES):
+        yield f"| `{priority}` | {priority_counts.get(priority, 0)} |"
+    unknown_priority_rows = sorted(str(priority) for priority in priority_counts if priority not in KNOWN_ACTION_PRIORITIES)
+    for priority in unknown_priority_rows:
+        yield f"| `{priority}` | {priority_counts.get(priority, 0)} |"
     yield ""
     yield "## Reviewed targets"
     yield ""
