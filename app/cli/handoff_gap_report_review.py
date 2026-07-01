@@ -16,7 +16,7 @@ from typing import Any, Dict, Iterable, Mapping, Sequence
 
 DEFAULT_MARKDOWN_NAME = "handoff-gap-report-review.md"
 DEFAULT_JSON_NAME = "handoff-gap-report-review.json"
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "1.1"
 
 SAFE_SCOPE = (
     "Handoff gap-report review artifacts are offline repository-maintenance "
@@ -114,6 +114,80 @@ def _review_target(target: Mapping[str, Any], gap_paths: Mapping[str, set[str]] 
     }
 
 
+def _reviewer_next_actions(
+    reviewed_targets: Sequence[Mapping[str, Any]],
+    gap_paths: Mapping[str, set[str]] | None,
+    blockers: Sequence[str],
+) -> Sequence[Dict[str, str]]:
+    """Return deterministic reviewer actions for handoff gap-review outcomes."""
+
+    actions: list[Dict[str, str]] = []
+    if not reviewed_targets:
+        actions.append({
+            "priority": "blocking",
+            "action": "Regenerate implementation acceptance handoff with release bundle target projection enabled.",
+            "rationale": "No release bundle target paths were available for cross-checking.",
+            "narrow_rerun": (
+                "python -m app.cli.implementation_acceptance_handoff "
+                "--checklist-json ci_artifacts/implementation-acceptance-checklist.json "
+                "--decision-record-json ci_artifacts/run-decision-record.json "
+                "--artifact-manifest-json ci_artifacts/artifact-manifest.json "
+                "--json-path ci_artifacts/implementation-acceptance-handoff.json "
+                "--markdown-path ci_artifacts/implementation-acceptance-handoff.md"
+            ),
+        })
+    if gap_paths is None:
+        actions.append({
+            "priority": "blocking",
+            "action": "Regenerate or provide a parseable artifact gap report from the same artifact directory.",
+            "rationale": "Gap-review status cannot distinguish clear targets from missing or suspicious evidence without the gap report.",
+            "narrow_rerun": (
+                "python -m app.cli.artifact_gap_report --artifact-dir ci_artifacts "
+                "--manifest-path ci_artifacts/artifact-manifest.json "
+                "--json-path ci_artifacts/artifact-gap-report.json "
+                "--markdown-path ci_artifacts/artifact-gap-report.md"
+            ),
+        })
+    for target in reviewed_targets:
+        if not bool(target.get("gap_blocks_merge", False)):
+            continue
+        status = str(target.get("gap_status", "not_checked"))
+        path = str(target.get("path", ""))
+        if status == "missing_in_gap_report":
+            action = "Regenerate the missing release bundle artifact or correct stale handoff target metadata."
+            rationale = f"`{path}` is listed as missing in artifact-gap-report evidence."
+        elif status == "suspicious_in_gap_report":
+            action = "Review and explicitly disposition the suspicious artifact before merge."
+            rationale = f"`{path}` is listed as suspicious in artifact-gap-report evidence."
+        else:
+            action = "Resolve the handoff gap-review blocker before merge."
+            rationale = f"`{path}` has gap_status={status}."
+        actions.append({
+            "priority": "blocking",
+            "action": action,
+            "rationale": rationale,
+            "narrow_rerun": (
+                "python -m app.cli.handoff_gap_report_review "
+                "--handoff-json ci_artifacts/implementation-acceptance-handoff.json "
+                "--artifact-gap-report-json ci_artifacts/artifact-gap-report.json --strict"
+            ),
+        })
+    if not blockers:
+        actions.append({
+            "priority": "review",
+            "action": "Attach the gap-review JSON/Markdown to the PR evidence packet and cross-check manifest statuses before merge.",
+            "rationale": "No reviewed target is missing or suspicious in the supplied artifact-gap-report evidence.",
+            "narrow_rerun": (
+                "python -m app.cli.handoff_gap_report_review "
+                "--handoff-json ci_artifacts/implementation-acceptance-handoff.json "
+                "--artifact-gap-report-json ci_artifacts/artifact-gap-report.json "
+                "--json-path ci_artifacts/handoff-gap-report-review.json "
+                "--markdown-path ci_artifacts/handoff-gap-report-review.md --strict"
+            ),
+        })
+    return actions
+
+
 def build_gap_report_review(
     handoff: Mapping[str, Any] | None = None,
     gap_report: Mapping[str, Any] | None = None,
@@ -147,6 +221,7 @@ def build_gap_report_review(
             "blocking_target_count": sum(1 for target in reviewed_targets if target["gap_blocks_merge"]),
         },
         "merge_blockers": blockers,
+        "reviewer_next_actions": _reviewer_next_actions(reviewed_targets, gap_paths, blockers),
         "review_rule": (
             "A release bundle target is clear only when it is not listed in artifact-gap-report missing "
             "or suspicious evidence. Gap review is reviewer-navigation evidence only and must not be "
@@ -199,6 +274,17 @@ def _markdown_lines(review: Mapping[str, Any]) -> Iterable[str]:
             )
     else:
         yield "- No release bundle targets were available for review."
+    yield ""
+    yield "## Reviewer next actions"
+    yield ""
+    actions = _as_entries(review.get("reviewer_next_actions"))
+    if actions:
+        for action in actions:
+            yield f"- **{action.get('priority', 'review')}**: {action.get('action', '')}"
+            yield f"  - Rationale: {action.get('rationale', '')}"
+            yield f"  - Narrow rerun: `{action.get('narrow_rerun', '')}`"
+    else:
+        yield "- none"
     yield ""
     yield "## Merge blockers"
     yield ""
