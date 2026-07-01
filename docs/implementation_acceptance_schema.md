@@ -137,6 +137,22 @@ A blocking evidence row is ready only when all of the following are true:
 
 Generated checklists therefore begin with `ready_for_merge_evidence_review: false`. That is expected template behavior, not a CLI failure. Unknown statuses in a downstream handoff remain merge blockers until reviewers normalize the row or provide collected/verified evidence.
 
+## Strict handoff validation mode
+
+`implementation_acceptance_handoff` also supports an opt-in strict validation mode for completed reviewer evidence:
+
+```bash
+python -m app.cli.implementation_acceptance_handoff \
+  --checklist-json /tmp/implementation-acceptance-checklist.json \
+  --no-markdown \
+  --no-json \
+  --strict
+```
+
+Use `--strict` after reviewers have filled `gate_evidence_manifest` rows and attached concrete evidence sources. The command returns exit status `0` only when the generated handoff has no `merge_blockers` and `gate_evidence_readiness_summary.ready_for_merge_evidence_review` is `true`. It returns exit status `1` and prints every blocker when required evidence is missing, the readiness summary is malformed, unknown statuses remain unresolved, or inherited merge blockers are still present.
+
+Strict mode does not make live validation claims. It is a deterministic offline readiness gate for reviewer-completed evidence and should be treated as an additional merge-safety signal alongside hosted checks, review-thread status, final diff review, compatibility notes, rollback notes, and target-branch verification.
+
 ## Compatibility and Rollback
 
 This schema documentation is additive and does not change prediction logic, training behavior, API routes, database schemas, live data ingestion, generated estimates, or CLI output fields. Roll back by reverting the documentation/test PR or removing generated local acceptance artifacts. Do not delete unrelated validation, provenance, handoff, or analytical-safety runbooks.
