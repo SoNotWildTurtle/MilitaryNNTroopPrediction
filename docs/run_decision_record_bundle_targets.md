@@ -19,10 +19,20 @@ The guide is offline-only repository-maintenance documentation. It does not fetc
 | `artifact-manifest.json` | `python -m app.cli.artifact_manifest` | Size and SHA-256 evidence proving which bundle files were generated. |
 | `artifact-provenance-ledger.json` | `python -m app.cli.artifact_provenance_ledger` | Provenance labels that distinguish generated review evidence from synthetic fixtures and previews. |
 
+## Machine-readable decision-record field
+
+Generated `run-decision-record.json` files include an additive `release_bundle_targets` array so downstream handoff consumers can discover the bundle target vocabulary without scraping this Markdown guide. Each entry contains:
+
+- `path`: expected artifact path or file name inside the diagnostics/release bundle.
+- `role`: stable, machine-readable review role for the artifact.
+- `review_purpose`: reviewer-facing explanation of what the artifact helps validate.
+
+Consumers should treat unknown future keys as additive metadata, preserve the existing `release_bundle_targets` entries when copying records into handoff packets, and continue to rely on required hosted checks, review-thread status, branch-stack correctness, and final diff review before merge. The field is reviewer-navigation evidence only; it is not live intelligence, operational truth, targeting guidance, or proof that an analytical estimate is correct.
+
 ## Review order
 
 1. Open `release-bundle-index.html` first and confirm the decision-record family is discoverable from the bundle.
-2. Open `run-decision-record.json` and inspect `status`, `selected_candidate`, `documentation_index`, `required_evidence_before_merge`, `validation_plan`, `merge_blockers`, `compatibility_notes`, `rollback_notes`, and `next_follow_up_candidate`.
+2. Open `run-decision-record.json` and inspect `status`, `selected_candidate`, `documentation_index`, `release_bundle_targets`, `required_evidence_before_merge`, `validation_plan`, `merge_blockers`, `compatibility_notes`, `rollback_notes`, and `next_follow_up_candidate`.
 3. Confirm `artifact-manifest.json` lists `run-decision-record.json` and the acceptance checklist/handoff artifacts with non-zero sizes and SHA-256 hashes.
 4. Confirm `artifact-provenance-ledger.json` labels decision-record, candidate, acceptance checklist, and acceptance handoff artifacts as generated review evidence, not live intelligence or operational truth.
 5. Inspect `implementation-acceptance-checklist.json` for blocking gates and missing evidence before treating the selected candidate as implementation-ready.
@@ -58,4 +68,4 @@ Do not merge a PR solely because these artifacts exist. The decision-record bund
 
 ## Compatibility and rollback
 
-This guide is additive documentation for existing generated artifacts and does not change prediction logic, model training, live ingestion, API routes, database schemas, CLI exit behavior, or release-bundle generation. Roll back by reverting the documentation/test PR. Existing candidate, decision-record, acceptance checklist, acceptance handoff, manifest, provenance, and release-bundle artifacts remain valid.
+This guide is additive documentation for existing generated artifacts and does not change prediction logic, model training, live ingestion, API routes, database schemas, CLI exit behavior, or release-bundle generation. Roll back by reverting the documentation/test PR or removing the generated `release_bundle_targets` field. Existing candidate, decision-record, acceptance checklist, acceptance handoff, manifest, provenance, and release-bundle artifacts remain valid for consumers that ignore unknown JSON fields.

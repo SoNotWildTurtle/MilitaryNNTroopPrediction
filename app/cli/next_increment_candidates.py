@@ -74,6 +74,49 @@ DECISION_RECORD_REQUIRED_EVIDENCE: Sequence[str] = (
     "next_follow_up_candidate",
 )
 
+DECISION_RECORD_RELEASE_BUNDLE_TARGETS: Sequence[Mapping[str, str]] = (
+    {
+        "path": "next-increment-candidates.md",
+        "role": "human_readable_candidate_matrix",
+        "review_purpose": "Review candidate ranking, rationale, blockers, validation commands, and safe analytical scope.",
+    },
+    {
+        "path": "next-increment-candidates.json",
+        "role": "machine_readable_candidate_matrix",
+        "review_purpose": "Validate candidate recipes, roadmap/changelog context, blocker metadata, and schema version.",
+    },
+    {
+        "path": DEFAULT_DECISION_RECORD_NAME,
+        "role": "machine_readable_run_decision_record",
+        "review_purpose": "Validate the selected candidate, merge evidence requirements, validation plan, blockers, rollback notes, and follow-up work.",
+    },
+    {
+        "path": "implementation-acceptance-checklist.json",
+        "role": "machine_readable_acceptance_gates",
+        "review_purpose": "Inspect gate readiness, evidence status, blocking gates, and missing evidence before treating the increment as implementation-ready.",
+    },
+    {
+        "path": "implementation-acceptance-handoff.json",
+        "role": "machine_readable_acceptance_handoff",
+        "review_purpose": "Inspect handoff status, evidence counts, warnings, and merge blockers without scraping Markdown.",
+    },
+    {
+        "path": "release-bundle-index.html",
+        "role": "static_bundle_navigation",
+        "review_purpose": "Confirm generated diagnostics are discoverable from the static release-bundle landing page.",
+    },
+    {
+        "path": "artifact-manifest.json",
+        "role": "artifact_integrity_manifest",
+        "review_purpose": "Confirm generated files have non-zero sizes and SHA-256 hashes for handoff integrity review.",
+    },
+    {
+        "path": "artifact-provenance-ledger.json",
+        "role": "artifact_provenance_labels",
+        "review_purpose": "Confirm decision, candidate, acceptance, manifest, and bundle artifacts are labeled as generated review evidence rather than operational truth.",
+    },
+)
+
 
 @dataclass(frozen=True)
 class CandidateRecipe:
@@ -284,6 +327,7 @@ def build_decision_record(report: Mapping[str, Any], selected_candidate_id: str 
                 "merge-blocker, and safe analytical-framing guidance."
             ),
         },
+        "release_bundle_targets": [dict(target) for target in DECISION_RECORD_RELEASE_BUNDLE_TARGETS],
         "required_evidence_before_merge": list(DECISION_RECORD_REQUIRED_EVIDENCE),
         "validation_plan": validation_plan,
         "merge_blockers": merge_blockers,
@@ -296,7 +340,7 @@ def build_decision_record(report: Mapping[str, Any], selected_candidate_id: str 
             "Remove the generated decision-record JSON or revert the CLI/docs PR. Existing candidate Markdown/JSON outputs remain compatible."
         ),
         "next_follow_up_candidate": (
-            "Wire the decision-record artifact into ci_report.sh and release bundle indexing once reviewers confirm the standalone JSON shape."
+            "Surface decision-record bundle targets in generated handoff receipts or release-bundle summaries after reviewers confirm the additive JSON field."
         ),
     }
 
