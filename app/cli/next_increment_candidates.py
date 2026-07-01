@@ -21,6 +21,7 @@ DEFAULT_JSON_NAME = "next-increment-candidates.json"
 DEFAULT_DECISION_RECORD_NAME = "run-decision-record.json"
 SCHEMA_VERSION = "1.0"
 DECISION_RECORD_SCHEMA_VERSION = "1.0"
+DECISION_RECORD_DOCUMENTATION_INDEX = "docs/run_decision_record_navigation.md"
 
 SAFE_SCOPE = (
     "Use these candidates only for lawful defensive analytical repository maintenance, "
@@ -275,6 +276,14 @@ def build_decision_record(report: Mapping[str, Any], selected_candidate_id: str 
             else "No candidate could be selected from the available report."
         ),
         "alternatives_considered": alternatives,
+        "documentation_index": {
+            "path": DECISION_RECORD_DOCUMENTATION_INDEX,
+            "purpose": (
+                "First-stop human navigation for the decision-record documentation family, "
+                "including schema, quick-reference, handoff examples, compatibility, rollback, "
+                "merge-blocker, and safe analytical-framing guidance."
+            ),
+        },
         "required_evidence_before_merge": list(DECISION_RECORD_REQUIRED_EVIDENCE),
         "validation_plan": validation_plan,
         "merge_blockers": merge_blockers,
