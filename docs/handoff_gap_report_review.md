@@ -1,6 +1,6 @@
 # Handoff Gap Report Review
 
-`handoff_gap_report_review` is an offline reviewer helper that cross-checks implementation acceptance handoff release bundle targets against artifact gap-report evidence.
+`handoff_gap_report_review` is an offline reviewer helper that cross-checks implementation acceptance handoff release bundle targets against artifact-gap-report evidence.
 
 It is intentionally narrow: it does not run prediction, collect live data, inspect live imagery, validate model quality, identify real-world troop movement, or authorize operational use. The output is reviewer-navigation evidence only.
 
@@ -33,6 +33,17 @@ python -m app.cli.handoff_gap_report_review \
 ```
 
 Strict mode exits non-zero if a handoff target appears in missing or suspicious artifact-gap evidence, if no handoff targets are available, or if no parseable gap report is supplied.
+
+## CI diagnostic bundle wiring
+
+`scripts/ci_report.sh` now publishes this review as part of the standard diagnostics bundle:
+
+- captures `handoff-gap-report-review-help.txt` with the other CLI help snapshots;
+- regenerates `implementation-acceptance-handoff.md/json` after the manifest and artifact gap report exist, using decision-record and artifact-manifest context;
+- writes `handoff-gap-report-review.md/json` from the regenerated handoff and gap-report inputs;
+- refreshes the artifact manifest and provenance ledger afterward so the new review files are included in downstream reviewer evidence.
+
+The CI bundle uses non-strict generation because the artifact is reviewer-navigation evidence. Release gates can opt into `--strict` when unavailable validation should block immediately.
 
 ## Status vocabulary
 
@@ -70,7 +81,7 @@ This is additive. Existing implementation acceptance handoff, artifact manifest,
 
 ## Rollback
 
-Rollback by reverting this documentation, the `handoff_gap_report_review` CLI, and its tests. Do not delete unrelated implementation acceptance, manifest, gap-report, diagnostics bundle, or analytical-safety tooling.
+Rollback by reverting this documentation, the `handoff_gap_report_review` CLI, CI bundle wiring, and its tests. Do not delete unrelated implementation acceptance, manifest, gap-report, diagnostics bundle, or analytical-safety tooling.
 
 ## Safe analytical framing
 
