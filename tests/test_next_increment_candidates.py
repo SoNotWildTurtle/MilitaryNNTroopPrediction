@@ -126,6 +126,31 @@ class NextIncrementCandidateTests(unittest.TestCase):
         self.assertIn("rollback", index["purpose"])
         self.assertIn("safe analytical-framing", index["purpose"])
 
+    def test_decision_record_includes_release_bundle_targets_for_handoff_consumers(self) -> None:
+        report = build_candidate_recipes(
+            generated_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+            changelog_text="# Changelog\n\n## Unreleased\n\n- Added validation evidence.\n",
+            goals_text="1. Automate validation evidence capture.\n",
+        )
+
+        record = build_decision_record(report)
+        targets = record["release_bundle_targets"]
+        paths = {target["path"] for target in targets}
+        roles = {target["role"] for target in targets}
+
+        self.assertIn("run-decision-record.json", paths)
+        self.assertIn("release-bundle-index.html", paths)
+        self.assertIn("artifact-manifest.json", paths)
+        self.assertIn("artifact-provenance-ledger.json", paths)
+        self.assertIn("machine_readable_run_decision_record", roles)
+        self.assertTrue(all(target.get("review_purpose") for target in targets))
+        self.assertTrue(
+            any(
+                "operational truth" in target["review_purpose"]
+                for target in targets
+            )
+        )
+
     def test_decision_record_can_select_explicit_candidate_id(self) -> None:
         report = build_candidate_recipes(
             generated_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
@@ -166,6 +191,7 @@ class NextIncrementCandidateTests(unittest.TestCase):
             decision_record["documentation_index"]["path"],
             "docs/run_decision_record_navigation.md",
         )
+        self.assertIn("release_bundle_targets", decision_record)
         self.assertIn("revert", decision_record["rollback_notes"].lower())
         self.assertIn("compatible", decision_record["rollback_notes"].lower())
 
