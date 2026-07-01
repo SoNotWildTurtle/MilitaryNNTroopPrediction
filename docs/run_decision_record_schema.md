@@ -19,7 +19,7 @@ Use `--selected-candidate-id candidate-XX` only after inspecting the generated c
 
 `schema_version` is currently `1.0` for the decision-record artifact. Consumers should preserve unknown fields and treat new top-level fields as additive unless release notes explicitly describe an incompatible change.
 
-A consumer that only understands the current minimum contract can read `status`, `selected_candidate`, `required_evidence_before_merge`, `validation_plan`, `merge_blockers`, `compatibility_notes`, `rollback_notes`, and `next_follow_up_candidate` while ignoring future additive fields.
+A consumer that only understands the current minimum contract can read `status`, `selected_candidate`, `documentation_index`, `required_evidence_before_merge`, `validation_plan`, `merge_blockers`, `compatibility_notes`, `rollback_notes`, and `next_follow_up_candidate` while ignoring future additive fields.
 
 ## Top-level fields
 
@@ -33,6 +33,7 @@ A consumer that only understands the current minimum contract can read `status`,
 | `selected_candidate_id_requested` | string/null | yes | Explicit candidate override requested by the caller, if any. |
 | `selection_reason` | string | yes | Human-readable reason for deterministic or explicit selection. |
 | `alternatives_considered` | array | yes | Non-selected candidate summaries and reason-not-selected notes. |
+| `documentation_index` | object | yes | Path and purpose for the human documentation index that routes reviewers to schema, quick-reference, handoff, compatibility, rollback, merge-blocker, and safe-framing guidance. |
 | `required_evidence_before_merge` | array | yes | Evidence fields reviewers must capture before merging the implementation PR. |
 | `validation_plan` | array | yes | Narrow local validation commands to run before broader CI or release gates. |
 | `merge_blockers` | array | yes | Required hosted-check, review-thread, final-diff, or inherited blockers to resolve before merge. |
@@ -58,6 +59,15 @@ A consumer that only understands the current minimum contract can read `status`,
 - `safety_notes`
 
 When `selected_candidate` is `null`, the record is not implementation-ready. Reviewers should inspect `merge_blockers`, `selection_reason`, `CHANGELOG.md`, `goals.md`, open issues, open pull requests, and hosted checks before choosing work manually.
+
+## Documentation index object
+
+`documentation_index` is additive reviewer routing metadata. The current object contains:
+
+- `path`: `docs/run_decision_record_navigation.md`.
+- `purpose`: a human-readable note explaining that the index is the first-stop guide for schema, quick-reference, handoff examples, compatibility, rollback, merge-blocker, and safe analytical-framing guidance.
+
+Downstream consumers may surface the path in generated receipts or bundle summaries, but they should not treat it as validation evidence by itself. The index helps people find the evidence contract; it does not replace final-head-SHA checks, hosted workflow conclusions, review-thread inspection, or final diff review.
 
 ## Required merge evidence
 
@@ -85,7 +95,7 @@ A green decision record means the run has selected a reviewable candidate. It is
 
 ## Compatibility and Rollback
 
-This schema documentation is additive and does not change prediction logic, training behavior, API routes, database schemas, live data ingestion, generated estimates, or CLI output fields. Roll back by reverting the documentation/test PR or removing generated local decision-record artifacts. Do not delete unrelated validation, provenance, handoff, or analytical-safety runbooks.
+This schema documentation is additive and does not change prediction logic, training behavior, API routes, database schemas, live data ingestion, generated estimates, or existing required decision-record fields. The new `documentation_index` object is additive reviewer routing metadata for consumers that want to link human docs from machine-readable handoffs. Roll back by reverting the CLI/docs/test PR or removing generated local decision-record artifacts. Do not delete unrelated validation, provenance, handoff, or analytical-safety runbooks.
 
 ## Safe analytical framing
 
