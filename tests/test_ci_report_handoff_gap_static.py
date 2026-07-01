@@ -18,7 +18,10 @@ class CiReportHandoffGapStaticTests(unittest.TestCase):
             "--json-path \"${ARTIFACT_DIR}/artifact-gap-report.json\""
         )
         enriched_handoff = "--artifact-manifest-json \"${ARTIFACT_DIR}/artifact-manifest.json\""
-        review_command = "-m app.cli.handoff_gap_report_review"
+        review_command = (
+            "-m app.cli.handoff_gap_report_review "
+            "--handoff-json \"${ARTIFACT_DIR}/implementation-acceptance-handoff.json\""
+        )
         review_json = "handoff-gap-report-review.json"
         summary_token = "handoff-gap-report-review.md/json"
 
