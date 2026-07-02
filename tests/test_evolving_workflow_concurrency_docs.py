@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DOC = ROOT / "docs" / "evolving_workflow_concurrency.md"
 CI_WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
 RECEIPT_WORKFLOW = ROOT / ".github" / "workflows" / "handoff-validation-receipt.yml"
+FRAMING_WORKFLOW = ROOT / ".github" / "workflows" / "analytical-framing-audit.yml"
 
 
 class EvolvingWorkflowConcurrencyDocsTests(unittest.TestCase):
@@ -40,6 +41,7 @@ class EvolvingWorkflowConcurrencyDocsTests(unittest.TestCase):
         for workflow_path, workflow_name in [
             (CI_WORKFLOW, "name: CI"),
             (RECEIPT_WORKFLOW, "name: Handoff Validation Receipt"),
+            (FRAMING_WORKFLOW, "name: Analytical Framing Audit"),
         ]:
             content = workflow_path.read_text(encoding="utf-8")
             with self.subTest(workflow=workflow_path.name):
@@ -47,6 +49,18 @@ class EvolvingWorkflowConcurrencyDocsTests(unittest.TestCase):
                 self.assertIn("concurrency:", content)
                 self.assertIn("group: ${{ github.workflow }}-${{ github.ref }}", content)
                 self.assertIn("cancel-in-progress: ${{ github.event_name == 'pull_request' }}", content)
+
+    def test_documents_covered_workflows(self) -> None:
+        content = DOC.read_text(encoding="utf-8")
+
+        for workflow_name in [
+            "`CI`",
+            "`Handoff Validation Receipt`",
+            "`Analytical Framing Audit`",
+            "existing workflow name, job names, artifact behavior, trigger set, and required-check semantics",
+        ]:
+            with self.subTest(workflow_name=workflow_name):
+                self.assertIn(workflow_name, content)
 
     def test_documents_reviewer_evidence_and_merge_blockers(self) -> None:
         content = DOC.read_text(encoding="utf-8")
