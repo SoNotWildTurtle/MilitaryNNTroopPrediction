@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added `docs/ci_run_summary_navigation.md` and static coverage for CI run summary navigation blocks so future `GITHUB_STEP_SUMMARY` additions have consistent final-head-SHA, artifact, local-rerun, merge-blocker, rollback, and safe analytical scope guidance without changing prediction, ingestion, API, database, or live analytical behavior.
 - Added a conservative `GITHUB_STEP_SUMMARY` navigation block to the `Handoff Validation Receipt` workflow so reviewers can see receipt Markdown, receipt JSON, uploaded artifact name, and offline analytical-review scope directly in hosted run summaries without replacing artifact upload, final-head-SHA evidence, or local reproduction requirements.
 - Added machine-readable `reviewer_action_summary` counts to `handoff_gap_report_review` JSON/Markdown so reviewer handoff and release gates can count blocking, review, and unknown action priorities without iterating the full action queue or scraping Markdown while preserving offline reviewer-navigation scope.
 - Added machine-readable `review_status_summary` counts to `handoff_gap_report_review` JSON/Markdown so reviewers and release-gate automation can count clear, unchecked, blocking, missing, and suspicious handoff targets without scraping Markdown while preserving offline reviewer-navigation scope.
