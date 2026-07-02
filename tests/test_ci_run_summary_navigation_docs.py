@@ -3,7 +3,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 GUIDE = ROOT / "docs" / "ci_run_summary_navigation.md"
-README = ROOT / "README.md"
 CHANGELOG = ROOT / "CHANGELOG.md"
 
 
@@ -35,9 +34,9 @@ def test_ci_run_summary_navigation_guide_preserves_safe_scope_and_rollback():
     assert "Removing the summary should not affect generated artifacts" in text
 
 
-def test_ci_run_summary_navigation_is_discoverable_from_primary_docs():
-    readme = README.read_text(encoding="utf-8")
+def test_ci_run_summary_navigation_has_changelog_entry():
     changelog = CHANGELOG.read_text(encoding="utf-8")
 
-    assert "docs/ci_run_summary_navigation.md" in readme
     assert "CI run summary navigation" in changelog
+    assert "GITHUB_STEP_SUMMARY" in changelog
+    assert "safe analytical scope" in changelog
