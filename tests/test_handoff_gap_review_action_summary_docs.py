@@ -19,11 +19,20 @@ class HandoffGapReviewActionSummaryDocTests(unittest.TestCase):
     def test_documents_action_priority_contract_and_blockers(self) -> None:
         self.assertIn("# Handoff Gap Review Action Summary", self.markdown)
         self.assertIn("reviewer_next_actions[]", self.markdown)
+        self.assertIn("reviewer_action_summary", self.markdown)
         self.assertIn("priority=blocking", self.markdown)
         self.assertIn("Unknown future priority", self.markdown)
         self.assertIn("unavailable validation", self.markdown)
         self.assertIn("review_status_summary.merge_blocker_count", self.markdown)
         self.assertIn("review_status_summary.blocking_target_count", self.markdown)
+
+    def test_documents_machine_readable_action_counts(self) -> None:
+        self.assertIn("reviewer_action_summary.action_count", self.markdown)
+        self.assertIn("reviewer_action_summary.priority_counts.blocking", self.markdown)
+        self.assertIn("reviewer_action_summary.priority_counts.review", self.markdown)
+        self.assertIn("reviewer_action_summary.unknown_priorities", self.markdown)
+        self.assertIn("reviewer_action_summary.first_blocking_action", self.markdown)
+        self.assertIn("missing `reviewer_action_summary`", self.markdown)
 
     def test_documents_narrow_reruns_before_broad_validation(self) -> None:
         self.assertIn("implementation_acceptance_handoff", self.markdown)
@@ -37,8 +46,8 @@ class HandoffGapReviewActionSummaryDocTests(unittest.TestCase):
         self.assertIn("does not collect live data", self.markdown)
         self.assertIn("does not prove a prediction", self.markdown)
         self.assertIn("operational targeting guidance", self.markdown)
-        self.assertIn("Rollback by reverting this guide", self.markdown)
-        self.assertIn("does not change generated artifact formats", self.markdown)
+        self.assertIn("Rollback by reverting the CLI, guide, changelog, and tests", self.markdown)
+        self.assertIn("does not change prediction APIs", self.markdown)
 
 
 if __name__ == "__main__":
