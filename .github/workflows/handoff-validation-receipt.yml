@@ -56,9 +56,9 @@ jobs:
           {
             echo "## Handoff validation receipt"
             echo ""
-            echo "- Markdown: \`ci_artifacts/handoff-validation-receipt.md\`"
-            echo "- JSON: \`ci_artifacts/handoff-validation-receipt.json\`"
-            echo "- Bundle artifact: \`handoff-validation-receipt\`"
+            echo '- Markdown: `ci_artifacts/handoff-validation-receipt.md`'
+            echo '- JSON: `ci_artifacts/handoff-validation-receipt.json`'
+            echo '- Bundle artifact: `handoff-validation-receipt`'
             echo "- Scope: offline reviewer evidence for analytical handoff; not prediction, targeting, or live-data validation."
           } >> "$GITHUB_STEP_SUMMARY"
 
