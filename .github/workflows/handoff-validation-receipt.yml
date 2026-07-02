@@ -50,6 +50,18 @@ jobs:
           test -s ci_artifacts/handoff-validation-receipt.json
           grep -q "claim of predictive certainty" ci_artifacts/handoff-validation-receipt.md
 
+      - name: Summarize handoff receipt artifacts
+        if: always()
+        run: |
+          {
+            echo "## Handoff validation receipt"
+            echo ""
+            echo '- Markdown: `ci_artifacts/handoff-validation-receipt.md`'
+            echo '- JSON: `ci_artifacts/handoff-validation-receipt.json`'
+            echo '- Bundle artifact: `handoff-validation-receipt`'
+            echo "- Scope: offline reviewer evidence for analytical handoff; not prediction, targeting, or live-data validation."
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload receipt artifacts
         if: always()
         uses: actions/upload-artifact@v4
