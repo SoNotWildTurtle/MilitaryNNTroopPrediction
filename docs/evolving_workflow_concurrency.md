@@ -18,6 +18,16 @@ concurrency:
 
 The group is scoped by workflow name and ref so independent workflows still run separately. Pull-request runs may cancel older runs on the same branch, while push runs to `main` are not cancelled by this policy.
 
+## Covered workflows
+
+The current rollout covers these high-frequency pull-request validation workflows:
+
+- `CI`
+- `Handoff Validation Receipt`
+- `Analytical Framing Audit`
+
+Each workflow keeps its existing workflow name, job names, artifact behavior, trigger set, and required-check semantics. The change only controls duplicate same-ref pull-request execution so final-head validation remains easier to identify.
+
 ## Reviewer evidence rules
 
 Before merging a pull request that changes workflow concurrency, reviewers should record:
